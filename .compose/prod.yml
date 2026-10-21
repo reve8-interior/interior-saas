@@ -1,0 +1,52 @@
+services:
+  # ── Frontend (production build) ────────────────────────────────────
+  portal-web-prod:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: designer-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    env_file:
+      - ../frontend/.env.prod
+    depends_on:
+      portal-api-prod:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - designer-network
+
+  # ── Backend (production) ───────────────────────────────────────────
+  portal-api-prod:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: designer-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../backend/.env.prod
+    environment:
+      - ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - designer-network
+
+networks:
+  designer-network:
+    driver: bridge

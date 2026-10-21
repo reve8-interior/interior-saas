@@ -1,0 +1,43 @@
+# Global ignore rules
+
+# # Node modules (frontend & backend)
+# node_modules/
+# **/node_modules/
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files — examples are committed, actual env files are not
+.env
+backend/.env
+backend/.env.dev
+backend/.env.prod
+!backend/.env.dev_example
+!backend/.env.prod_example
+notes
+
+
+removed/*
+.venv/*
+
+# Hypothesis test database
+.hypothesis/
+.claude
+notesmonitoring/.env.monitoring
+graphify-out/
+jscpd-report/*
+
+# generated demo video
+demo/*.mp4
+demo/pipeline/audio/
+demo/pipeline/video/
+demo/pipeline/out/
+demo/pipeline/vo_*.wav
+demo/pipeline/_post*.html
+demo/pipeline/posts/
+demo/pipeline/audio/.narration_hash
+
+# Snapshot sync settings
+tools/snapshot.env

@@ -1,0 +1,81 @@
+0.11.0
+ - date: 21-10-2026
+ - changes:
+   - feat: client pick marks the agreed quotation version and starts implementation
+   - feat: simplified navigation, mobile bottom tab bar, Versions folded into Quotation
+   - feat: Clients board view, search, last-updated sort, new-client shortcut and next-step card
+   - feat: bulk portfolio, undo for phase changes, upload action on empty designs/quotation
+   - feat: extraction saves straight into the conversation (no modal review)
+   - refactor: team access is a single tick list; two-column client details
+   - refactor: conversation cards fold finished ones, fewer badges, re-run options on demand
+   - fix: Save access enabled only on change; error shown when saving edited/verified rows fails
+   - docs: user guide updated
+
+0.10.0
+ - date: 20-10-2026
+ - changes:
+   - feat: Team page for business admins (members, roles, seat usage, activity log)
+   - feat: platform admin sets team size per business and sees the same team view with audit trail
+   - feat: viewer role
+   - feat: admins choose which clients each designer sees (Team page and client Details)
+
+0.9.0
+ - date: 20-10-2026
+ - changes:
+   - feat: versions workspace tab with side-by-side compare, Excel export/import and deactivate
+   - feat: public shared quotation page with theme toggle, image counts and room images
+   - feat: design portfolio sharing, room tags, hotspot detail drawer with dimensions and labour cost
+   - feat: flat dot-grid page background, compact tables and underline client tabs
+   - refactor: conversations are final once added; remove-from-quotation and What Changed modal dropped
+   - docs: user guide updated for versions, hotspots and final conversations
+
+0.8.0
+ - date: 17-10-2026
+ - changes:
+   - feat: upload design images, mark clickable hotspots linked to materials, and share a public view-only page with customers
+   - feat: add to quotation from a design hotspot, linking the new line back to the hotspot
+
+0.7.0
+ - date: 12-10-2026
+ - changes:
+   - feat: reworked admin console, AI price tier picker with extraction progress, and Vitest suite
+
+0.6.0
+ - date: 11-10-2026
+ - changes:
+   - feat: sidebar user guide page with visual walkthrough of checkpoints and quotation
+
+0.5.0
+ - date: 11-10-2026
+ - changes:
+   - feat: admin users modal (add, edit email, reset password, disable) and forced password change screen
+
+0.4.0
+ - date: 11-10-2026
+ - changes:
+   - feat: free/pro plans with admin-controlled payment countdown and access lock (#23)
+
+0.3.0
+ - date: 11-10-2026
+ - changes:
+   - feat: multi-business support with a superadmin console, per-business OpenAI keys 
+   and models, and AI cost tracking (#20)
+
+0.2.0
+ - date: 16-07-2026
+ - changes:
+   - feat: implement quotation engine (#2)
+   - feat: materials — tabbed import modal, vendor column, search, inline edit and delete (#3)
+   - feat: added deactivate/reactivate clinet tabs and feature (#13)
+   - feat: dashboard stats API and project duration tracking (#5)
+   - enh: wired up data flow from checkpoints to quotations (#6)
+   - fix: show empty AI extraction as a result, column-aware Excel export, reusable Button, and light-mode contrast polish (#9)
+   
+0.1.0
+  - date: 16-07-2026
+  - changes:
+    - feat: initial build — Interior Designer Portal (migrated from Reve8 template)
+    - feat: dashboard with phase kanban, clients list, client detail
+    - feat: checkpoint timeline, design gallery, quotation view
+    - feat: materials & rates table with margin configuration
+    - feat: simple JWT login (no Supabase, no admin portal)

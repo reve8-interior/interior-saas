@@ -1,0 +1,8 @@
+line-length = 79
+target-version = "py312"
+exclude = ["*.ipynb"]
+
+[lint.per-file-ignores]
+"tests/conftest.py" = ["E402"]
+"models/*.py" = ["F821"]
+"*/__init__.py" = ["F401"]

@@ -1,0 +1,86 @@
+﻿0.10.0
+ - date: 21-10-2026
+ - changes:
+   - feat: agreed quotation version: client pick marks the version as agreed and starts implementation
+   (POST on quotation versions router; agreed flag on schema/model)
+   - chore: migration add_agreed_quotation_version
+
+0.9.0
+ - date: 20-10-2026
+ - changes:
+   - feat: business admins manage their own team (/team): add, edit role, disable, remove,
+   reset password; client reassignment on removal
+   - feat: per-business team seat limit (max_users) set by the platform admin; only active members use a seat
+   - feat: read-only viewer role, enforced centrally for all state-changing requests
+   - feat: per-client access: designers see clients they lead plus ones an admin shares with them
+   (/clients/{id}/access, /team/{id}/clients); designers can no longer reassign clients
+   - feat: audit trail (/team/audit, /businesses/{id}/audit) with last-login tracking
+   - fix: duplicate email across businesses returns 409 instead of 500
+   - chore: migrations 0036-0037
+
+0.8.0
+ - date: 20-10-2026
+ - changes:
+   - feat: quotation versions with per-version share links, deactivation, room image attachments
+   - and Excel export/import (import creates a new version)
+   - feat: hotspot dimensions and labour cost, per-business image upload limits and storage bucket
+   - feat: design portfolio with expiring share links; design room tags
+   - chore: migrations 0023-0035 (linearized chain)
+
+0.7.0
+ - date: 12-10-2026
+ - changes:
+   - feat: upload design images with clickable hotspots linked to materials, and public
+   view-only share links (optional price visibility, revoke/expiry)
+   - feat: add to quotation from a design hotspot, linking the new line back to the hotspot
+
+0.6.0
+ - date: 12-10-2026
+ - changes:
+   - feat: AI price tiers (economy, balanced, premium) with model picker, OpenAI tier
+   migration, query round-trip reductions and request timing
+
+0.5.1
+ - date: 11-10-2026
+ - changes:
+   - fix: add RLS policies for users, businesses and settings tables so password change
+   no longer fails with StaleDataError on Supabase
+
+0.5.0
+ - date: 11-10-2026
+ - changes:
+   - feat: admin user management (add/edit email/reset password/disable) with forced
+   password change on temporary passwords
+
+0.4.0
+ - date: 11-10-2026
+ - changes:
+   - feat: free/pro plans with admin-controlled payment countdown and access lock (#23)
+
+0.3.0
+ - date: 11-10-2026
+ - changes:
+   - feat: multi-business support with row-level data isolation, per-business 
+   OpenAI keys and models, and AI cost tracking (#20)
+
+0.2.0
+ - date: 16-07-2026
+ - changes:
+   - feat: implement quotation engine (#2)
+   - feat: materials — vendor column, Excel/AI bulk import, and sample data file (#3)
+   - feat: add APIs for business metrics and project duration tracking (#5)
+   - enh: implement AI agent apis to extract quotation data from checkpoints (#6)
+   - enh: added deactivate/reactivate clinet apis (#13)
+   - enh: styled quotation excel export with colors, borders, and status fills (#4)
+   - fix: match last alembic migration style with existing ones
+   - fix: make AI checkpoint extraction delta-aware (add/update/remove) and 
+   input-scoped; link line items to materials via material_id (#9)
+
+0.1.0
+ - date: 16-07-2026
+ - changes:
+    - feat: initial build — Interior Designer Portal (migrated from Reve8 template)
+    - feat: clients, checkpoints, final summaries, designs, quotations, materials, margins, audit log
+    - feat: local JWT auth (admin + designer roles), no Supabase
+    - feat: quotation engine (specs_json × materials_rates × margin_config)
+    - feat: n8n webhook endpoint for checkpoint ingestion

@@ -1,0 +1,93 @@
+services:
+  # ── Postgres (local dev) ───────────────────────────────────────────
+  dev-db:
+    image: postgres:16-alpine
+    container_name: designer-dev-db
+    environment:
+      POSTGRES_USER: designer
+      POSTGRES_PASSWORD: designer
+      POSTGRES_DB: designer_portal
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U designer -d designer_portal"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - designer-network
+
+  # ── Frontend (Next.js dev server with hot reload) ──────────────────
+  portal-web-dev:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.dev
+    container_name: designer-web-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+    depends_on:
+      portal-api-dev:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ../frontend
+          target: /app
+          ignore:
+            - node_modules/
+            - .next/
+        - action: rebuild
+          path: ../frontend/package.json
+    networks:
+      - designer-network
+
+  # ── Backend (FastAPI dev server with hot reload) ───────────────────
+  portal-api-dev:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.dev
+    container_name: designer-api-dev
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../backend/.env.dev
+    environment:
+      - ENV=development
+      - DATABASE_URL=postgresql+psycopg://designer:designer@dev-db:5432/designer_portal
+    volumes:
+      - ../backend:/opt/backend
+    depends_on:
+      dev-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    develop:
+      watch:
+        - action: sync
+          path: ../backend
+          target: /opt/backend
+        - action: rebuild
+          path: ../backend/requirements.txt
+    networks:
+      - designer-network
+
+volumes:
+  # One DB volume per git branch so migrations on one branch don't break another.
+  # Set GIT_BRANCH (slashes not allowed in volume names), e.g.:
+  #   GIT_BRANCH=$(git branch --show-current | tr '/' '-') docker compose -f .compose/dev.yml up
+  pgdata:
+    name: designer_pgdata_${GIT_BRANCH:-main}
+
+networks:
+  designer-network:
+    driver: bridge

@@ -1,0 +1,39 @@
+import uuid
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from .base import Base, uuid_pk
+
+
+class PortfolioShare(Base):
+    """Expiring public link to a hand-picked set of portfolio designs."""
+
+    __tablename__ = "portfolio_shares"
+
+    id: Mapped[object] = uuid_pk()
+    business_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("businesses.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Unguessable bearer secret embedded in the public URL.
+    token: Mapped[str] = mapped_column(
+        String(64), unique=True, nullable=False, index=True
+    )
+    design_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=datetime.utcnow
+    )

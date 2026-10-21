@@ -1,0 +1,25 @@
+FROM python:3.12-slim
+
+# Install system dependencies and uv
+RUN apt-get update && apt-get install -y \
+    curl \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && rm -rf /var/lib/apt/lists/*
+
+# Add uv to PATH
+ENV PATH="/root/.local/bin:$PATH"
+
+# Create parent directory structure for module execution
+WORKDIR /opt
+
+# Copy requirements first
+COPY requirements.txt ./backend/
+RUN uv venv && uv pip install --system --no-cache-dir -r ./backend/requirements.txt
+
+# Copy initial code (docker compose watch will sync changes)
+COPY . ./backend/
+
+EXPOSE 8000
+
+# Run as module with reload for development
+CMD ["python", "-m", "backend"]

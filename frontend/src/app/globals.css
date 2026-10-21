@@ -1,0 +1,577 @@
+/*
+ * Font configuration is managed in src/data/theme.json
+ * To change fonts, update the theme.json file and this import URL
+ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS Custom Properties for fonts - sourced from theme.json */
+:root {
+  --font-primary: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Font sizes */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Apply consistent font to ALL elements */
+  *,
+  *::before,
+  *::after {
+    font-family: var(--font-primary);
+  }
+
+  /* Keyboard focus is always visible; mouse focus stays clean */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary-500/70 ring-offset-2 ring-offset-white dark:ring-offset-dark-900;
+  }
+
+  body {
+    font-family: var(--font-primary);
+    font-size: var(--text-sm);
+    font-feature-settings: 'cv11', 'ss01';
+    @apply bg-canvas text-dark-900 antialiased dark:bg-dark-950 dark:text-white;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='1.25' fill='%231e378c' fill-opacity='0.28'/%3E%3C/svg%3E");
+    background-attachment: fixed;
+  }
+  .dark body {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='1.25' fill='%238ca5ff' fill-opacity='0.2'/%3E%3C/svg%3E");
+  }
+
+  /* Headings use the same font but can be styled differently */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background: rgb(30 79 214 / 0.3);
+  }
+
+  /* Code elements use mono font */
+  code,
+  pre,
+  kbd {
+    font-family: var(--font-mono);
+  }
+
+  /* Ensure buttons and inputs inherit font */
+  button,
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+  }
+}
+
+@layer components {
+  .container-custom {
+    @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-primary-600 to-secondary-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_20px_-8px_rgb(30_79_214/0.7)] transition-all hover:brightness-110 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white/70 px-4 py-2 text-sm font-semibold text-dark-800 transition-colors hover:bg-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 dark:border-primary-300/20 dark:bg-white/5 dark:text-dark-100 dark:hover:bg-white/10;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-transparent px-4 py-2 text-sm font-semibold text-dark-700 transition-colors hover:border-primary-400 hover:text-primary-600 focus:outline-none dark:border-primary-300/20 dark:text-dark-200 dark:hover:border-primary-400 dark:hover:text-primary-300;
+  }
+
+  /* Compact button for use inside the top bar */
+  .btn-banner {
+    @apply inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold transition-colors focus:outline-none;
+  }
+  .btn-banner-primary {
+    @apply btn-banner bg-gradient-to-r from-primary-600 to-secondary-600 text-white shadow-brand hover:brightness-110;
+  }
+  .btn-banner-secondary {
+    @apply btn-banner border border-line bg-white/70 text-dark-800 hover:bg-white dark:border-primary-300/20 dark:bg-white/5 dark:text-dark-100 dark:hover:bg-white/10;
+  }
+
+  /* Small uppercase section label, brand blue (RupeeFrame "HOW IT WORKS") */
+  .eyebrow {
+    @apply text-[11px] font-bold uppercase tracking-[0.2em] text-primary-600 dark:text-primary-400;
+  }
+
+  /* Status / tag pill */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-white/70 px-3 py-1 text-xs font-medium text-dark-700 dark:border-primary-300/15 dark:bg-white/5 dark:text-dark-200;
+  }
+
+  .section-heading {
+    @apply font-heading text-3xl font-extrabold tracking-tight text-dark-900 dark:text-white md:text-4xl lg:text-5xl;
+  }
+
+  .section-subheading {
+    @apply max-w-3xl text-lg text-dark-500 dark:text-dark-400 md:text-xl;
+  }
+
+  /* Standard raised panel: white on the tinted light canvas, flat in dark mode.
+     Call sites may override the dark background (e.g. dark:bg-dark-900). */
+  .surface {
+    @apply rounded-2xl border border-line bg-white/80 shadow-[0_20px_50px_-24px_rgb(20_40_110/0.32)] backdrop-blur-xl dark:border-primary-300/15 dark:bg-dark-800/60 dark:shadow-[0_24px_60px_-28px_rgb(0_0_0/0.7)];
+  }
+
+  /* Table header row inside a .surface */
+  .table-head {
+    @apply border-b border-line bg-primary-50/70 text-[11px] font-bold uppercase tracking-[0.14em] text-dark-600 dark:border-primary-300/10 dark:bg-white/[0.03] dark:text-dark-400;
+  }
+
+  .card {
+    @apply rounded-2xl border border-line bg-white/80 p-6 shadow-card backdrop-blur-xl hover:border-primary-300 hover:shadow-card-hover dark:border-primary-300/15 dark:bg-dark-800/60 dark:shadow-none dark:hover:border-primary-400/50;
+  }
+
+  .card-gradient {
+    @apply rounded-2xl border border-primary-200 bg-gradient-to-br from-white to-primary-50 p-6 shadow-card transition-all duration-300 hover:shadow-card-hover dark:border-primary-300/15 dark:from-dark-800 dark:to-primary-900/30;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent dark:from-primary-400 dark:to-secondary-400;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-line bg-white/80 px-4 py-3 text-dark-900 transition-all duration-200 placeholder:text-dark-400 focus:border-secondary-600 focus:outline-none focus:ring-2 focus:ring-secondary-600/30 dark:border-primary-300/15 dark:bg-dark-900/60 dark:text-white dark:placeholder:text-dark-500;
+  }
+
+  .label-text {
+    @apply mb-2 block text-sm font-semibold text-dark-700 dark:text-dark-300;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animation-delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .animation-delay-300 {
+    animation-delay: 300ms;
+  }
+
+  .animation-delay-400 {
+    animation-delay: 400ms;
+  }
+}
+
+/* Button motion: a barely-there lift on hover and a small press on click, with
+   no overshoot. Uses the individual `scale` property so it
+   never clashes with Tailwind's transform utilities (e.g. -translate-y-1/2). */
+:is(button, a, label):is(
+    [class~='rounded-full'],
+    .btn-primary,
+    .btn-secondary,
+    .btn-outline,
+    .btn-banner,
+    .btn-banner-primary,
+    .btn-banner-secondary
+  ):not(:disabled, [aria-disabled='true'], .no-bounce) {
+  transition:
+    scale 160ms cubic-bezier(0.2, 0, 0, 1),
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    filter 150ms ease,
+    opacity 150ms ease;
+}
+:is(button, a, label):is(
+    [class~='rounded-full'],
+    .btn-primary,
+    .btn-secondary,
+    .btn-outline,
+    .btn-banner,
+    .btn-banner-primary,
+    .btn-banner-secondary
+  ):not(:disabled, [aria-disabled='true'], .no-bounce):hover {
+  scale: 1.01;
+}
+:is(button, a, label):is(
+    [class~='rounded-full'],
+    .btn-primary,
+    .btn-secondary,
+    .btn-outline,
+    .btn-banner,
+    .btn-banner-primary,
+    .btn-banner-secondary
+  ):not(:disabled, [aria-disabled='true'], .no-bounce):active {
+  scale: 0.98;
+  transition-duration: 80ms, 150ms, 150ms, 150ms, 150ms, 150ms, 150ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(button, a, label):is(
+    [class~='rounded-full'],
+    .btn-primary,
+    .btn-secondary,
+    .btn-outline,
+    .btn-banner,
+    .btn-banner-primary,
+    .btn-banner-secondary
+  ) {
+    transition: none;
+    scale: none !important;
+  }
+}
+
+/* A card dropped into a new column settles in instead of popping. */
+@keyframes board-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.board-card-in {
+  animation: board-card-in 200ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .board-card-in {
+    animation: none;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply rounded bg-dark-300 dark:bg-dark-600;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-dark-400 dark:bg-dark-500;
+}
+
+/* Dashboard specific styles */
+.client-card {
+  @apply rounded-2xl border border-line bg-white/80 p-5 shadow-card backdrop-blur-xl transition-all duration-150 hover:-translate-y-px hover:border-primary-300 hover:shadow-card-hover dark:border-primary-300/15 dark:bg-dark-800/60 dark:shadow-none dark:hover:border-primary-400/50;
+}
+
+.client-stat {
+  @apply rounded-2xl bg-gradient-to-br from-primary-600 to-secondary-600 p-5 text-white shadow-lg;
+}
+
+.sidebar-link {
+  @apply flex items-center gap-3 rounded-xl px-4 py-3 text-dark-600 transition-all duration-200 hover:bg-primary-50 hover:text-primary-600 dark:text-dark-300 dark:hover:bg-primary-900/30 dark:hover:text-primary-400;
+}
+
+.sidebar-link-active {
+  @apply flex items-center gap-3 rounded-xl bg-primary-50 px-4 py-3 font-semibold text-primary-600 dark:bg-primary-900/30 dark:text-primary-400;
+}
+
+/* Chart container */
+.chart-container {
+  @apply h-64 w-full md:h-80;
+}
+
+/* ── Mobile foundation ───────────────────────────────────────────────────── */
+/* Nothing may widen the page: `clip` (not `hidden`) keeps sticky elements working and
+   stops the rubber-band sideways drag on phones. Wide content scrolls inside its own box. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+  overscroll-behavior-x: none;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-padding-top: 6rem;
+  /* Reserve the scrollbar's width so short and long tabs don't shift sideways. */
+  scrollbar-gutter: stable;
+}
+/* Tap polish: no 300ms delay, no grey tap flash */
+a,
+button,
+input,
+select,
+textarea,
+label,
+summary {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+/* iOS zooms the page when a focused field is under 16px */
+@media (max-width: 1023px) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Full-screen overlays must ignore sibling-spacing margins (space-y-*), which
+   otherwise push a fixed inset-0 backdrop down and leave a gap at the top */
+.fixed.inset-0 {
+  margin: 0 !important;
+}
+
+/* iOS-style frosted pill: translucent, strongly blurred, hairline edge, soft depth */
+.ios-pill {
+  border: 1px solid rgb(255 255 255 / 0.7);
+  background: rgb(255 255 255 / 0.62);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.9) inset,
+    0 14px 40px -18px rgb(20 40 110 / 0.45);
+}
+.dark .ios-pill {
+  border-color: rgb(255 255 255 / 0.1);
+  background: rgb(18 27 50 / 0.58);
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.06) inset,
+    0 18px 44px -20px rgb(0 0 0 / 0.75);
+}
+.mobile-nav-pill {
+  top: max(0.75rem, env(safe-area-inset-top));
+}
+.mobile-tab-bar {
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+.mobile-nav-panel {
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 4.5rem);
+  transform-origin: bottom center;
+  animation: nav-sheet 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes nav-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-nav-panel {
+    animation: none;
+  }
+}
+
+/* Horizontal swipe strips (board, chips): snap to cards, hide the scrollbar */
+.snap-strip {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.snap-strip::-webkit-scrollbar {
+  display: none;
+}
+.snap-strip > * {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
+
+/* 44px minimum touch targets on phones and tablets */
+@media (max-width: 1023px) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline,
+  .btn-banner {
+    min-height: 44px;
+  }
+}
+
+/* Same background as <body> (plain color + SVG dot grid, fixed to the viewport). Sticky bars use it so they
+   look like part of the page while still hiding whatever scrolls underneath them. */
+.bg-page {
+  background-color: #e2e9fa;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='1.25' fill='%231e378c' fill-opacity='0.28'/%3E%3C/svg%3E");
+  background-attachment: fixed;
+}
+.dark .bg-page {
+  background-color: #070b15;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='1.25' fill='%238ca5ff' fill-opacity='0.2'/%3E%3C/svg%3E");
+}
+
+/* ── Shared controls: one look for every checkbox, radio, select and table ─── */
+input[type='checkbox'],
+input[type='radio'] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  flex-shrink: 0;
+  place-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  cursor: pointer;
+  border: 1.5px solid rgb(61 72 103 / 0.45);
+  background-color: rgb(255 255 255 / 0.9);
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+.dark input[type='checkbox'],
+.dark input[type='radio'] {
+  border-color: rgb(140 165 255 / 0.4);
+  background-color: rgb(14 21 38 / 0.7);
+}
+input[type='checkbox'] {
+  border-radius: 0.4rem;
+}
+input[type='radio'] {
+  border-radius: 9999px;
+}
+input[type='checkbox']:hover:not(:disabled),
+input[type='radio']:hover:not(:disabled) {
+  border-color: #1e4fd6;
+}
+input[type='checkbox']:checked,
+input[type='radio']:checked {
+  border-color: transparent;
+  background-image: linear-gradient(135deg, #1e4fd6, #0c96c2);
+}
+input[type='checkbox']:checked::after {
+  content: '';
+  width: 0.7rem;
+  height: 0.7rem;
+  background: white;
+  clip-path: polygon(14% 52%, 0 66%, 38% 100%, 100% 22%, 86% 8%, 38% 70%);
+}
+input[type='radio']:checked::after {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: white;
+}
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible {
+  outline: 2px solid #0c96c2;
+  outline-offset: 2px;
+}
+input[type='checkbox']:disabled,
+input[type='radio']:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Native selects: same radius/border as inputs, our own chevron */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23566280' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 1rem;
+  padding-right: 2rem;
+  cursor: pointer;
+}
+.dark select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239aa4c0' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+@layer components {
+  /* Compact input used inside tables and item cards */
+  .field {
+    @apply w-full rounded-xl border border-line bg-white/80 px-3 py-2 text-sm text-dark-900 transition-colors placeholder:text-dark-400 focus:border-secondary-600 focus:outline-none focus:ring-2 focus:ring-secondary-600/30 dark:border-primary-300/15 dark:bg-dark-900/60 dark:text-white;
+  }
+  .field-invalid {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-500/30 dark:border-red-400/60;
+  }
+  /* Small caption above a field */
+  .field-label {
+    @apply mb-1 block text-[11px] font-bold uppercase tracking-[0.1em] text-dark-500 dark:text-dark-400;
+  }
+
+  /* Status / action badge (same shape everywhere; colour comes from the tone classes) */
+  .badge {
+    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+
+  /* Inline text action ("+ Add row", "Verify all") with a real touch target */
+  .link-action {
+    @apply inline-flex min-h-9 items-center gap-1.5 rounded-full px-2 text-sm font-semibold text-primary-600 transition-colors hover:bg-primary-50 hover:text-primary-700 disabled:opacity-50 dark:text-primary-400 dark:hover:bg-white/10 dark:hover:text-primary-300;
+  }
+  .link-action-muted {
+    @apply inline-flex min-h-9 items-center gap-1.5 rounded-full px-2 text-sm font-medium text-dark-500 transition-colors hover:bg-primary-50 hover:text-primary-700 disabled:opacity-50 dark:text-dark-400 dark:hover:bg-white/10 dark:hover:text-primary-300;
+  }
+
+  /* Destructive outline button */
+  .btn-danger-soft {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-red-300 bg-white/60 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-400/30 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-500/10;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgb(212_42_60/0.7)] transition-all hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Pill segmented control (tabs): replaces underline tabs everywhere */
+  .seg {
+    @apply inline-flex max-w-full gap-1 overflow-x-auto rounded-full border border-line bg-white/60 p-1 [scrollbar-width:none] dark:border-primary-300/15 dark:bg-white/5 [&::-webkit-scrollbar]:hidden;
+  }
+  .seg-btn {
+    @apply inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-sm font-semibold text-dark-600 transition-colors hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-50 dark:text-dark-300 dark:hover:bg-white/10;
+  }
+  .seg-btn[aria-selected='true'] {
+    @apply bg-gradient-to-r from-primary-600 to-secondary-600 text-white shadow-brand hover:brightness-110;
+  }
+
+  /* One table look: 14px text, uppercase eyebrow headers, roomy rows */
+  .data-table {
+    @apply w-full text-left text-[13px];
+  }
+  .data-table thead {
+    @apply border-b border-line bg-primary-50/70 text-[11px] font-bold uppercase tracking-[0.1em] text-dark-600 dark:border-primary-300/10 dark:bg-white/[0.03] dark:text-dark-400;
+  }
+  .data-table th {
+    @apply whitespace-nowrap px-3 py-2 text-left font-bold;
+  }
+  .data-table td {
+    @apply px-3 py-1.5 align-middle;
+  }
+  .data-table tbody {
+    @apply divide-y divide-line dark:divide-primary-300/10;
+  }
+}
+
+@layer components {
+  .btn-success {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgb(31_157_85/0.7)] transition-all hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+}

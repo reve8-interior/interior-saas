@@ -1,0 +1,111 @@
+name: reve8-test
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Test stack — mirrors production schema via Alembic migrations.
+#
+# Local usage:
+#   docker compose -f .compose/test.yml up --build --abort-on-container-exit
+#
+# CI usage (GitHub Actions):
+#   docker compose -f .compose/test.yml run --rm test-runner
+#
+# The test-db container runs the same postgres:16 image as Supabase uses
+# internally, and Alembic applies all migrations on startup so the schema
+# exactly matches production.
+#
+# Environment variables with real secrets (OPENAI_API_KEY, etc.) are read
+# from backend/.env.test — copy backend/.env_example and fill in values.
+# For CI, pass them as GitHub Actions secrets (see deploy-backend.yml).
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Postgres — same major version as Supabase (16) ──────────────────────
+  test-db:
+    image: postgres:16-alpine
+    container_name: reve8-test-db
+    environment:
+      POSTGRES_USER: reve8
+      POSTGRES_PASSWORD: reve8
+      POSTGRES_DB: reve8
+    ports:
+      - "5433:5432"   # host port 5433 avoids clashing with any local Postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reve8 -d reve8"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - reve8-test-network
+
+  # ── Redis — fakeredis is used in unit tests, but the integration suite
+  #    can hit a real Redis via REDIS_URL if needed ─────────────────────────
+  test-redis:
+    image: redis:7-alpine
+    container_name: reve8-test-redis
+    ports:
+      - "6380:6379"   # host port 6380 avoids clashing with dev-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - reve8-test-network
+
+  # ── Test runner ──────────────────────────────────────────────────────────
+  test-runner:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.test
+    container_name: reve8-test-runner
+    environment:
+      ENV: test
+      DATABASE_URL: postgresql+psycopg://reve8:reve8@test-db:5432/reve8
+      REDIS_URL: redis://test-redis:6379/0
+      # JWT — use a fixed test secret; never a real production secret
+      API_JWT_SECRET: dev-secret-key-change-me-in-production
+      SUPABASE_JWT_SECRET: ""
+      # LLM keys — set to placeholder; genai tests are excluded by -m flag
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-placeholder}
+      # Observability — disabled in test
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-placeholder}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-placeholder}
+      LANGCHAIN_TRACING_V2: "false"
+      UPDATE_BASELINE: ${UPDATE_BASELINE:-0}
+    env_file:
+      # Optional: mount backend/.env.test to inject real LLM keys for genai tests
+      # Copy backend/.env_example → backend/.env.test and fill in values.
+      - path: ../backend/.env.test
+        required: false
+    volumes:
+      - ../backend:/opt/backend
+    depends_on:
+      test-db:
+        condition: service_healthy
+      test-redis:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        python -m pytest tests/ \
+          --cov=agent_pipeline \
+          --cov=core \
+          --cov=routers \
+          --cov=models \
+          --cov=schemas \
+          --cov-report=term-missing \
+          --cov-report=xml:/opt/backend/coverage.xml \
+          --cov-report=json:/opt/backend/coverage.json \
+          --cov-fail-under=50 \
+          --junitxml=/opt/backend/junit.xml \
+          -m "not genai" \
+          -v \
+          --tb=short \
+          2>&1 | tee /opt/backend/coverage.txt; exit $${PIPESTATUS[0]}
+    networks:
+      - reve8-test-network
+
+networks:
+  reve8-test-network:
+    driver: bridge
