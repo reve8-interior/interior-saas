@@ -12,6 +12,7 @@ interface AppLayoutProps {
   label: string;
   showVersion?: boolean;
   businessName?: string | null;
+  businessLoading?: boolean;
   access?: AccessStatus;
   rootHref: string;
   pageTitle: string;
@@ -29,6 +30,7 @@ export function AppLayout({
   label,
   showVersion,
   businessName,
+  businessLoading,
   access,
   rootHref,
   pageTitle,
@@ -57,6 +59,7 @@ export function AppLayout({
         label={label}
         showVersion={showVersion}
         businessName={businessName}
+        businessLoading={businessLoading}
         access={access}
         isCollapsed={isCollapsed}
         rootHref={rootHref}

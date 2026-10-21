@@ -7,6 +7,7 @@ import { useParams, usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { Skeleton } from '@/components/ui';
 import { listDesigns } from '@/lib/designs';
 import { listQuotationVersions } from '@/lib/quotationVersions';
 import type { QuotationVersionSummary } from '@/lib/schemas/quotationVersion';
@@ -19,6 +20,8 @@ interface Tab {
   icon: LucideIcon;
   /** Small number shown beside the label, once known. */
   count?: number;
+  /** True while the count is still loading: renders a placeholder pill. */
+  countLoading?: boolean;
 }
 
 /**
@@ -33,15 +36,19 @@ export default function ClientWorkspaceLayout({
   const { id } = useParams<{ id: string }>();
   const pathname = usePathname();
 
-  const { data: designs } = useQuery({
+  const { data: designs, isLoading: designsLoading } = useQuery({
     queryKey: ['designs', id],
     queryFn: () => listDesigns(id),
   });
-  const { data: versions } = useQuery<QuotationVersionSummary[]>({
+  const { data: versions, isLoading: versionsLoading } = useQuery<
+    QuotationVersionSummary[]
+  >({
     queryKey: ['quotation-versions', id],
     queryFn: () => listQuotationVersions(id),
   });
-  const { data: conversations } = useQuery<{ id: string }[]>({
+  const { data: conversations, isLoading: conversationsLoading } = useQuery<
+    { id: string }[]
+  >({
     queryKey: ['checkpoints', id],
     queryFn: () => api.get<{ id: string }[]>(`/clients/${id}/checkpoints`),
   });
@@ -54,12 +61,14 @@ export default function ClientWorkspaceLayout({
       label: 'Designs',
       icon: Image,
       count: designs?.length,
+      countLoading: designsLoading,
     },
     {
       href: `${base}/checkpoints`,
       label: 'Conversations',
       icon: MessagesSquare,
       count: conversations?.length,
+      countLoading: conversationsLoading,
     },
     {
       href: `${base}/quotation`,
@@ -82,35 +91,47 @@ export default function ClientWorkspaceLayout({
             aria-label="Client sections"
             className="-mb-px flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            {tabs.map(({ href, label, icon: Icon, count, alsoActiveOn }) => {
-              const active = href === pathname || alsoActiveOn === pathname;
-              return (
-                <Link
-                  key={label}
-                  href={href}
-                  aria-current={active ? 'page' : undefined}
-                  className={`inline-flex min-h-12 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition-colors sm:px-4 ${
-                    active
-                      ? 'border-primary-500 text-primary-700 dark:border-primary-400 dark:text-white'
-                      : 'border-transparent text-dark-600 hover:border-dark-300 hover:text-dark-900 dark:text-dark-300 dark:hover:border-dark-500 dark:hover:text-white'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" aria-hidden />
-                  {label}
-                  {count !== undefined && (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
-                        active
-                          ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-200'
-                          : 'bg-dark-100 text-dark-600 dark:bg-dark-700 dark:text-dark-300'
-                      }`}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+            {tabs.map(
+              ({
+                href,
+                label,
+                icon: Icon,
+                count,
+                countLoading,
+                alsoActiveOn,
+              }) => {
+                const active = href === pathname || alsoActiveOn === pathname;
+                return (
+                  <Link
+                    key={label}
+                    href={href}
+                    aria-current={active ? 'page' : undefined}
+                    className={`inline-flex min-h-12 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition-colors sm:px-4 ${
+                      active
+                        ? 'border-primary-500 text-primary-700 dark:border-primary-400 dark:text-white'
+                        : 'border-transparent text-dark-600 hover:border-dark-300 hover:text-dark-900 dark:text-dark-300 dark:hover:border-dark-500 dark:hover:text-white'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" aria-hidden />
+                    {label}
+                    {countLoading && count === undefined && (
+                      <Skeleton className="h-5 w-6 rounded-full" />
+                    )}
+                    {count !== undefined && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
+                          active
+                            ? 'bg-primary-100 text-primary-700 dark:bg-primary-500/20 dark:text-primary-200'
+                            : 'bg-dark-100 text-dark-600 dark:bg-dark-700 dark:text-dark-300'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </Link>
+                );
+              }
+            )}
           </nav>
         </div>
       </div>
@@ -126,8 +147,9 @@ export default function ClientWorkspaceLayout({
               href: `${base}/versions`,
               label: 'Saved versions',
               count: versions?.length,
+              countLoading: versionsLoading,
             },
-          ].map(({ href, label, count }) => (
+          ].map(({ href, label, count, countLoading }) => (
             <Link
               key={href}
               href={href}
@@ -139,6 +161,9 @@ export default function ClientWorkspaceLayout({
               }`}
             >
               {label}
+              {countLoading && count === undefined && (
+                <Skeleton className="h-4 w-5 rounded-full" />
+              )}
               {count !== undefined && (
                 <span className="tabular-nums opacity-80">{count}</span>
               )}

@@ -1,5 +1,6 @@
 ﻿'use client';
 
+import { GridSkeleton } from '@/components/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, MapPin, Share2, Trash2 } from 'lucide-react';
 import { useParams } from 'next/navigation';
@@ -254,14 +255,7 @@ export default function DesignsPage() {
       </Modal>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="h-48 animate-pulse rounded-2xl bg-primary-50 dark:bg-dark-800"
-            />
-          ))}
-        </div>
+        <GridSkeleton items={3} />
       ) : designs.length === 0 ? (
         <EmptyState
           action={

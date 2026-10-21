@@ -1,5 +1,6 @@
 'use client';
 
+import { ListSkeleton } from '@/components/ui';
 import { useEffect, useState } from 'react';
 import { TopBarActions } from '@/components/layout/TopBarActions';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
@@ -192,14 +193,7 @@ export default function ClientsPage() {
       </div>
 
       {isLoading ? (
-        <div className="space-y-2">
-          {[...Array(5)].map((_, i) => (
-            <div
-              key={i}
-              className="h-16 w-full animate-pulse rounded-2xl bg-primary-100/70 dark:bg-white/10"
-            />
-          ))}
-        </div>
+        <ListSkeleton rows={5} className="space-y-2" />
       ) : (
         <>
           {/* Mobile: card list */}

@@ -41,7 +41,7 @@ export function Modal({
   return (
     <>
       <div
-        className="fixed inset-0 z-50 bg-dark-950/60 backdrop-blur-md"
+        className="modal-backdrop fixed inset-0 z-50 bg-dark-950/60 backdrop-blur-md"
         onClick={onClose}
       />
       <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4">
@@ -49,7 +49,7 @@ export function Modal({
           role="dialog"
           aria-modal="true"
           aria-label={title}
-          className={`relative w-full ${maxWidthClass[maxWidth]} animate-in fade-in zoom-in-95 max-h-[90vh] overflow-y-auto rounded-3xl border border-line bg-white shadow-[0_30px_80px_-30px_rgb(20_40_110/0.5)] duration-150 dark:border-primary-300/15 dark:bg-dark-800 dark:shadow-[0_30px_80px_-30px_rgb(0_0_0/0.8)]`}
+          className={`relative w-full ${maxWidthClass[maxWidth]} modal-panel max-h-[90vh] overflow-y-auto rounded-3xl border border-line bg-white shadow-[0_30px_80px_-30px_rgb(20_40_110/0.5)] dark:border-primary-300/15 dark:bg-dark-800 dark:shadow-[0_30px_80px_-30px_rgb(0_0_0/0.8)]`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

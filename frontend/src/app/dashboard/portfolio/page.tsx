@@ -1,5 +1,6 @@
 'use client';
 
+import { GridSkeleton } from '@/components/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, MapPin, Pencil, Share2 } from 'lucide-react';
 import Link from 'next/link';
@@ -74,14 +75,7 @@ export default function PortfolioPage() {
       </TopBarActions>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="h-48 animate-pulse rounded-lg bg-gray-200 dark:bg-dark-800"
-            />
-          ))}
-        </div>
+        <GridSkeleton items={3} />
       ) : designs.length === 0 ? (
         <div className="rounded-lg border border-dashed border-gray-300 p-12 text-center text-dark-500 dark:border-dark-700 dark:text-dark-400">
           Nothing here yet. Tick &quot;In portfolio&quot; on a design in a

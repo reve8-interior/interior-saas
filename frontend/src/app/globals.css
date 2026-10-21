@@ -247,6 +247,76 @@
   }
 }
 
+/* Skeleton placeholder: base tone + a transform-only shimmer sweep (GPU-cheap). */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background-color: rgb(219 230 251 / 0.7);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 0.55),
+    transparent
+  );
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+.dark .skeleton {
+  background-color: rgb(255 255 255 / 0.08);
+}
+.dark .skeleton::after {
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 0.08),
+    transparent
+  );
+}
+@keyframes skeleton-shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+/* Reduced motion: keep a static placeholder, no sweep. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+    display: none;
+  }
+}
+
+/* Modal: backdrop fades, panel eases in. `animate-in` utilities need a plugin
+   this project does not install, so the keyframes live here. */
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes modal-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+.modal-backdrop {
+  animation: modal-backdrop-in 150ms ease-out both;
+}
+.modal-panel {
+  animation: modal-panel-in 180ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop,
+  .modal-panel {
+    animation: none;
+  }
+}
+
 /* A card dropped into a new column settles in instead of popping. */
 @keyframes board-card-in {
   from {

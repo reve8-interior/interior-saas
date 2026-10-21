@@ -12,12 +12,11 @@ import { useState } from 'react';
 import { NewClientModal } from '@/components/crm/NewClientModal';
 import { TopBarActions } from '@/components/layout/TopBarActions';
 import dynamic from 'next/dynamic';
+import { LoadingRegion, Skeleton } from '@/components/ui';
 import { Clock, FileText, IndianRupee, Users } from 'lucide-react';
 
 // recharts is heavy: split the charts out so cards paint first.
-const chartLoading = () => (
-  <div className="h-80 animate-pulse rounded-2xl bg-primary-100/70 dark:bg-white/10" />
-);
+const chartLoading = () => <Skeleton className="h-80 rounded-2xl" />;
 const AiUsageChart = dynamic(
   () =>
     import('@/components/dashboard/AiUsageChart').then((m) => m.AiUsageChart),
@@ -38,25 +37,25 @@ const RevenueByPhaseChart = dynamic(
   { ssr: false, loading: chartLoading }
 );
 
-const SKELETON = 'animate-pulse rounded-2xl bg-primary-100/70 dark:bg-white/10';
+const SKELETON = 'rounded-2xl';
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
+    <LoadingRegion label="Loading dashboard" className="space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className={`${SKELETON} h-32`} />
+          <Skeleton key={i} className={`${SKELETON} h-32`} />
         ))}
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <div className={`${SKELETON} h-96 lg:col-span-8`} />
-        <div className={`${SKELETON} h-96 lg:col-span-4`} />
+        <Skeleton className={`${SKELETON} h-96 lg:col-span-8`} />
+        <Skeleton className={`${SKELETON} h-96 lg:col-span-4`} />
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-        <div className={`${SKELETON} h-80 lg:col-span-6`} />
-        <div className={`${SKELETON} h-80 lg:col-span-6`} />
+        <Skeleton className={`${SKELETON} h-80 lg:col-span-6`} />
+        <Skeleton className={`${SKELETON} h-80 lg:col-span-6`} />
       </div>
-    </div>
+    </LoadingRegion>
   );
 }
 

@@ -1,3 +1,12 @@
+0.12.0
+ - date: 21-10-2026
+ - changes:
+   - feat: skeleton loading states across dashboard, admin and share pages (shimmer, reduced-motion support, accessible loading regions)
+   - feat: route-level loading.tsx for dashboard and admin
+   - refactor: ad-hoc pulse blocks replaced with shared Skeleton primitives; materials and admin tables get skeletons
+   - feat: skeleton placeholders for tab counts, sidebar business name and auth shell
+   - fix: modal enter animation now works (animate-in classes were no-ops)
+
 0.11.0
  - date: 21-10-2026
  - changes:

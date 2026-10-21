@@ -1,5 +1,6 @@
 'use client';
 
+import { ListSkeleton } from '@/components/ui';
 import type { ReactNode } from 'react';
 import { api } from '@/lib/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -213,14 +214,7 @@ export function ClientDetail({ clientId, aside }: ClientDetailProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-3 p-4">
-        {[...Array(2)].map((_, i) => (
-          <div
-            key={i}
-            className="h-24 w-full animate-pulse rounded-xl bg-primary-100/70 dark:bg-white/10"
-          />
-        ))}
-      </div>
+      <ListSkeleton rows={2} rowClassName="h-24" className="space-y-3 p-4" />
     );
   }
 

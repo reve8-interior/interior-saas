@@ -1,6 +1,7 @@
 'use client';
 
 import { AccountMenu } from '@/components/layout/AccountMenu';
+import { Skeleton } from '@/components/ui';
 import { AuthUser } from '@/lib/schemas';
 import { AccessStatus } from '@/lib/schemas/auth';
 import { Building2, ChevronLeft, LucideIcon } from 'lucide-react';
@@ -27,6 +28,7 @@ interface AppSidebarProps {
   label: string;
   showVersion?: boolean;
   businessName?: string | null;
+  businessLoading?: boolean;
   access?: AccessStatus;
   isCollapsed: boolean;
   rootHref: string;
@@ -52,6 +54,7 @@ export function AppSidebar({
   label,
   showVersion = false,
   businessName,
+  businessLoading = false,
   access,
   isCollapsed,
   rootHref,
@@ -114,6 +117,18 @@ export function AppSidebar({
             </button>
           </div>
 
+          {businessLoading && !businessName && (
+            <div className="mx-4 pb-1 pt-4" aria-hidden="true">
+              <div className="flex min-h-10 items-center">
+                <span className="flex w-12 shrink-0 justify-center">
+                  <Skeleton className="h-4 w-4 rounded" />
+                </span>
+                <Skeleton
+                  className={`h-4 w-28 ${isCollapsed ? 'lg:hidden' : ''}`}
+                />
+              </div>
+            </div>
+          )}
           {businessName && (
             <div className="pb-1 pt-4" title={businessName}>
               {/* Same mx-4 + w-12 icon column as UserMenu and nav items, so text shares one left edge */}

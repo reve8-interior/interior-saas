@@ -1,4 +1,12 @@
-﻿0.10.0
+﻿0.11.0
+ - date: 21-10-2026
+ - changes:
+   - fix: production boot fails fast when production URLs (database, API, frontend, CORS origins) point to localhost
+   - fix: storage config has no defaults: STORAGE_BACKEND must be set explicitly; supabase requires URL, service key and bucket
+   - fix: all invalid settings are reported in one startup error (single line, no traceback)
+   - fix: production requires dev-default settings (DB, JWT secret, admin credentials, URLs, origins, n8n secret) to be set explicitly
+
+0.10.0
  - date: 21-10-2026
  - changes:
    - feat: agreed quotation version: client pick marks the version as agreed and starts implementation

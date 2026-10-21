@@ -1,5 +1,6 @@
 'use client';
 
+import { BlockSkeleton } from '@/components/ui';
 import {
   createLineItem,
   createQuotation,
@@ -220,9 +221,7 @@ export default function QuotationPage() {
         </TopBarActions>
       )}
 
-      {isLoading && (
-        <div className="h-48 animate-pulse rounded-2xl bg-primary-100/70 dark:bg-white/10" />
-      )}
+      {isLoading && <BlockSkeleton />}
 
       {noQuotationYet && (
         <EmptyState

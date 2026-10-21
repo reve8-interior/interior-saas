@@ -1,5 +1,6 @@
 'use client';
 
+import { ListSkeleton } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useModelTier } from '@/lib/aiModels';
 import { ExtractionProgress } from '@/components/shared/ExtractionProgress';
@@ -1679,14 +1680,7 @@ export default function CheckpointsPage() {
       )}
 
       {isLoading ? (
-        <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="h-24 animate-pulse rounded-2xl bg-primary-100/70 dark:bg-white/10"
-            />
-          ))}
-        </div>
+        <ListSkeleton rows={3} rowClassName="h-24" />
       ) : sorted.length === 0 ? (
         <EmptyState>
           No conversations yet. Click <strong>+ AI Extract</strong> to upload or

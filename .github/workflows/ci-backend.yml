@@ -54,6 +54,7 @@ jobs:
       DATABASE_URL: postgresql+psycopg://reve8:reve8@localhost:5432/reve8
       TEST_DATABASE_URL: postgresql+psycopg://reve8:reve8@localhost:5432/reve8
       JWT_SECRET: ci-test-secret
+      STORAGE_BACKEND: local
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

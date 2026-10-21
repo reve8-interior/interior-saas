@@ -102,7 +102,10 @@ export default function CRMLayout({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const { data: me } = useQuery({ queryKey: ['me'], queryFn: getMe });
+  const { data: me, isLoading: meLoading } = useQuery({
+    queryKey: ['me'],
+    queryFn: getMe,
+  });
 
   // Only business admins manage the team.
   const sections = useMemo<NavSection[]>(
@@ -128,6 +131,7 @@ export default function CRMLayout({ children }: { children: ReactNode }) {
     <AppLayout
       sections={sections}
       businessName={me?.business_name}
+      businessLoading={meLoading}
       access={me?.access}
       label="Studio"
       rootHref="/dashboard"

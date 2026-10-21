@@ -49,7 +49,7 @@ export function HotspotDetail({
       <div
         role="dialog"
         aria-label={label}
-        className="animate-in fade-in pointer-events-auto relative flex max-h-[50vh] w-full flex-col rounded-t-2xl bg-white shadow-xl dark:bg-dark-900 sm:max-h-none sm:w-96 sm:rounded-none"
+        className="pointer-events-auto relative flex max-h-[50vh] w-full animate-fade-in flex-col rounded-t-2xl bg-white shadow-xl dark:bg-dark-900 sm:max-h-none sm:w-96 sm:rounded-none"
       >
         <div className="flex items-start justify-between gap-3 border-b border-dark-200 p-4 dark:border-dark-700">
           <h3 className="font-heading text-base font-semibold text-dark-900 dark:text-white">

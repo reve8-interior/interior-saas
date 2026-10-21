@@ -1,5 +1,6 @@
 'use client';
 
+import { LoadingRegion, PageHeaderSkeleton, Skeleton } from '@/components/ui';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -222,7 +223,11 @@ export default function SharedQuotationPage() {
   if (state.status === 'loading') {
     return (
       <main className="mx-auto max-w-4xl p-4 sm:p-8">
-        <div className="h-72 animate-pulse rounded-lg bg-gray-200 dark:bg-dark-800" />
+        <LoadingRegion label="Loading quotation" className="space-y-6">
+          <PageHeaderSkeleton />
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-72 rounded-2xl" />
+        </LoadingRegion>
       </main>
     );
   }

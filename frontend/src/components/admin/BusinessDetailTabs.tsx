@@ -1,5 +1,6 @@
 'use client';
 
+import { Skeleton } from '@/components/ui';
 import { AiSettingsCard } from '@/components/admin/AiSettingsCard';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { BusinessUsersPanel } from '@/components/admin/BusinessUsersPanel';
@@ -137,12 +138,14 @@ function ClientsTab({ business }: { business: BusinessUsage }) {
           </thead>
           <tbody>
             {isLoading && (
-              <tr>
-                <td
-                  colSpan={8}
-                  className="px-3 py-8 text-center text-dark-500 dark:text-dark-400"
-                >
-                  Loading…
+              <tr role="status" aria-busy="true">
+                <td colSpan={8} className="px-3 py-3">
+                  <span className="sr-only">Loading…</span>
+                  <div className="space-y-2" aria-hidden="true">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-9 w-full" />
+                    ))}
+                  </div>
                 </td>
               </tr>
             )}

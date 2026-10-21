@@ -1,5 +1,6 @@
 'use client';
 
+import { ListSkeleton, LoadingRegion, Skeleton } from '@/components/ui';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { ModelTierPicker } from '@/components/shared/ModelTierPicker';
 import { type ModelTier, useModelTier } from '@/lib/aiModels';
@@ -519,7 +520,7 @@ export default function MaterialsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Material | null>(null);
   const [search, setSearch] = useState('');
 
-  const { data: materials = [] } = useQuery<Material[]>({
+  const { data: materials = [], isLoading } = useQuery<Material[]>({
     queryKey: ['materials'],
     queryFn: () => api.get<Material[]>('/materials'),
   });
@@ -567,6 +568,15 @@ export default function MaterialsPage() {
 
   const invalidateMaterials = () =>
     qc.invalidateQueries({ queryKey: ['materials'] });
+
+  if (isLoading) {
+    return (
+      <LoadingRegion label="Loading materials" className="space-y-6">
+        <Skeleton className="h-24 rounded-2xl" />
+        <ListSkeleton rows={6} rowClassName="h-14" className="space-y-2" />
+      </LoadingRegion>
+    );
+  }
 
   return (
     <div className="space-y-6">

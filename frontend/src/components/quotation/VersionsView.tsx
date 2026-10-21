@@ -1,5 +1,6 @@
 'use client';
 
+import { BlockSkeleton } from '@/components/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -816,7 +817,7 @@ export function VersionsView({ clientId }: { clientId: string }) {
           Compare versions
         </h3>
         {resolved.from === '' ? (
-          <div className="h-32 animate-pulse rounded-xl bg-gray-200 dark:bg-dark-800" />
+          <BlockSkeleton className="h-32" />
         ) : (
           <VersionCompare
             clientId={clientId}

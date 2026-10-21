@@ -1,5 +1,6 @@
 'use client';
 
+import { LoadingRegion, Skeleton } from '@/components/ui';
 import { api } from '@/lib/api';
 import {
   PHASES,
@@ -233,14 +234,11 @@ export default function BoardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex gap-3">
+      <LoadingRegion label="Loading board" className="flex gap-3">
         {PHASES.map((phase) => (
-          <div
-            key={phase}
-            className="h-64 flex-1 animate-pulse rounded-2xl bg-primary-100/70 dark:bg-white/10"
-          />
+          <Skeleton key={phase} className="h-64 flex-1 rounded-2xl" />
         ))}
-      </div>
+      </LoadingRegion>
     );
   }
 

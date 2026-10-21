@@ -1,5 +1,6 @@
 'use client';
 
+import { LoadingRegion, Skeleton } from '@/components/ui';
 import { TopBarActions } from '@/components/layout/TopBarActions';
 import {
   LineItemColumnDef,
@@ -185,10 +186,10 @@ export default function ColumnSetupPage() {
 
   if (!draft) {
     return (
-      <div className="max-w-3xl space-y-3">
-        <div className="h-24 animate-pulse rounded-2xl bg-primary-100/70 dark:bg-white/10" />
-        <div className="h-64 animate-pulse rounded-2xl bg-primary-100/70 dark:bg-white/10" />
-      </div>
+      <LoadingRegion className="max-w-3xl space-y-3">
+        <Skeleton className="h-24 rounded-2xl" />
+        <Skeleton className="h-64 rounded-2xl" />
+      </LoadingRegion>
     );
   }
 

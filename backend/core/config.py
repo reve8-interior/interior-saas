@@ -65,15 +65,14 @@ class Settings(BaseSettings):
         ]
 
     # Design image storage: "supabase" (private bucket) or "local" (dev disk)
-    storage_backend: str = Field(default="local", alias="STORAGE_BACKEND")
+    # No defaults: the backend must be told explicitly where images live.
+    storage_backend: str = Field(default="", alias="STORAGE_BACKEND")
     storage_local_dir: str = Field(
         default="uploads", alias="STORAGE_LOCAL_DIR"
     )
     supabase_url: str = Field(default="", alias="SUPABASE_URL")
     supabase_service_key: str = Field(default="", alias="SUPABASE_SERVICE_KEY")
-    supabase_bucket: str = Field(
-        default="design-images", alias="SUPABASE_BUCKET"
-    )
+    supabase_bucket: str = Field(default="", alias="SUPABASE_BUCKET")
     max_image_bytes: int = Field(
         default=8 * 1024 * 1024, alias="MAX_IMAGE_BYTES"
     )
@@ -105,34 +104,82 @@ _INSECURE_DEFAULTS = {
     "initial_admin_password": "changeme",
 }
 
+# Settings whose built-in default is a dev value; production must set them.
+_PROD_REQUIRED = (
+    "database_url",
+    "jwt_secret",
+    "initial_admin_email",
+    "initial_admin_password",
+    "api_base_url",
+    "frontend_url",
+    "allowed_origins_raw",
+    "n8n_webhook_secret",
+)
+# Settings that must never point at the local machine in production.
+_NO_LOCALHOST = (
+    "database_url",
+    "api_base_url",
+    "frontend_url",
+    "allowed_origins_raw",
+)
+_STORAGE_REQUIRED: dict[str, tuple[str, ...]] = {
+    "local": (),
+    "supabase": ("supabase_url", "supabase_service_key", "supabase_bucket"),
+}
 
-def _assert_production_safe(s: Settings) -> None:
-    """Fail fast if production is booted with placeholder secrets."""
-    problems = [
-        name.upper()
+
+def _is_local(value: str) -> bool:
+    return "localhost" in value or "127.0.0.1" in value
+
+
+def _collect_problems(s: Settings) -> list[str]:
+    """Return every configuration problem, so one boot reports them all."""
+    problems: list[str] = []
+    prod = s.env == "production"
+
+    if s.storage_backend not in _STORAGE_REQUIRED:
+        problems.append("STORAGE_BACKEND must be 'local' or 'supabase'")
+    else:
+        problems += [
+            f"{name.upper()} is required when STORAGE_BACKEND={s.storage_backend}"
+            for name in _STORAGE_REQUIRED[s.storage_backend]
+            if not getattr(s, name)
+        ]
+    if not prod:
+        return problems
+
+    problems += [
+        f"{name.upper()} is not set"
+        for name in _PROD_REQUIRED
+        if name not in s.model_fields_set
+    ]
+    problems += [
+        f"{name.upper()} still has a placeholder value"
         for name, bad in _INSECURE_DEFAULTS.items()
         if getattr(s, name) in (bad, "change-me", "password")
     ]
-    if problems:
-        raise RuntimeError(
-            f"Insecure placeholder values for: {', '.join(problems)}"
+    problems += [
+        f"{name.upper()} must not point to localhost in production"
+        for name in _NO_LOCALHOST
+        if _is_local(getattr(s, name))
+    ]
+    if s.storage_backend == "local":
+        problems.append(
+            "STORAGE_BACKEND=local loses images on redeploy; use 'supabase'"
         )
+    return problems
 
 
 @lru_cache()
 def get_settings() -> Settings:
     s = Settings()
-    if s.storage_backend not in ("local", "supabase"):
-        raise RuntimeError("STORAGE_BACKEND must be 'local' or 'supabase'")
-    if s.storage_backend == "supabase" and not (
-        s.supabase_url and s.supabase_service_key
-    ):
-        raise RuntimeError(
-            "STORAGE_BACKEND=supabase requires SUPABASE_URL and "
-            "SUPABASE_SERVICE_KEY"
+    problems = _collect_problems(s)
+    if problems:
+        # SystemExit: uvicorn prints one line instead of an import traceback.
+        raise SystemExit(
+            f"Invalid configuration, set in {_ENV_FILE} (or host env vars): "
+            + "; ".join(problems)
         )
-    if s.env == "production":
-        _assert_production_safe(s)
     return s
 
 

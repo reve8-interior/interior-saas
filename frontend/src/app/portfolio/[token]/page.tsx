@@ -1,5 +1,10 @@
 'use client';
 
+import {
+  GridSkeleton,
+  LoadingRegion,
+  PageHeaderSkeleton,
+} from '@/components/ui';
 import { MapPin } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -44,14 +49,10 @@ export default function PortfolioPage() {
   if (state.status === 'loading') {
     return (
       <main className="mx-auto max-w-6xl p-4 sm:p-8">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <div
-              key={i}
-              className="h-56 animate-pulse rounded-lg bg-gray-200 dark:bg-dark-800"
-            />
-          ))}
-        </div>
+        <LoadingRegion label="Loading portfolio" className="space-y-6">
+          <PageHeaderSkeleton />
+          <GridSkeleton items={6} itemClassName="h-56" />
+        </LoadingRegion>
       </main>
     );
   }
