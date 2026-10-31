@@ -1,3 +1,8 @@
+0.19.1
+ - date: 31-10-2026
+ - changes:
+   - perf: landing screenshots resized to their display size (desktop 1140 px, phone 420 px), about 1 MB lighter; the hidden dark-theme image no longer loads eagerly
+
 0.19.0
  - date: 31-10-2026
  - changes:

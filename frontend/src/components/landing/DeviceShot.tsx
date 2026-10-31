@@ -51,7 +51,7 @@ function ThemedImage({
       <img
         src={`/landing/dark/${src}.webp`}
         alt=""
-        loading={loading}
+        loading="lazy"
         decoding="async"
         className="hidden h-full w-full object-cover dark:block"
       />
