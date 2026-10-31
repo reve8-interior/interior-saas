@@ -40,7 +40,7 @@ function contactText(info: Record<string, unknown>): string {
 }
 
 const TH = 'whitespace-nowrap px-3 py-2 text-left';
-const TD_BORDER = 'border-t border-line dark:border-primary-300/15';
+const TD_BORDER = 'border-t border-line dark:border-line';
 
 // ── Overview ────────────────────────────────────────────────────────────────
 function OverviewTab({ business }: { business: BusinessUsage }) {
@@ -62,7 +62,7 @@ function OverviewTab({ business }: { business: BusinessUsage }) {
         />
         <MetricCard
           icon={CheckSquare}
-          label="Checkpoints"
+          label="Meetings"
           value={fmtNum(business.checkpoints)}
         />
         <MetricCard
@@ -116,7 +116,7 @@ function ClientsTab({ business }: { business: BusinessUsage }) {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
-      <div className="overflow-x-auto rounded-xl border border-line dark:border-primary-300/15">
+      <div className="overflow-x-auto rounded-xl bg-surface-2">
         <table className="w-full text-sm">
           <thead className="table-head">
             <tr>
@@ -126,7 +126,7 @@ function ClientsTab({ business }: { business: BusinessUsage }) {
                 'Designer',
                 'Phase',
                 'Quotes',
-                'Checkpoints',
+                'Meetings',
                 'AI calls',
                 'Added',
               ].map((h) => (
@@ -261,9 +261,7 @@ function UsageSection({ businessId }: { businessId: string }) {
       </div>
 
       <div className="surface p-4">
-        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-dark-500">
-          Tokens per day
-        </h4>
+        <h4 className="type-label mb-3">Tokens per day</h4>
         {totalTokens === 0 ? (
           <p className="py-10 text-center text-sm text-dark-500 dark:text-dark-400">
             No AI usage in this period.
@@ -292,7 +290,7 @@ function UsageSection({ businessId }: { businessId: string }) {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <div className="overflow-x-auto rounded-xl border border-line dark:border-primary-300/15">
+        <div className="overflow-x-auto rounded-xl bg-surface-2">
           <table className="w-full text-sm">
             <thead className="table-head">
               <tr>
@@ -347,7 +345,7 @@ function UsageSection({ businessId }: { businessId: string }) {
           </table>
         </div>
 
-        <div className="max-h-72 overflow-auto rounded-xl border border-line dark:border-primary-300/15">
+        <div className="max-h-72 overflow-auto rounded-xl bg-surface-2">
           <table className="w-full text-sm">
             <thead className="table-head sticky top-0">
               <tr>

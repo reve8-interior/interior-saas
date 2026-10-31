@@ -1,3 +1,97 @@
+0.19.0
+ - date: 31-10-2026
+ - changes:
+   - feat: marketing landing page at / with hero, how it works, animated quotation and design link walkthroughs over real desktop and phone screenshots (light and dark), features, benefits and a request-access CTA; signed-in users still go to the dashboard
+   - feat: the landing page defaults to the light theme without saving it, so the app keeps its dark default
+   - perf: design grids and pickers load small thumbnails lazily; the client tabs fetch a lightweight design count
+   - fix: Expand all sits in the shared quotation header beside print and theme instead of on its own row
+   - fix: lint issues
+
+0.18.0
+ - date: 31-10-2026
+ - changes:
+   - docs: user guide rewritten for the current app as short, visual cards: getting started, menu, search and bell, clients, designs and hotspots, quotation, meeting notes, versions, sharing and customer replies, team roles and a short FAQ
+
+0.17.0
+ - date: 31-10-2026
+ - changes:
+   - feat: the Versions section shows how many versions are saved
+   - feat: Details has a Customer messages list (who, which version, when) with Mark resolved / Reopen; the Details tab shows a red count of open questions and the bell stays lit until each is resolved
+
+0.16.0
+ - date: 31-10-2026
+ - changes:
+   - feat: meeting notes now live inside the Quotation tab (Items, Meeting notes, Versions) instead of a separate Conversations tab; "Conversation" is now "Meeting" across the app
+   - feat: with AI available, "Add from notes" leads the quotation page (a large panel on an empty quotation, a highlighted strip above the rows); a banner points at the next meeting to review; the Quotation tab badge counts meetings waiting
+   - feat: when AI is off or used up, "Add from notes" explains why and hand entry keeps working; the Meeting notes section is hidden unless AI is on or older notes exist; the button shows extractions left on the free plan
+   - fix: the client next-step card no longer asks a hand-built quotation for meeting notes
+   - feat: meeting notes have no order: add any meeting to the quotation when you choose; the oldest-first rule, "Review meeting #n first" and the Order rule guide section are gone
+   - feat: notes that are not on the quotation yet can be edited (Notes tab, "Save notes and check again") and deleted; the rows are redrafted against the quotation as it stands now
+   - feat: when the notes are ambiguous the card asks, for example "You have wardrobes in 3 rooms, does 23K apply to all?", with a one-click "add this sentence to the notes" answer
+   - feat: an agreed price ("agrees to 23K for the wardrobe") shows on the row and becomes the negotiated price; added meetings show who added them and when
+   - feat: "Add rows by hand" opens a large popup (a sliding full-screen page on phones) to add many rows to one room: Enter moves to the next row, library items fill a row, blank rows are ignored, "Save & next room" keeps going, and rows that fail to save stay for a retry; it replaces "Save & add another", and creates the quotation first if needed
+
+0.15.0
+ - date: 30-10-2026
+ - changes:
+   - feat: hotspot pins redesigned: frosted-glass tiles with an icon for the item (lamp, sofa, armchair, bed, art, plant and more, picked from the label; unknown labels keep the number), a soft pulse, a label card on hover or focus, a check badge when in the quotation, and spotlight dimming with a glow on the selected hotspot
+   - feat: designers can pick the icon for each hotspot (20 interior icons, Auto or Number) from a compact, searchable popover
+   - feat: hotspots: a numbered list beside the image lights up the matching pin (and the reverse), arrow keys move between pins, designers can drag a pin or box to move it, and drawing shows a ghost pin and a size readout
+   - feat: hotspot editor redesigned: the side panel shows either the hotspot list or one hotspot's form with a back arrow; Details, a folded optional Size & cost section and a Quotation card; Save, Cancel and Delete stay in a sticky footer with an Unsaved marker; the page scrolls as one with the image pinned beside it instead of a cramped inner scroll bar
+   - feat: sharing designs gives the customer one stable, readable link per client; sharing again with other images updates that same link (the popup says "Update link")
+   - feat: login pages have a light/dark switch
+   - feat: route-level loading skeletons that mirror the clients, board, materials, portfolio and shared pages and the client Designs, Conversations and Quotation tabs
+   - feat: notification bell is smaller and has no circle around it
+   - feat: the account menu opens beside the sidebar instead of over it
+   - fix: workspace loading shell uses the themed sidebar (was always navy) and includes the header bar
+   - fix: leaving a hotspot with unsaved details (back arrow, another hotspot, close) asks first; clicking empty image no longer throws away a draft; a new hotspot's label is focused ready to type
+
+0.14.0
+ - date: 29-10-2026
+ - changes:
+   - feat: UX audit pass across conversations, quotations, designs, sharing, versions and team
+   - feat: versions: restore with a "what will change" summary; open version kept in the URL; rows open from the keyboard
+   - feat: conversations: "New conversation" entry point, a new conversation always starts blank, saved card is scrolled to and highlighted
+   - feat: conversations: confirm sheet before adding to the quotation, visible reason when blocked, "View in quotation" links
+   - feat: quotation: inline qty/rate/price/status edit, "Save & add another", delete with Undo, live price preview, searchable material picker that prefills the line
+   - feat: quotation lines link back to their source conversation and design
+   - feat: designs: add all hotspots to the quotation, room prefilled from design tags, "in quotation" markers, multi-image upload with drop zone and progress, hotspot delete with Undo
+   - feat: sharing: expiry presets, send panel (WhatsApp, email, share, copy), confirm before stop sharing, created date, view count and customer responses in the share list
+   - feat: shared pages: customers can approve or ask a question; separate "expired" and "try again" states; mobile item cards and expand/collapse all on quotations
+   - feat: board: compact "Move to" menu beside the drag handle as a non-drag fallback; error state with retry on board, clients, portfolio, quotation, dashboard and client detail
+   - feat: team: one-time credentials modal, styled confirms for reset/remove, enable/disable feedback
+   - feat: dashboard "Get started" checklist; tappable phone and email on client detail
+   - fix: login labels, autocomplete, 44px password toggle; "Forgot password" replaced by guidance (was a dead button)
+   - fix: form labels linked to inputs (new client, team, account); tel/email input types; viewer role label
+   - fix: sidebar toggle size, aria-expanded/aria-current, nav label; closing the design editor clears ?edit=
+   - feat: one control height token (40px, 44px on touch) shared by buttons, inputs, chips, tabs and segmented controls; shared .btn-*, .filter-chip and .seg-btn classes
+   - feat: team member, team access and customer approve/question forms open as a popup on desktop and a right-sliding sheet with a back arrow on phones
+   - feat: design item links jump to and highlight the exact quotation row
+   - feat: client Details lists shared links inline; the Conversations/Designs/Quotation shortcut buttons are gone
+   - feat: client phase is a segmented tracker with a "Move to next" button, replacing the dropdown on the board and in Details
+   - feat: team access card shows who has access, with a searchable Manage popup, select all/clear and a locked owner for large teams
+   - feat: add images to a quotation version through a multi-select picker with "Add N images"; the Images tab autosaves
+   - feat: team and quotation columns pages centred like settings and guide
+   - fix: quotation columns Add button matches the field height; filter pills no longer clash with the status pill style
+   - feat: notification bell in the header (desktop and phone) counts customer replies and other items waiting on you, refreshes every minute and on focus
+   - feat: toast with a View action when a customer reply arrives while you work
+   - feat: bell items can be marked read (on open, or "Mark all as read"); only unread items count in the badge, client tab badges and the dashboard card
+   - feat: version list marks the shared version and shows the customer's question or approval on its row, so no version needs opening to read it
+   - feat: sharing a version is a popup (Share button on the version page and on every row of the list); the Share tab is gone, and the link moves to the version you share, so the customer keeps one link
+   - feat: a customer reply shows at the top of its version with what to do next: WhatsApp, email, edit quotation, or mark as agreed
+   - feat: new conversation shows a live character count (limit 15,000) and disables Extract with a "add it in smaller parts" message when over
+   - feat: saving a version while the customer has a live link asks "Show this on my customer's link" (off by default); on, the same link shows the new version
+   - feat: sharing a version when the customer already has a link offers "Show version N on this link" (with the current link and a Copy button) instead of creating a second link
+
+0.13.0
+ - date: 29-10-2026
+ - changes:
+   - style: RupeeFrame design system adopted across the portal (neutral canvas, theme-aware tokens, solid brand buttons, flat surface cards, Inter font, sentence-case labels)
+   - style: coloured sidebar (navy in light, midnight indigo in dark) with shared brand-coloured Logo component
+   - style: Phosphor icons in navigation, filled when active; brand-coloured metric icons
+   - style: quotation and design share pages use solid surfaces and semantic text tokens, legible in both themes
+   - feat: board is the default client view; board columns stack on mobile
+
 0.12.0
  - date: 21-10-2026
  - changes:

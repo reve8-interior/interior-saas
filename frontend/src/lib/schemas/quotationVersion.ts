@@ -18,6 +18,13 @@ export interface QuotationVersionSummary {
   is_agreed: boolean;
   agreed_at: string | null;
   created_at: string;
+  /** A live customer link points at this version; only one version has one. */
+  is_shared: boolean;
+  /** The customer's latest answer on that link. */
+  reply_kind: 'approved' | 'question' | null;
+  reply_name: string | null;
+  reply_message: string | null;
+  replied_at: string | null;
 }
 
 export interface QuotationVersion extends QuotationVersionSummary {
@@ -32,7 +39,15 @@ export interface QuotationShare {
   expires_at: string | null;
   revoked_at: string | null;
   created_at: string;
+  view_count: number;
+  last_viewed_at: string | null;
+  response_kind: ShareResponseKind | null;
+  response_name: string | null;
+  response_message: string | null;
+  responded_at: string | null;
 }
+
+export type ShareResponseKind = 'approved' | 'question';
 
 export interface QuotationShareInput {
   show_prices: boolean;
@@ -58,6 +73,9 @@ export interface SharedQuotationRoom {
 
 export interface SharedQuotationView {
   business_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  responded_kind: ShareResponseKind | null;
   project_name: string;
   version_number: number;
   label: string | null;

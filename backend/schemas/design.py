@@ -33,6 +33,7 @@ class HotspotBase(BaseModel):
     notes: str | None = Field(default=None, max_length=2000)
     material_id: UUID | None = None
     dimensions: str | None = Field(default=None, max_length=100)
+    icon: str | None = Field(default=None, pattern=r"^[a-z-]{1,32}$")
     labour_cost: Decimal | None = Field(
         default=None, ge=0, max_digits=12, decimal_places=2
     )
@@ -78,6 +79,11 @@ class DesignPortfolioUpdate(BaseModel):
     in_portfolio: bool
 
 
+class PortfolioOrderUpdate(BaseModel):
+    # Every design to place, first to last.
+    design_ids: list[UUID] = Field(min_length=1, max_length=500)
+
+
 class DesignRoomsUpdate(BaseModel):
     rooms: list[
         Annotated[
@@ -97,6 +103,7 @@ class HotspotRead(BaseModel):
     label: str
     notes: str | None
     dimensions: str | None = None
+    icon: str | None = None
     labour_cost: Decimal | None = None
     x: float
     y: float
@@ -113,6 +120,7 @@ class DesignRead(BaseModel):
     source: str
     title: str | None
     image_url: str | None
+    thumb_url: str | None = None
     specs_json: dict[str, Any]
     is_selected: bool
     in_portfolio: bool
@@ -122,6 +130,10 @@ class DesignRead(BaseModel):
     hotspots: list[HotspotRead] = []
 
     model_config = {"from_attributes": True}
+
+
+class DesignCount(BaseModel):
+    count: int
 
 
 class PortfolioDesignRead(DesignRead):

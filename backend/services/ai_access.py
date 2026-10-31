@@ -5,10 +5,13 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..models.agent_audit_log import AgentAuditLog
+from ..models.business import Business
 from ..models.user import User
+from ..schemas.auth import AiStatus
 from .ai_models import DEFAULT_TIER, ModelTier, tier_model
 from .ai_pricing import call_cost
 from .secret_box import decrypt_secret
@@ -19,6 +22,9 @@ DEFAULT_WHISPER_MODEL = "whisper-1"
 OP_CHECKPOINT_EXTRACT = "checkpoint_extract"
 OP_AUDIO_TRANSCRIBE = "audio_transcribe"
 OP_MATERIALS_EXTRACT = "materials_extract"
+
+# Successful meeting-note extractions a free business gets per calendar month.
+FREE_PLAN_MONTHLY_EXTRACTIONS = 10
 
 
 @dataclass(frozen=True)
@@ -65,6 +71,53 @@ def resolve_openai_access(
         status_code=503,
         detail="AI operations aren't set up for your business yet. Please ask your admin to add them.",
     )
+
+
+def _extractions_this_month(db: Session, business: Business) -> int:
+    """Successful extractions since the start of the current UTC month."""
+    month_start = datetime.now(timezone.utc).replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
+    return (
+        db.scalar(
+            select(func.count(AgentAuditLog.id)).where(
+                AgentAuditLog.business_id == business.id,
+                AgentAuditLog.operation == OP_CHECKPOINT_EXTRACT,
+                AgentAuditLog.status == "success",
+                AgentAuditLog.timestamp >= month_start,
+            )
+        )
+        or 0
+    )
+
+
+def ai_status(db: Session, business: Business | None) -> AiStatus:
+    """What the UI may offer: off without a key, capped on the free plan."""
+    if business is None or not business.openai_api_key_enc:
+        return AiStatus()
+    if business.plan != "free":
+        return AiStatus(enabled=True)
+    used = _extractions_this_month(db, business)
+    return AiStatus(
+        enabled=True,
+        monthly_limit=FREE_PLAN_MONTHLY_EXTRACTIONS,
+        remaining=max(FREE_PLAN_MONTHLY_EXTRACTIONS - used, 0),
+    )
+
+
+def enforce_extraction_quota(db: Session, user: User) -> None:
+    """Raises 403 once a free business has used this month's extractions."""
+    status = ai_status(db, user.business)
+    if status.remaining == 0:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"You've used this month's {status.monthly_limit} "
+                "meeting-note extractions. You can still add items by hand, "
+                "or upgrade to "
+                "Pro for more."
+            ),
+        )
 
 
 def log_ai_usage(

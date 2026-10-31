@@ -33,6 +33,7 @@ class Quotation(Base, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("designs.id", ondelete="SET NULL"),
         nullable=True,
+        index=True,
     )
     status: Mapped[str] = mapped_column(
         Enum(QuotationStatus, name="quotation_status"),
@@ -44,6 +45,7 @@ class Quotation(Base, TimestampMixin):
         UUID(as_uuid=True),
         ForeignKey("checkpoints.id", ondelete="SET NULL"),
         nullable=True,
+        index=True,
     )
     # Ordered list of snapshots: [{checkpoint_id, created_at, line_items: [...]}]
     snapshots: Mapped[list] = mapped_column(

@@ -32,6 +32,10 @@ export interface QuotationLineItem {
   extra: Record<string, string | number | null>;
   status: LineItemStatus;
   material_id: string | null;
+  source_checkpoint_id?: string | null;
+  source_design_id?: string | null;
+  source_design_title?: string | null;
+  source_hotspot_id?: string | null;
   created_at: string;
   updated_at: string;
 }

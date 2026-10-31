@@ -1,4 +1,64 @@
-﻿0.11.0
+0.17.0
+ - date: 31-10-2026
+ - changes:
+   - perf: indexes on foreign-key columns (migration 0046); fewer queries on the public quotation view, the versions list and dashboard stats
+   - feat: design thumbnails: uploads store a small JPEG next to the image (Pillow); designs, shares and portfolios return thumb_url, and missing thumbnails are built on first request
+   - feat: GET /clients/{id}/designs/count returns just the design count for the client tab badge
+   - test: RLS idempotency test derives the expected policy count from the policy list
+
+0.16.0
+ - date: 31-10-2026
+ - changes:
+   - feat: every customer message from a shared link is kept (migration 0045: quotation_messages, existing replies carried over); a new answer no longer hides an earlier one
+   - feat: GET /clients/{id}/quotation/messages lists them, open questions first; PATCH /quotation-messages/{id} marks a question resolved or opens it again
+   - feat: each unresolved question is its own bell item until resolved and cannot be dismissed with "mark as read"; the item opens the client's Details page
+0.15.0
+ - date: 31-10-2026
+ - changes:
+   - feat: meetings can be added to the quotation in any order; each records who added it and when (migration 0044: checkpoints.applied_at, applied_by_id) and writes an audit log entry; undo follows the order they were added
+   - feat: PATCH /checkpoints/{id}/notes and DELETE /checkpoints/{id} for meetings not yet on the quotation (409 once added)
+   - feat: extraction prompt v2: "each/all/every" edits every matching item, ambiguous notes return questions with a suggested sentence, rows with no room are asked about instead of dropped
+   - feat: extraction returns questions and agreed_price; an agreed price is stored as the negotiated price and marks the item agreed
+   - fix: plural notes now find singular items ("wardrobes" matches "Wardrobe", "tables" matches "table"); the tokenizer dropped an extra letter
+   - fix: rows that edit an item deleted since the notes were read are skipped and counted (items_skipped) instead of becoming new rows
+   - feat: GET /auth/me reports ai (enabled, monthly_limit, remaining)
+   - feat: free-plan businesses get 10 successful meeting-note extractions per calendar month; POST /clients/{id}/checkpoints/extract returns 403 past that; Pro has no cap
+
+﻿0.14.0
+ - date: 30-10-2026
+ - changes:
+   - feat: design links are readable (client name plus 8 random characters) and there is one per client; POST /clients/{id}/share-links on a client with a live readable link updates its images, rates and expiry in place, so the URL never changes
+   - feat: share link responses carry readable; old random links keep working and are left alone
+   - feat: hotspots carry an optional icon key (create, update, read and the public share views); unknown keys are ignored by the frontend
+   - chore: migration 0043 (design_hotspots.icon)
+
+0.13.0
+ - date: 29-10-2026
+ - changes:
+   - feat: GET /dashboard/attention lists customer replies, links expiring within 3 days and quotation rows needing clarity, limited to clients the caller can see
+   - feat: GET /shared-links lists every live design, quotation and portfolio link in one place (stopped links excluded, designers see only their clients)
+   - feat: quotation lines expose source_hotspot_id so the design editor can open on the hotspot a line came from
+   - feat: team members carry client_count (designers only: clients they lead or can access)
+   - feat: PUT /portfolio-designs/order sets the portfolio order, used by the designer list and public portfolio links
+   - chore: migration 0041 (designs.portfolio_position)
+   - feat: only one version per quotation is shared; sharing another version moves the existing customer link to it, so the URL never changes (the old reply and view count reset)
+   - feat: new quotation links are readable (client name plus 8 random characters, e.g. mrs-rao-k7m2xq4p); existing links keep working
+   - feat: version list reports is_shared and the customer's latest reply (reply_kind, reply_name, reply_message, replied_at)
+   - feat: attention items carry a key and a per-user read flag; POST /dashboard/attention/read marks them read (a newer reply is unread again)
+   - chore: migration 0042 (attention_reads)
+   - feat: AI extraction rejects pasted text or text files over 15,000 characters with 413 before any model call (audio is not limited)
+
+0.12.0
+ - date: 29-10-2026
+ - changes:
+   - feat: restore a quotation version (POST /quotation-versions/{id}/restore); the replaced state is saved as a new version first
+   - feat: quotation share links count views (view_count, last_viewed_at)
+   - feat: customers approve or ask a question on a shared quotation (public POST /quotation-share/{token}/respond), one answer per link per minute
+   - feat: shared quotation view includes the business contact email and phone, and the response already given
+   - feat: quotation lines expose source_checkpoint_id and the design they were created from (source_design_id, source_design_title)
+   - chore: migration 0040 (quotation_shares view tracking and response columns)
+
+0.11.0
  - date: 21-10-2026
  - changes:
    - fix: production boot fails fast when production URLs (database, API, frontend, CORS origins) point to localhost

@@ -18,6 +18,7 @@ from ..core.logging import logger
 from ..core.security import get_password_hash
 from ..models.business import Business
 from ..models.client import Client
+from ..models.client_access import ClientAccess
 from ..models.user import User, UserRole
 from ..schemas.business_user import (
     BusinessUserCreate,
@@ -55,6 +56,28 @@ def seats_used(business_id: uuid.UUID, db: Session) -> int:
     )
 
 
+def _designer_client_counts(
+    designer_ids: list[uuid.UUID], db: Session
+) -> dict[uuid.UUID, int]:
+    """Clients each designer can see: ones they lead plus ones shared with them."""
+    if not designer_ids:
+        return {}
+    seen: dict[uuid.UUID, set[uuid.UUID]] = {d: set() for d in designer_ids}
+    led = db.execute(
+        select(Client.assigned_designer_id, Client.id).where(
+            Client.assigned_designer_id.in_(designer_ids)
+        )
+    )
+    shared = db.execute(
+        select(ClientAccess.user_id, ClientAccess.client_id).where(
+            ClientAccess.user_id.in_(designer_ids)
+        )
+    )
+    for user_id, client_id in [*led, *shared]:
+        seen[user_id].add(client_id)
+    return {user_id: len(ids) for user_id, ids in seen.items()}
+
+
 def overview(business: Business, db: Session) -> TeamOverview:
     members = db.scalars(
         select(User)
@@ -63,8 +86,16 @@ def overview(business: Business, db: Session) -> TeamOverview:
     ).all()
     used = sum(1 for m in members if m.is_active)
     cap = business.max_users
+    counts = _designer_client_counts(
+        [m.id for m in members if m.role == UserRole.designer], db
+    )
     return TeamOverview(
-        members=[BusinessUserRead.model_validate(m) for m in members],
+        members=[
+            BusinessUserRead.model_validate(m).model_copy(
+                update={"client_count": counts.get(m.id)}
+            )
+            for m in members
+        ],
         seats_used=used,
         max_users=cap,
         seats_left=None if cap is None else max(cap - used, 0),

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..core import get_db
 from ..models.audit import AuditLog
 from ..models.client import Client, ProjectPhase
-from ..models.design import Design
+from ..models.design import Design, DesignHotspot
 from ..models.quotation import Quotation, QuotationStatus
 from ..models.quotation_line_item import (
     QuotationItemStatus,
@@ -133,6 +133,34 @@ def create_quotation(
     return build_quotation_view(quotation)
 
 
+def _attach_design_sources(view: QuotationRead, db: Session) -> None:
+    """Mark lines created from a design hotspot with that design."""
+    items = [i for room in view.rooms for i in room.items]
+    if not items:
+        return
+    rows = db.execute(
+        select(
+            DesignHotspot.quotation_line_item_id,
+            Design.id,
+            Design.title,
+            DesignHotspot.id,
+        )
+        .join(Design, Design.id == DesignHotspot.design_id)
+        .where(DesignHotspot.quotation_line_item_id.in_([i.id for i in items]))
+    ).all()
+    by_item = {
+        line_id: (design_id, title, hotspot_id)
+        for line_id, design_id, title, hotspot_id in rows
+    }
+    for item in items:
+        if item.id in by_item:
+            (
+                item.source_design_id,
+                item.source_design_title,
+                item.source_hotspot_id,
+            ) = by_item[item.id]
+
+
 @router.get("/clients/{client_id}/quotation", response_model=QuotationRead)
 def get_quotation(
     client_id: str,
@@ -143,7 +171,9 @@ def get_quotation(
     quotation = _latest_quotation(client_id, db)
     if not quotation:
         raise HTTPException(status_code=404, detail="No quotation found")
-    return build_quotation_view(quotation)
+    view = build_quotation_view(quotation)
+    _attach_design_sources(view, db)
+    return view
 
 
 @router.get(

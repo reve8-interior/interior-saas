@@ -20,6 +20,8 @@ class BusinessUserRead(BaseModel):
     must_change_password: bool
     last_login_at: datetime | None = None
     created_at: datetime
+    # Designers only: clients they lead or were given access to.
+    client_count: int | None = None
 
 
 class BusinessUserCreate(BaseModel):

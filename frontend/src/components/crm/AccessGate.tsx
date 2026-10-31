@@ -1,6 +1,10 @@
 'use client';
 
+import { Button } from '@/components/ui/Button';
+import { signOut } from '@/lib/auth';
 import { AccessStatus } from '@/lib/schemas/auth';
+import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { AlertTriangle, Lock } from 'lucide-react';
 import { ReactNode } from 'react';
 
@@ -11,6 +15,8 @@ interface Props {
 
 /** Shows the payment countdown banner, or blocks the portal once expired. */
 export function AccessGate({ access, children }: Props) {
+  const qc = useQueryClient();
+  const router = useRouter();
   if (access?.expired) {
     return (
       <div className="surface mx-auto mt-16 max-w-md !border-red-200 p-8 text-center dark:!border-red-500/30">
@@ -19,10 +25,29 @@ export function AccessGate({ access, children }: Props) {
           Access expired
         </h2>
         <p className="text-sm text-dark-500 dark:text-dark-400">
-          Your access period has ended. Clients, board, conversations and
+          Your access period has ended. Clients, board, meeting notes and
           quotations are locked until your administrator renews your plan. Your
           data is safe.
         </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => qc.invalidateQueries({ queryKey: ['me'] })}
+          >
+            Already renewed? Check again
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              signOut();
+              router.push('/login');
+            }}
+          >
+            Sign out
+          </Button>
+        </div>
       </div>
     );
   }

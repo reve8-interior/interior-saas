@@ -3,7 +3,7 @@
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { AuthUser } from '@/lib/schemas';
 import { AccessStatus } from '@/lib/schemas/auth';
-import { LogOut, Moon, Settings, Sun } from 'lucide-react';
+import { GearSix, Moon, SignOut, Sun } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -18,11 +18,11 @@ interface AccountMenuProps {
 }
 
 const ITEM_CLS =
-  'flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium text-dark-700 transition-colors hover:bg-primary-50 dark:text-dark-200 dark:hover:bg-white/10';
+  'flex min-h-11 w-full items-center gap-3 rounded-control px-3 text-sm font-medium text-text transition-colors hover:bg-text/5';
 
 /**
  * Desktop account control at the bottom of the sidebar: avatar and name that
- * open a menu (upwards) with identity, theme, settings and sign-out.
+ * open a menu (beside the sidebar) with identity, theme, settings and sign-out.
  */
 export function AccountMenu({
   user,
@@ -35,6 +35,8 @@ export function AccountMenu({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
 
   const isDark = theme === 'dark';
@@ -51,8 +53,27 @@ export function AccountMenu({
     const onPointer = (e: MouseEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     };
+    const items = () =>
+      Array.from(
+        menuRef.current?.querySelectorAll<HTMLElement>('[role=menuitem]') ?? []
+      );
+    items()[0]?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (e.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+        return;
+      }
+      if (e.key === 'Tab') {
+        setOpen(false);
+        return;
+      }
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      e.preventDefault();
+      const list = items();
+      const idx = list.indexOf(document.activeElement as HTMLElement);
+      const next = e.key === 'ArrowDown' ? idx + 1 : idx - 1;
+      list[(next + list.length) % list.length]?.focus();
     };
     document.addEventListener('mousedown', onPointer);
     document.addEventListener('keydown', onKey);
@@ -65,6 +86,7 @@ export function AccountMenu({
   return (
     <div ref={rootRef} className="relative mx-4 shrink-0">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={`Account menu for ${displayName}`}
@@ -72,19 +94,19 @@ export function AccountMenu({
         aria-expanded={open}
         aria-controls={menuId}
         title={collapsed ? displayName : undefined}
-        className="flex min-h-12 w-full items-center rounded-xl text-left transition-colors hover:bg-white/5"
+        className="flex min-h-12 w-full items-center rounded-control text-left transition-colors hover:bg-text/5"
       >
         <span className="flex w-12 shrink-0 items-center justify-center">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary-600 to-secondary-600 text-sm font-bold text-white shadow-brand">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
             {initial}
           </span>
         </span>
         {!collapsed && (
           <span className="min-w-0 flex-1 pr-3">
-            <span className="block truncate text-sm font-semibold text-white">
+            <span className="block truncate text-sm font-semibold text-side-fg">
               {displayName}
             </span>
-            <span className="block truncate text-xs text-dark-400">
+            <span className="block truncate text-xs text-side-muted">
               {email}
             </span>
           </span>
@@ -94,21 +116,21 @@ export function AccountMenu({
       {open && (
         <div
           id={menuId}
+          ref={menuRef}
           role="menu"
-          className="absolute bottom-full left-0 z-50 mb-2 w-64 origin-bottom-left overflow-hidden rounded-2xl border border-line bg-white shadow-[0_24px_60px_-20px_rgb(20_40_110/0.45)] dark:border-primary-300/15 dark:bg-dark-800"
+          aria-label="Account"
+          className="absolute bottom-0 left-full z-50 ml-6 w-64 origin-bottom-left overflow-hidden rounded-2xl border border-line bg-surface shadow-glass"
         >
-          <div className="border-b border-line px-4 py-3 dark:border-primary-300/15">
-            <p className="truncate text-sm font-bold text-dark-900 dark:text-white">
+          <div className="border-b border-line px-4 py-3">
+            <p className="truncate text-sm font-semibold text-text">
               {displayName}
             </p>
-            <p className="truncate text-xs text-dark-500 dark:text-dark-400">
-              {email}
-            </p>
+            <p className="truncate text-xs text-faint">{email}</p>
             {businessName && (
-              <p className="mt-2 flex items-center gap-2 text-xs text-dark-600 dark:text-dark-300">
+              <p className="mt-2 flex items-center gap-2 text-xs text-muted">
                 <span className="truncate font-medium">{businessName}</span>
                 {access && (
-                  <span className="shrink-0 rounded-full bg-primary-600/10 px-2 py-0.5 text-[10px] font-bold uppercase text-primary-700 dark:bg-primary-400/15 dark:text-primary-300">
+                  <span className="shrink-0 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-accent-text">
                     {access.plan}
                     {access.days_left != null && ` · ${access.days_left}d`}
                   </span>
@@ -124,7 +146,7 @@ export function AccountMenu({
               onClick={() => setOpen(false)}
               className={ITEM_CLS}
             >
-              <Settings className="h-4 w-4 shrink-0" />
+              <GearSix className="h-4 w-4 shrink-0" />
               Account Settings
             </Link>
             <button
@@ -152,7 +174,7 @@ export function AccountMenu({
               }}
               className={`${ITEM_CLS} !text-red-600 hover:!bg-red-50 dark:!text-red-400 dark:hover:!bg-red-500/10`}
             >
-              <LogOut className="h-4 w-4 shrink-0" />
+              <SignOut className="h-4 w-4 shrink-0" />
               Log out
             </button>
           </div>

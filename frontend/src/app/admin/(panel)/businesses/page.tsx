@@ -158,7 +158,7 @@ export default function BusinessesPage() {
                   <tr
                     key={b.id}
                     onClick={() => open(b)}
-                    className="cursor-pointer border-t border-line hover:bg-primary-50/70 dark:border-primary-300/15 dark:hover:bg-white/[0.06]"
+                    className="cursor-pointer border-t border-line hover:bg-primary-50/70 dark:border-line dark:hover:bg-white/[0.06]"
                   >
                     <td className="px-4 py-3 font-medium">
                       <Link

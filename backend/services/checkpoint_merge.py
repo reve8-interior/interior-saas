@@ -60,6 +60,7 @@ class IncomingItem(Protocol):
     remarks: str | None
     catalog_type: str
     extra: dict[str, object]
+    agreed_price: float | None
 
 
 @dataclass
@@ -74,6 +75,9 @@ class MergeResult:
     # Items the client dropped in this meeting — soft-marked `removed`
     # so they stay visible, priced at zero, in the quotation history.
     marked_removed: int = 0
+    # Rows anchored on an item that no longer exists: skipped, since
+    # guessing another row would edit the wrong thing.
+    skipped: int = 0
     updated_item_ids: list[str] = field(default_factory=list)
 
 
@@ -129,6 +133,17 @@ def _anchor_id(incoming: IncomingItem) -> str | None:
 
 def _action(incoming: IncomingItem) -> str:
     return (getattr(incoming, "action", None) or "add").strip().lower()
+
+
+def _apply_agreed_price(
+    item: QuotationLineItem, incoming: IncomingItem
+) -> None:
+    """A price the client settled on becomes the negotiated price."""
+    agreed = getattr(incoming, "agreed_price", None)
+    if agreed is None:
+        return
+    item.negotiated_price = agreed
+    item.status = QuotationItemStatus.agreed
 
 
 def _apply_update(
@@ -190,6 +205,7 @@ def _apply_update(
         ):
             item.status = QuotationItemStatus.draft
     resolve_line_item(item)
+    _apply_agreed_price(item, incoming)
     item.source_checkpoint_id = checkpoint_id
 
 
@@ -239,6 +255,11 @@ def merge_checkpoint_items(
             match = find_matching_item(
                 incoming.room, incoming.description, candidates
             )
+            if match is None and anchor and _action(incoming) != "add":
+                # The item was deleted after the notes were read, and
+                # nothing similar took its place: skip rather than guess.
+                result.skipped += 1
+                continue
 
         if _action(incoming) == "remove":
             if match is None:
@@ -281,6 +302,7 @@ def merge_checkpoint_items(
                 position=position,
             )
             resolve_line_item(new_item)
+            _apply_agreed_price(new_item, incoming)
             db.add(new_item)
             quotation.line_items.append(new_item)
             claimed.add(id(new_item))

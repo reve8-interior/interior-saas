@@ -1,6 +1,7 @@
 import { api } from '@/lib/api';
 import type {
   QuotationShare,
+  ShareResponseKind,
   QuotationShareInput,
   QuotationVersion,
   QuotationVersionSummary,
@@ -61,6 +62,22 @@ export function unagreeVersion(
   );
 }
 
+export interface VersionRestoreResult {
+  restored_number: number;
+  items_restored: number;
+  backup: QuotationVersionSummary | null;
+}
+
+/** Replace the live quotation with this version; the old state is saved as a new version. */
+export function restoreVersion(
+  versionId: string
+): Promise<VersionRestoreResult> {
+  return api.post<VersionRestoreResult>(
+    `/quotation-versions/${versionId}/restore`,
+    {}
+  );
+}
+
 /** Deactivate a version, or restore it. */
 export function setVersionActive(
   versionId: string,
@@ -105,6 +122,43 @@ export function createVersionShare(
   );
 }
 
+/** Days a renewed link works when the old one had already run out. */
+const RENEWED_LINK_DAYS = 30;
+
+/**
+ * Point the customer's existing link at another version. The server moves the
+ * link, so its URL stays the same; prices and end date carry over (an end date
+ * already past becomes a fresh 30 days).
+ */
+export async function moveShareLink(
+  fromVersionId: string,
+  toVersionId: string
+): Promise<QuotationShare | null> {
+  const [share] = await listVersionShares(fromVersionId);
+  if (!share) return null;
+  const stillOpen = share.expires_at && new Date(share.expires_at) > new Date();
+  return createVersionShare(toVersionId, {
+    show_prices: share.show_prices,
+    expires_at: !share.expires_at
+      ? null
+      : stillOpen
+        ? share.expires_at
+        : new Date(Date.now() + RENEWED_LINK_DAYS * 86_400_000).toISOString(),
+  });
+}
+
+/** Move a link's end date (null = no end) without changing its URL. */
+export function updateVersionShareExpiry(
+  versionId: string,
+  shareId: string,
+  expiresAt: string | null
+): Promise<QuotationShare> {
+  return api.patch<QuotationShare>(
+    `/quotation-versions/${versionId}/shares/${shareId}`,
+    { expires_at: expiresAt }
+  );
+}
+
 export function revokeVersionShare(
   versionId: string,
   shareId: string
@@ -119,5 +173,17 @@ export async function getSharedQuotation(
   return api.getPublic<SharedQuotationView>(
     `/quotation-share/${encodeURIComponent(token)}`,
     'Link not available'
+  );
+}
+
+/** Public endpoint: the customer approves or asks a question. */
+export function respondToSharedQuotation(
+  token: string,
+  body: { kind: ShareResponseKind; name: string; message: string | null }
+): Promise<void> {
+  return api.post<void>(
+    `/quotation-share/${encodeURIComponent(token)}/respond`,
+    body,
+    { authToken: null }
   );
 }

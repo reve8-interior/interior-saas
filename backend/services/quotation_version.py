@@ -16,13 +16,14 @@ from ..models.quotation_line_item import (
     QuotationItemStatus,
     QuotationLineItem,
 )
-from ..models.quotation_version import QuotationVersion
+from ..models.quotation_version import QuotationShare, QuotationVersion
 from ..schemas.quotation import QuotationLineItemRead
 from ..schemas.quotation_version import (
     QuotationVersionSummary,
     SharedQuotationItem,
     SharedQuotationRoom,
 )
+from . import share_links
 from .quotation_service import (
     _effective_price,
     build_quotation_view,
@@ -133,6 +134,62 @@ def create_version(
         quotation.checkpoint_id,
         "quotation_version_created",
     )
+
+
+def restore_version(
+    db: Session, version: QuotationVersion, user_id: uuid.UUID
+) -> tuple[QuotationVersion | None, int]:
+    """Make a version the live quotation again, keeping the replaced state.
+
+    The current line items are frozen as a new version first so nothing is
+    lost. Returns that backup version (None if the quotation was empty) and
+    the number of restored items.
+    """
+    quotation = db.get(Quotation, version.quotation_id)
+    backup = (
+        create_version(
+            db,
+            quotation,
+            user_id,
+            f"Auto-saved before restoring V{version.number}",
+        )
+        if quotation.line_items
+        else None
+    )
+    for item in list(quotation.line_items):
+        db.delete(item)
+    db.flush()
+    for position, snap in enumerate(version.line_items):
+        item = QuotationLineItem(
+            quotation_id=quotation.id,
+            room=snap["room"],
+            description=snap["description"],
+            unit=snap["unit"],
+            raw_dimension=snap.get("raw_dimension"),
+            qty=snap.get("qty"),
+            rate=snap.get("rate"),
+            remarks=snap.get("remarks"),
+            est_time=snap.get("est_time"),
+            extra=snap.get("extra") or {},
+            catalog_type=snap.get("catalog_type", "core_works"),
+            position=snap.get("position", position),
+            negotiated_price=snap.get("negotiated_price"),
+        )
+        resolve_line_item(item)
+        if snap.get("status"):
+            item.status = snap["status"]
+        db.add(item)
+    db.add(
+        AuditLog(
+            user_id=user_id,
+            action="quotation_version_restored",
+            entity_type="quotation",
+            entity_id=str(quotation.id),
+            payload={"number": version.number},
+            timestamp=datetime.utcnow(),
+        )
+    )
+    return backup, len(version.line_items)
 
 
 def create_version_from_rows(
@@ -299,13 +356,87 @@ def agree_version(
     db.flush()
 
 
-def to_summary(version: QuotationVersion) -> QuotationVersionSummary:
+def live_shares(
+    db: Session, quotation_id: uuid.UUID
+) -> dict[uuid.UUID, QuotationShare]:
+    """The working customer link per version, newest link winning."""
+    rows = db.execute(
+        select(QuotationShare)
+        .join(
+            QuotationVersion, QuotationShare.version_id == QuotationVersion.id
+        )
+        .where(QuotationVersion.quotation_id == quotation_id)
+        .where(QuotationShare.revoked_at.is_(None))
+        .order_by(QuotationShare.created_at.asc())
+    ).scalars()
+    return {
+        s.version_id: s
+        for s in rows
+        if not share_links.is_expired(s.expires_at)
+    }
+
+
+def take_over_share(
+    db: Session, version: QuotationVersion
+) -> QuotationShare | None:
+    """Move the quotation's customer link onto `version`, keeping its URL.
+
+    Only one version is shared, and the customer keeps the same link when
+    the designer shares an update. The link starts fresh for the new
+    version: the old answer and view count no longer apply. Any extra links
+    on other versions are deleted. Returns None when nothing was shared.
+    """
+    others = (
+        db.execute(
+            select(QuotationShare)
+            .join(
+                QuotationVersion,
+                QuotationShare.version_id == QuotationVersion.id,
+            )
+            .where(QuotationVersion.quotation_id == version.quotation_id)
+            .where(QuotationShare.version_id != version.id)
+        )
+        .scalars()
+        .all()
+    )
+    if not others:
+        return None
+    others.sort(
+        key=lambda s: (s.revoked_at is None, s.created_at), reverse=True
+    )
+    keep, *extra = others
+    for share in extra:
+        db.delete(share)
+    keep.version_id = version.id
+    keep.revoked_at = None
+    keep.view_count = 0
+    keep.last_viewed_at = None
+    keep.response_kind = None
+    keep.response_name = None
+    keep.response_message = None
+    keep.responded_at = None
+    return keep
+
+
+def to_summary(
+    version: QuotationVersion,
+    share: QuotationShare | None = None,
+    item_count: int | None = None,
+) -> QuotationVersionSummary:
+    """`item_count` lets list queries skip loading the frozen line items."""
     return QuotationVersionSummary(
+        is_shared=share is not None,
+        reply_kind=share.response_kind if share else None,
+        reply_name=share.response_name if share else None,
+        reply_message=share.response_message if share else None,
+        replied_at=share.responded_at if share else None,
         id=version.id,
         quotation_id=version.quotation_id,
         number=version.number,
         label=version.label,
-        item_count=len(version.line_items),
+        item_count=(
+            len(version.line_items) if item_count is None else item_count
+        ),
         room_designs={
             room: [uuid.UUID(d) for d in ids]
             for room, ids in (version.room_designs or {}).items()

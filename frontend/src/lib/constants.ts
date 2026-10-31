@@ -1,3 +1,6 @@
+/** Most characters of pasted text or a text file the AI extractor takes at once (server enforces the same). */
+export const MAX_EXTRACT_CHARS = 15_000;
+
 export const PHASES = [
   'discussion',
   'design',
@@ -52,6 +55,9 @@ export const PHASE_COLORS_HEX: Record<string, string> = {
 };
 
 export const MARKETING_URL = '/';
+
+export const REQUEST_ACCESS_EMAIL = 'interior@reve8.com';
+export const REQUEST_ACCESS_HREF = `mailto:${REQUEST_ACCESS_EMAIL}?subject=${encodeURIComponent('Request access to reve8 Studio')}`;
 
 export const CARD_CLS = 'surface p-4';
 

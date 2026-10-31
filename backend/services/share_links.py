@@ -1,6 +1,8 @@
 """Shared helpers for public share links (client, portfolio, quotation)."""
 
+import re
 import secrets
+import unicodedata
 from datetime import datetime, timezone
 
 from fastapi import HTTPException
@@ -21,6 +23,36 @@ def aware(value: datetime) -> datetime:
 def new_token() -> str:
     """Unguessable URL-safe token for a public link."""
     return secrets.token_urlsafe(32)
+
+
+# No 0/o/1/l/i: the suffix gets read out and retyped.
+_SUFFIX_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
+_SUFFIX_LENGTH = 8
+_SLUG_MAX = 30
+
+
+def readable_token(label: str) -> str:
+    """A link a person can read, e.g. `mrs-rao-k7m2xq4p`.
+
+    The name makes it recognisable; the random suffix (about 40 bits) keeps
+    it from being guessed, so it is as private as a long token.
+    """
+    ascii_label = (
+        unicodedata.normalize("NFKD", label)
+        .encode("ascii", "ignore")
+        .decode()
+        .lower()
+    )
+    slug = re.sub(r"[^a-z0-9]+", "-", ascii_label).strip("-")[:_SLUG_MAX]
+    suffix = "".join(
+        secrets.choice(_SUFFIX_ALPHABET) for _ in range(_SUFFIX_LENGTH)
+    )
+    return f"{slug.strip('-')}-{suffix}" if slug else suffix
+
+
+def is_readable(token: str) -> bool:
+    """True for tokens made by `readable_token`; old random ones are longer."""
+    return len(token) <= _SLUG_MAX + 1 + _SUFFIX_LENGTH
 
 
 def is_expired(expires_at: datetime | None) -> bool:

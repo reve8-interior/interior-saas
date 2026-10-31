@@ -13,6 +13,7 @@ from ..models.final_summary import FinalSummary
 from ..models.user import User
 from ..schemas.checkpoint import (
     CheckpointCreate,
+    CheckpointNotesUpdate,
     CheckpointRead,
     CheckpointStatusUpdate,
     FinalSummaryCreate,
@@ -100,6 +101,76 @@ def save_extracted_items(
     work"; without one it means "never extracted" — the UI must be able
     to tell those apart, or it offers to re-extract forever.
     """
+    checkpoint = _draft_or_404(db, checkpoint_id)
+    diff = dict(checkpoint.structured_diff or {})
+    diff["line_items"] = body.get("line_items", [])
+    summary = body.get("summary_text")
+    if isinstance(summary, str):
+        checkpoint.summary_text = summary
+    extraction = body.get("extraction")
+    if isinstance(extraction, dict):
+        diff["extraction"] = extraction
+    checkpoint.structured_diff = diff
+    db.commit()
+    db.refresh(checkpoint)
+    return checkpoint
+
+
+@router.patch(
+    "/checkpoints/{checkpoint_id}/notes", response_model=CheckpointRead
+)
+def update_notes(
+    checkpoint_id: str,
+    body: CheckpointNotesUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Change the notes of a meeting that is not on the quotation yet.
+
+    The rows are not touched: the designer reads the notes again and
+    extracts again, so nothing changes behind their back.
+    """
+    checkpoint = _draft_or_404(db, checkpoint_id)
+    checkpoint.raw_conversation = body.raw_conversation
+    db.add(
+        AuditLog(
+            user_id=current_user.id,
+            action="meeting_notes_edited",
+            entity_type="checkpoint",
+            entity_id=checkpoint_id,
+            payload={"client_id": str(checkpoint.client_id)},
+            timestamp=datetime.now(timezone.utc),
+        )
+    )
+    db.commit()
+    db.refresh(checkpoint)
+    return checkpoint
+
+
+@router.delete("/checkpoints/{checkpoint_id}", status_code=204)
+def delete_checkpoint(
+    checkpoint_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Throw away a meeting that is not on the quotation yet."""
+    checkpoint = _draft_or_404(db, checkpoint_id)
+    db.add(
+        AuditLog(
+            user_id=current_user.id,
+            action="meeting_deleted",
+            entity_type="checkpoint",
+            entity_id=checkpoint_id,
+            payload={"client_id": str(checkpoint.client_id)},
+            timestamp=datetime.now(timezone.utc),
+        )
+    )
+    db.delete(checkpoint)
+    db.commit()
+
+
+def _draft_or_404(db: Session, checkpoint_id: str) -> Checkpoint:
+    """The checkpoint, if its rows have not reached the quotation."""
     checkpoint = (
         db.execute(
             select(Checkpoint).where(Checkpoint.id == uuid.UUID(checkpoint_id))
@@ -109,14 +180,12 @@ def save_extracted_items(
     )
     if not checkpoint:
         raise HTTPException(status_code=404, detail="Checkpoint not found")
-    diff = dict(checkpoint.structured_diff or {})
-    diff["line_items"] = body.get("line_items", [])
-    extraction = body.get("extraction")
-    if isinstance(extraction, dict):
-        diff["extraction"] = extraction
-    checkpoint.structured_diff = diff
-    db.commit()
-    db.refresh(checkpoint)
+    if checkpoint.added_to_quotation:
+        raise HTTPException(
+            status_code=409,
+            detail="These notes are already on the quotation. Take them "
+            "off first.",
+        )
     return checkpoint
 
 

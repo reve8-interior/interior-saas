@@ -1,3 +1,4 @@
+import enum
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
@@ -16,6 +17,8 @@ class ShareLinkRead(BaseModel):
     id: UUID
     client_id: UUID
     url: str
+    # True for the one stable link per client that sharing again updates.
+    readable: bool
     design_ids: list[UUID] | None
     show_prices: bool
     expires_at: datetime | None
@@ -37,6 +40,7 @@ class SharedHotspot(BaseModel):
     label: str
     notes: str | None
     dimensions: str | None = None
+    icon: str | None = None
     # Hidden unless the share link shows prices.
     labour_cost: Decimal | None = None
     x: float
@@ -51,6 +55,7 @@ class SharedDesign(BaseModel):
     title: str | None
     description: str | None
     image_url: str | None
+    thumb_url: str | None = None
     hotspots: list[SharedHotspot]
 
 
@@ -80,3 +85,30 @@ class SharedView(BaseModel):
     project_name: str
     show_prices: bool
     designs: list[SharedDesign]
+
+
+class SharedLinkKind(str, enum.Enum):
+    designs = "designs"
+    quotation = "quotation"
+    portfolio = "portfolio"
+
+
+class SharedLinkRow(BaseModel):
+    """One public link, whatever it shares, for the unified links page."""
+
+    kind: SharedLinkKind
+    id: UUID
+    # Needed to stop or extend a quotation link.
+    version_id: UUID | None = None
+    # Portfolio links belong to the business, not to a client.
+    client_id: UUID | None = None
+    client_name: str | None = None
+    title: str
+    url: str
+    # None where prices do not apply (portfolio links never show them).
+    show_prices: bool | None = None
+    expires_at: datetime | None
+    created_at: datetime
+    view_count: int | None = None
+    last_viewed_at: datetime | None = None
+    response_kind: str | None = None

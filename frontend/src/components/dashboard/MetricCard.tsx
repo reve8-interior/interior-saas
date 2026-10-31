@@ -12,13 +12,11 @@ export type MetricTone =
 
 const TONES: Record<MetricTone, string> = {
   red: 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300',
-  brand:
-    'bg-primary-100 text-primary-700 dark:bg-primary-500/15 dark:text-primary-300',
-  green: 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300',
-  blue: 'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
-  amber: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-  violet:
-    'bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300',
+  brand: 'bg-brand/10 text-accent-text',
+  green: 'bg-brand/10 text-accent-text',
+  blue: 'bg-brand/10 text-accent-text',
+  amber: 'bg-brand/10 text-accent-text',
+  violet: 'bg-brand/10 text-accent-text',
 };
 
 interface MetricCardProps {
@@ -45,9 +43,7 @@ export function MetricCard({
   const body = (
     <>
       <div className="flex items-center justify-between gap-3">
-        <span className="min-w-0 text-[11px] font-bold uppercase tracking-[0.1em] text-dark-500 dark:text-dark-400">
-          {label}
-        </span>
+        <span className="type-label min-w-0">{label}</span>
         <span
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${TONES[tone]}`}
         >

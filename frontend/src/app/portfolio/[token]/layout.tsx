@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ThemeProvider } from '@/components/providers';
 
 export const metadata: Metadata = {
   title: 'Portfolio',
@@ -11,5 +12,5 @@ export default function PortfolioLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return <ThemeProvider>{children}</ThemeProvider>;
 }

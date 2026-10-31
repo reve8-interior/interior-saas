@@ -24,6 +24,8 @@ export interface Hotspot extends HotspotRegion {
   label: string;
   notes: string | null;
   dimensions: string | null;
+  /** Icon key picked by the designer; null means guess from the label. */
+  icon: string | null;
   /** Decimals arrive as strings from the API. */
   labour_cost: string | number | null;
   material: HotspotMaterial | null;
@@ -44,6 +46,7 @@ export interface HotspotInput extends HotspotRegion {
   notes: string | null;
   material_id: string | null;
   dimensions: string | null;
+  icon: string | null;
   labour_cost: number | null;
 }
 
@@ -53,6 +56,8 @@ export interface Design {
   title: string | null;
   source: string;
   image_url: string | null;
+  /** Small preview for grids; falls back to image_url for external images. */
+  thumb_url?: string | null;
   is_selected: boolean;
   /** Opted in to the business's public portfolio page. */
   in_portfolio: boolean;
@@ -67,6 +72,8 @@ export interface ShareLink {
   id: string;
   client_id: string;
   url: string;
+  /** The one stable link per client; sharing again updates it in place. */
+  readable: boolean;
   design_ids: string[] | null;
   show_prices: boolean;
   expires_at: string | null;
@@ -93,6 +100,7 @@ export interface SharedHotspot extends HotspotRegion {
   label: string;
   notes: string | null;
   dimensions: string | null;
+  icon: string | null;
   /** Omitted when prices are hidden. */
   labour_cost: string | number | null;
   item: SharedItem | null;
@@ -103,6 +111,7 @@ export interface SharedDesign {
   title: string | null;
   description: string | null;
   image_url: string | null;
+  thumb_url?: string | null;
   hotspots: SharedHotspot[];
 }
 

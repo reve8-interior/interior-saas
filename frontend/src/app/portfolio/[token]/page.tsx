@@ -5,46 +5,26 @@ import {
   LoadingRegion,
   PageHeaderSkeleton,
 } from '@/components/ui';
-import { MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
+import {
+  CustomerFooter,
+  ThemeButton,
+} from '@/components/shared/CustomerChrome';
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { SharedLinkError } from '@/components/shared/SharedLinkError';
 import { HotspotDetail } from '@/components/designs/HotspotDetail';
 import { HotspotImage } from '@/components/designs/HotspotImage';
 import { Modal } from '@/components/ui/Modal';
 import { getPortfolioView } from '@/lib/designs';
-import type { PortfolioView } from '@/lib/schemas/design';
-
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'unavailable' }
-  | { status: 'ready'; view: PortfolioView };
+import { useSharedLink } from '@/lib/hooks/useSharedLink';
 
 /** Public showcase of a business's portfolio designs and their hotspots. */
 export default function PortfolioPage() {
   const { token } = useParams<{ token: string }>();
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const { state, retry, onImageError } = useSharedLink(token, getPortfolioView);
   const [designId, setDesignId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const refetched = useRef(false);
-
-  const load = useCallback(async () => {
-    try {
-      setState({ status: 'ready', view: await getPortfolioView(token) });
-    } catch {
-      setState({ status: 'unavailable' });
-    }
-  }, [token]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  // Signed image URLs expire; fetch fresh ones once if an image fails.
-  const onImageError = () => {
-    if (refetched.current) return;
-    refetched.current = true;
-    load();
-  };
 
   if (state.status === 'loading') {
     return (
@@ -59,15 +39,7 @@ export default function PortfolioPage() {
 
   if (state.status === 'unavailable') {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-2 p-6 text-center">
-        <h1 className="font-heading text-xl font-semibold text-dark-900 dark:text-white">
-          This portfolio is not available
-        </h1>
-        <p className="text-sm text-dark-500 dark:text-dark-400">
-          The link may have been turned off. Please ask the designer for a new
-          one.
-        </p>
-      </main>
+      <SharedLinkError subject="portfolio" gone={state.gone} onRetry={retry} />
     );
   }
 
@@ -75,21 +47,32 @@ export default function PortfolioPage() {
   const design = view.designs.find((d) => d.id === designId) ?? null;
   const selected = design?.hotspots.find((h) => h.id === selectedId) ?? null;
 
+  const index = view.designs.findIndex((d) => d.id === designId);
+
   const close = () => {
     setDesignId(null);
+    setSelectedId(null);
+  };
+  const step = (delta: number) => {
+    const n = view.designs.length;
+    if (n < 2 || index < 0) return;
+    setDesignId(view.designs[(index + delta + n) % n].id);
     setSelectedId(null);
   };
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 p-4 sm:p-8">
-      <header>
-        <h1 className="font-heading text-2xl font-bold text-dark-900 dark:text-white">
-          {view.business_name ?? 'Portfolio'}
-        </h1>
-        <p className="text-sm text-dark-500 dark:text-dark-400">
-          Selected work. Open a design and tap the marked areas to see what went
-          into it.
-        </p>
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-heading text-2xl font-bold text-dark-900 dark:text-white">
+            {view.business_name ?? 'Portfolio'}
+          </h1>
+          <p className="text-sm text-dark-500 dark:text-dark-400">
+            Selected work. Open a design and tap the marked areas to see what
+            went into it.
+          </p>
+        </div>
+        <ThemeButton />
       </header>
 
       {view.designs.length === 0 ? (
@@ -109,7 +92,9 @@ export default function PortfolioPage() {
                   <div className="relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={d.image_url}
+                      loading="lazy"
+                      decoding="async"
+                      src={d.thumb_url ?? d.image_url}
                       alt={d.title || 'Design'}
                       onError={onImageError}
                       className="h-56 w-full object-cover transition group-hover:scale-[1.02]"
@@ -137,9 +122,38 @@ export default function PortfolioPage() {
           onClose={close}
           title={design.title || 'Design'}
           description={design.description ?? undefined}
-          maxWidth="4xl"
+          maxWidth="6xl"
         >
-          <div className="space-y-3">
+          <div
+            className="space-y-3"
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') step(-1);
+              else if (e.key === 'ArrowRight') step(1);
+            }}
+          >
+            {view.designs.length > 1 && (
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => step(-1)}
+                  aria-label="Previous design"
+                  className="btn-secondary min-w-11"
+                >
+                  <ChevronLeft className="h-5 w-5" aria-hidden />
+                </button>
+                <p className="text-sm text-dark-500 dark:text-dark-400">
+                  {index + 1} of {view.designs.length}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => step(1)}
+                  aria-label="Next design"
+                  className="btn-secondary min-w-11"
+                >
+                  <ChevronRight className="h-5 w-5" aria-hidden />
+                </button>
+              </div>
+            )}
             {design.image_url && (
               <HotspotImage
                 src={design.image_url}
@@ -148,10 +162,12 @@ export default function PortfolioPage() {
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 onImageError={onImageError}
+                zoomable
               />
             )}
             {selected && (
               <HotspotDetail
+                popup
                 label={selected.label}
                 notes={selected.notes}
                 item={selected.item}
@@ -167,6 +183,8 @@ export default function PortfolioPage() {
           </div>
         </Modal>
       )}
+
+      <CustomerFooter businessName={view.business_name} />
     </main>
   );
 }

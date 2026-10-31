@@ -211,3 +211,12 @@ def test_canonical_room_refuses_to_guess_between_candidates():
 
 def test_tokenize_is_symmetric_on_plurals():
     assert tokenize("Lights") == tokenize("light")
+
+
+def test_plural_notes_find_singular_items():
+    # "wardrobes" used to lose its "s" and an "e" too, so notes about
+    # "all wardrobes" never reached a quotation row called "Wardrobe".
+    assert tokenize("wardrobes") == tokenize("wardrobe")
+    assert tokenize("tables") == tokenize("table")
+    assert tokenize("boxes") == tokenize("box")
+    assert tokenize("glass") == {"glass"}

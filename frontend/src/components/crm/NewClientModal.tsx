@@ -3,19 +3,11 @@
 import { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { api } from '@/lib/api';
+import { EMPTY_CLIENT_FORM, clientPayload } from '@/lib/clientForm';
 import { INPUT_CLS } from '@/lib/constants';
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-
-const EMPTY_FORM = {
-  name: '',
-  phone: '',
-  email: '',
-  address: '',
-  budget: '',
-  notes: '',
-};
 
 export function NewClientModal({
   onClose,
@@ -25,20 +17,10 @@ export function NewClientModal({
   onCreated: () => void;
 }) {
   const router = useRouter();
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(EMPTY_CLIENT_FORM);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      api.post<{ id: string }>('/clients', {
-        name: form.name,
-        contact_info: {
-          phone: form.phone,
-          email: form.email,
-          address: form.address,
-          ...(form.budget ? { budget: form.budget } : {}),
-        },
-        notes: form.notes || null,
-      }),
+    mutationFn: () => api.post<{ id: string }>('/clients', clientPayload(form)),
     onSuccess: ({ id }) => {
       toast.success('Client created');
       onCreated();
@@ -73,29 +55,42 @@ export function NewClientModal({
             key: 'name' as const,
             placeholder: 'Client name',
             required: true,
+            autoComplete: 'name',
           },
           {
             label: 'Phone',
             key: 'phone' as const,
             placeholder: '+91 98765 43210',
+            type: 'tel',
+            autoComplete: 'tel',
           },
           {
             label: 'Email',
             key: 'email' as const,
             placeholder: 'client@example.com',
+            type: 'email',
+            autoComplete: 'email',
           },
           {
             label: 'Address',
             key: 'address' as const,
             placeholder: 'Project address',
+            autoComplete: 'street-address',
           },
-        ].map(({ label, key, placeholder, required }) => (
+        ].map(({ label, key, placeholder, required, type, autoComplete }) => (
           <div key={key}>
-            <label className="mb-1 block text-xs font-medium text-dark-600 dark:text-dark-300">
+            <label
+              htmlFor={`new-client-${key}`}
+              className="mb-1 block text-xs font-medium text-dark-600 dark:text-dark-300"
+            >
               {label}
             </label>
             <input
+              id={`new-client-${key}`}
+              type={type ?? 'text'}
+              autoComplete={autoComplete}
               required={required}
+              aria-required={required}
               value={form[key]}
               onChange={set(key)}
               placeholder={placeholder}
@@ -105,10 +100,14 @@ export function NewClientModal({
         ))}
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-dark-600 dark:text-dark-300">
+          <label
+            htmlFor="new-client-budget"
+            className="mb-1 block text-xs font-medium text-dark-600 dark:text-dark-300"
+          >
             Budget
           </label>
           <select
+            id="new-client-budget"
             value={form.budget}
             onChange={set('budget')}
             className={INPUT_CLS}
@@ -121,10 +120,14 @@ export function NewClientModal({
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-dark-600 dark:text-dark-300">
+          <label
+            htmlFor="new-client-notes"
+            className="mb-1 block text-xs font-medium text-dark-600 dark:text-dark-300"
+          >
             Notes
           </label>
           <textarea
+            id="new-client-notes"
             value={form.notes}
             onChange={set('notes')}
             rows={3}

@@ -11,11 +11,26 @@ module.exports = {
   darkMode: 'class',
   theme: {
     extend: {
+      minHeight: { control: 'var(--control-h)' },
       colors: {
-        // Light-mode page background: tinted so white surfaces clearly lift off it
-        canvas: '#e2e9fa',
-        // Light-mode hairline for surfaces sitting on the canvas
-        line: 'rgb(20 40 110 / 0.14)',
+        // RupeeFrame semantic tokens (globals.css): each flips with the theme, so one class serves both modes.
+        canvas: 'rgb(var(--ink) / <alpha-value>)',
+        surface: 'rgb(var(--surface) / <alpha-value>)',
+        'surface-2': 'rgb(var(--surface-2) / <alpha-value>)',
+        line: 'var(--line)',
+        'line-strong': 'var(--line-strong)',
+        text: 'rgb(var(--text) / <alpha-value>)',
+        muted: 'rgb(var(--muted) / <alpha-value>)',
+        faint: 'rgb(var(--faint) / <alpha-value>)',
+        'accent-text': 'rgb(var(--accent-text) / <alpha-value>)',
+        // Coloured sidebar (navy in light, midnight indigo in dark); text on it passes AA in both.
+        side: 'rgb(var(--side-bg) / <alpha-value>)',
+        'side-fg': 'rgb(var(--side-fg) / <alpha-value>)',
+        'side-muted': 'rgb(var(--side-muted) / <alpha-value>)',
+        'side-line': 'var(--side-line)',
+        // Solid brand fill for buttons, marks and the active tab; lighter in dark mode (RupeeFrame --brand-1).
+        brand: 'rgb(var(--brand-1) / <alpha-value>)',
+        'brand-2': 'rgb(var(--brand-2) / <alpha-value>)',
         // RupeeFrame brand-1 blue (#1e4fd6 at 600)
         primary: {
           50: '#eef3ff',
@@ -46,19 +61,19 @@ module.exports = {
         },
         // Stock palettes remapped to RupeeFrame so legacy utilities (bg-red-100,
         // text-green-700, bg-gray-200 ...) land on brand-consistent colours.
-        // gray: cool blue-tinted neutrals
+        // gray and dark share one neutral ramp: navy ink in light mode, pure neutral in dark (RupeeFrame).
         gray: {
-          50: '#f5f7fd',
-          100: '#eaeffb',
-          200: '#dbe3f5',
-          300: '#c3cee9',
-          400: '#74809f',
-          500: '#566280',
-          600: '#4d5878',
-          700: '#3d4867',
-          800: '#1a2442',
-          900: '#121b32',
-          950: '#0d1424',
+          50: 'rgb(var(--n-50) / <alpha-value>)',
+          100: 'rgb(var(--n-100) / <alpha-value>)',
+          200: 'rgb(var(--n-200) / <alpha-value>)',
+          300: 'rgb(var(--n-300) / <alpha-value>)',
+          400: 'rgb(var(--n-400) / <alpha-value>)',
+          500: 'rgb(var(--n-500) / <alpha-value>)',
+          600: 'rgb(var(--n-600) / <alpha-value>)',
+          700: 'rgb(var(--n-700) / <alpha-value>)',
+          800: 'rgb(var(--n-800) / <alpha-value>)',
+          900: 'rgb(var(--n-900) / <alpha-value>)',
+          950: 'rgb(var(--n-950) / <alpha-value>)',
         },
         // blue / indigo / sky: brand-1
         blue: {
@@ -171,23 +186,53 @@ module.exports = {
           950: '#022c22',
         },
         dark: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#566280',
-          600: '#26335a',
-          700: '#1a2442',
-          800: '#121b32',
-          900: '#0d1424',
-          950: '#070b15',
+          50: 'rgb(var(--n-50) / <alpha-value>)',
+          100: 'rgb(var(--n-100) / <alpha-value>)',
+          200: 'rgb(var(--n-200) / <alpha-value>)',
+          300: 'rgb(var(--n-300) / <alpha-value>)',
+          400: 'rgb(var(--n-400) / <alpha-value>)',
+          500: 'rgb(var(--n-500) / <alpha-value>)',
+          600: 'rgb(var(--n-600) / <alpha-value>)',
+          700: 'rgb(var(--n-700) / <alpha-value>)',
+          800: 'rgb(var(--n-800) / <alpha-value>)',
+          900: 'rgb(var(--n-900) / <alpha-value>)',
+          950: 'rgb(var(--n-950) / <alpha-value>)',
         },
       },
+      // One typeface: weight and size carry the hierarchy (RupeeFrame).
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        heading: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        heading: [
+          'var(--font-inter)',
+          'ui-sans-serif',
+          'system-ui',
+          'sans-serif',
+        ],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+      },
+      // Two text weights, 400 and 550 for any emphasis; titles take 600. Nothing heavier.
+      fontWeight: {
+        medium: '550',
+        semibold: '550',
+        bold: '600',
+        extrabold: '600',
+        black: '600',
+      },
+      // Controls (buttons, inputs, tabs) and cards each have one radius.
+      borderRadius: {
+        control: '0.625rem',
+        card: '1.25rem',
+      },
+      // Motion: one easing for everything that arrives or settles; durations by distance.
+      transitionTimingFunction: {
+        DEFAULT: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
+      },
+      transitionDuration: {
+        DEFAULT: '160ms',
+        fast: '160ms',
+        base: '240ms',
+        draw: '600ms',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
@@ -219,11 +264,11 @@ module.exports = {
           '100%': { transform: 'translateX(0)', opacity: '1' },
         },
       },
+      // Soft, low card shadow; glass chrome gets its own. Both flip with the theme.
       boxShadow: {
-        card: '0 1px 0 0 rgb(255 255 255 / 0.9) inset, 0 20px 50px -24px rgb(20 40 110 / 0.32)',
-        'card-hover':
-          '0 1px 0 0 rgb(255 255 255 / 0.9) inset, 0 24px 56px -22px rgb(20 40 110 / 0.42)',
-        brand: '0 10px 24px -10px rgb(30 79 214 / 0.7)',
+        card: 'var(--card-shadow)',
+        'card-hover': 'var(--card-shadow)',
+        glass: 'var(--glass-shadow)',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

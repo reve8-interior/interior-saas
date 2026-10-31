@@ -1,6 +1,14 @@
 import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
 import React from 'react';
 import './globals.css';
+
+// Variable Inter, self-hosted: the in-between weights the design system uses (550) render true.
+const sans = Inter({
+  variable: '--font-inter',
+  subsets: ['latin'],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'reve8 Studio',
@@ -17,8 +25,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#e2e9fa' },
-    { media: '(prefers-color-scheme: dark)', color: '#070b15' },
+    { media: '(prefers-color-scheme: light)', color: '#f6f7f9' },
+    { media: '(prefers-color-scheme: dark)', color: '#000000' },
   ],
 };
 
@@ -31,15 +39,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={sans.variable} suppressHydrationWarning>
       <head>
         {/* Inline theme init — prevents dark mode flash on load */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body
-        suppressHydrationWarning
-        className="min-h-screen text-dark-900 dark:text-white"
-      >
+      <body suppressHydrationWarning className="min-h-screen font-sans">
         {children}
       </body>
     </html>

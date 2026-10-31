@@ -20,6 +20,7 @@ from ..schemas.auth import (
     UserMe,
 )
 from ..services import audit
+from ..services.ai_access import ai_status
 from ..services.subscription import access_status
 from .deps import get_current_user, get_user_allow_expired
 
@@ -84,12 +85,15 @@ def admin_login(request: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=UserMe)
-def me(current_user: User = Depends(get_user_allow_expired)):
+def me(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_user_allow_expired),
+):
     # Expired users must still load /me so the UI can show the renewal page.
-    return _me(current_user)
+    return _me(db, current_user)
 
 
-def _me(user: User) -> UserMe:
+def _me(db: Session, user: User) -> UserMe:
     return UserMe(
         id=str(user.id),
         email=user.email,
@@ -98,6 +102,7 @@ def _me(user: User) -> UserMe:
         must_change_password=user.must_change_password,
         business_name=user.business.name if user.business else None,
         access=access_status(user.business),
+        ai=ai_status(db, user.business),
     )
 
 
@@ -110,7 +115,7 @@ def update_profile(
     current_user.full_name = body.full_name.strip()
     db.commit()
     db.refresh(current_user)
-    return _me(current_user)
+    return _me(db, current_user)
 
 
 @router.post("/change-password", status_code=204)

@@ -7,12 +7,14 @@ API hands out short-lived HMAC-signed URLs that point back at this backend.
 
 import hashlib
 import hmac
+import io
 import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Protocol
 
 import httpx
+from PIL import Image, ImageOps
 
 from ..core.config import settings
 
@@ -26,6 +28,11 @@ CONTENT_TYPES: dict[str, str] = {
     "png": "image/png",
     "webp": "image/webp",
 }
+
+
+THUMB_SUFFIX = ".thumb.jpg"
+THUMB_MAX_PX = 640
+_THUMB_QUALITY = 80
 
 
 class StorageError(Exception):
@@ -151,3 +158,60 @@ def verify_media_signature(path: str, exp: int, sig: str) -> bool:
     return exp >= time.time() and hmac.compare_digest(
         _signature(path, exp), sig
     )
+
+
+def thumb_path(path: str) -> str:
+    """Storage key of an image's thumbnail (`designs/c/x.png` -> `x.thumb.jpg`)."""
+    return f"{path.rsplit('.', 1)[0]}{THUMB_SUFFIX}"
+
+
+def signed_thumb_url(path: str) -> str:
+    """Signed URL for the small JPEG preview of a stored image."""
+    return signed_media_url(thumb_path(path))
+
+
+def make_thumbnail(data: bytes) -> bytes:
+    """Downscale an image to a JPEG preview that fits THUMB_MAX_PX."""
+    with Image.open(io.BytesIO(data)) as img:
+        img = ImageOps.exif_transpose(img)
+        # Flatten transparency onto white; JPEG has no alpha channel.
+        if img.mode in ("RGBA", "LA", "P"):
+            rgba = img.convert("RGBA")
+            flat = Image.new("RGB", rgba.size, "white")
+            flat.paste(rgba, mask=rgba.getchannel("A"))
+            img = flat
+        else:
+            img = img.convert("RGB")
+        img.thumbnail((THUMB_MAX_PX, THUMB_MAX_PX))
+        out = io.BytesIO()
+        img.save(out, "JPEG", quality=_THUMB_QUALITY, optimize=True)
+        return out.getvalue()
+
+
+def load_or_create_thumbnail(storage: ObjectStorage, path: str) -> bytes:
+    """Return a stored thumbnail, building it from the original on first use.
+
+    Designs uploaded before thumbnails existed get theirs lazily, so no
+    backfill job is needed.
+    """
+    try:
+        return storage.get(path)
+    except StorageError:
+        pass
+    stem = path.removesuffix(THUMB_SUFFIX)
+    for ext in CONTENT_TYPES:
+        try:
+            original = storage.get(f"{stem}.{ext}")
+        except StorageError:
+            continue
+        try:
+            thumb = make_thumbnail(original)
+        except OSError as exc:
+            raise StorageError("Image could not be decoded") from exc
+        try:
+            storage.put(path, thumb, CONTENT_TYPES["jpg"])
+        except StorageError:
+            # Serving the fresh preview still works; it is rebuilt next time.
+            pass
+        return thumb
+    raise StorageError("Object not found")

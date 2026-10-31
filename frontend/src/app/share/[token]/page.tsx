@@ -2,45 +2,27 @@
 
 import { LoadingRegion, PageHeaderSkeleton, Skeleton } from '@/components/ui';
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { SharedLinkError } from '@/components/shared/SharedLinkError';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  CustomerFooter,
+  PrintButton,
+  ThemeButton,
+} from '@/components/shared/CustomerChrome';
 import { HotspotDetail } from '@/components/designs/HotspotDetail';
 import { HotspotImage } from '@/components/designs/HotspotImage';
+import { HotspotList } from '@/components/designs/HotspotList';
 import { getSharedView } from '@/lib/designs';
-import type { SharedView } from '@/lib/schemas/design';
-
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'unavailable' }
-  | { status: 'ready'; view: SharedView };
+import { useSharedLink } from '@/lib/hooks/useSharedLink';
 
 /** Public, view-only gallery reached from a designer's share link. */
 export default function SharedDesignPage() {
   const { token } = useParams<{ token: string }>();
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const { state, retry, onImageError } = useSharedLink(token, getSharedView);
   const [designId, setDesignId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const refetched = useRef(false);
-
-  const load = useCallback(async () => {
-    try {
-      const view = await getSharedView(token);
-      setState({ status: 'ready', view });
-      setDesignId((current) => current ?? view.designs[0]?.id ?? null);
-    } catch {
-      setState({ status: 'unavailable' });
-    }
-  }, [token]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  // Signed image URLs expire; fetch fresh ones once if an image fails.
-  const onImageError = () => {
-    if (refetched.current) return;
-    refetched.current = true;
-    load();
-  };
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   if (state.status === 'loading') {
     return (
@@ -56,67 +38,86 @@ export default function SharedDesignPage() {
 
   if (state.status === 'unavailable') {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-2 p-6 text-center">
-        <h1 className="font-heading text-xl font-semibold text-dark-900 dark:text-white">
-          This link is no longer available
-        </h1>
-        <p className="text-sm text-dark-500 dark:text-dark-400">
-          It may have expired or been withdrawn. Please ask your designer for a
-          new link.
-        </p>
-      </main>
+      <SharedLinkError subject="design" gone={state.gone} onRetry={retry} />
     );
   }
 
   const { view } = state;
-  const design = view.designs.find((d) => d.id === designId) ?? null;
+  // Default to the first image until the visitor picks another.
+  const activeId = designId ?? view.designs[0]?.id ?? null;
+  const design = view.designs.find((d) => d.id === activeId) ?? null;
   const selected = design?.hotspots.find((h) => h.id === selectedId) ?? null;
+  const index = view.designs.findIndex((d) => d.id === activeId);
+
+  const go = (id: string) => {
+    setDesignId(id);
+    setSelectedId(null);
+  };
+  const step = (delta: number) => {
+    const n = view.designs.length;
+    go(view.designs[(index + delta + n) % n].id);
+  };
 
   return (
-    <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
-      <header>
-        {view.business_name && (
-          <p className="text-xs font-semibold uppercase tracking-wider text-dark-500 dark:text-dark-400">
-            {view.business_name}
-          </p>
-        )}
-        <h1 className="font-heading text-2xl font-bold text-dark-900 dark:text-white">
-          {view.project_name}
-        </h1>
+    <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
+      <header className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {view.business_name && (
+            <p className="type-label">{view.business_name}</p>
+          )}
+          <h1 className="font-heading text-2xl font-bold text-text">
+            {view.project_name}
+          </h1>
+        </div>
+        <div className="flex gap-2">
+          <PrintButton />
+          <ThemeButton />
+        </div>
       </header>
 
       {!design ? (
-        <p className="text-sm text-dark-500 dark:text-dark-400">
-          Nothing has been shared yet.
-        </p>
+        <p className="text-sm text-muted">Nothing has been shared yet.</p>
       ) : (
         <>
           {view.designs.length > 1 && (
             <nav
-              className="flex gap-2 overflow-x-auto pb-1"
+              className="flex gap-2 overflow-x-auto pb-1 print:hidden"
               aria-label="Images"
             >
-              {view.designs.map((d) => (
+              {view.designs.map((d, i) => (
                 <button
                   key={d.id}
                   type="button"
-                  onClick={() => {
-                    setDesignId(d.id);
-                    setSelectedId(null);
-                  }}
-                  className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm ${
+                  onClick={() => go(d.id)}
+                  aria-current={d.id === design.id ? 'true' : undefined}
+                  aria-label={d.title || `Image ${i + 1}`}
+                  className={`relative h-16 w-24 shrink-0 overflow-hidden rounded-lg border-2 bg-surface-2 ${
                     d.id === design.id
-                      ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-600/20 dark:text-primary-300'
-                      : 'border-dark-200 text-dark-700 hover:bg-dark-100 dark:border-dark-700 dark:text-dark-300 dark:hover:bg-dark-800'
+                      ? 'border-brand'
+                      : 'border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
-                  {d.title || 'Untitled'}
+                  {d.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      loading="lazy"
+                      decoding="async"
+                      src={d.thumb_url ?? d.image_url}
+                      alt=""
+                      onError={onImageError}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="px-1 text-xs text-muted">
+                      {d.title || i + 1}
+                    </span>
+                  )}
                 </button>
               ))}
             </nav>
           )}
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="space-y-3">
             <div className="space-y-3">
               {design.image_url && (
                 <HotspotImage
@@ -125,56 +126,73 @@ export default function SharedDesignPage() {
                   hotspots={design.hotspots}
                   selectedId={selectedId}
                   onSelect={setSelectedId}
+                  hoveredId={hoveredId}
+                  onHover={setHoveredId}
                   onImageError={onImageError}
+                  zoomable
                 />
               )}
+              {view.designs.length > 1 && (
+                <div className="flex items-center justify-between gap-2 print:hidden">
+                  <button
+                    type="button"
+                    onClick={() => step(-1)}
+                    aria-label="Previous image"
+                    className="btn-secondary min-w-11"
+                  >
+                    <ChevronLeft className="h-5 w-5" aria-hidden />
+                  </button>
+                  <p className="text-sm text-muted" aria-live="polite">
+                    {index + 1} of {view.designs.length}
+                    {design.title ? ` · ${design.title}` : ''}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => step(1)}
+                    aria-label="Next image"
+                    className="btn-secondary min-w-11"
+                  >
+                    <ChevronRight className="h-5 w-5" aria-hidden />
+                  </button>
+                </div>
+              )}
               {design.description && (
-                <p className="text-sm text-dark-600 dark:text-dark-300">
-                  {design.description}
-                </p>
+                <p className="text-sm text-muted">{design.description}</p>
               )}
               {design.hotspots.length > 0 && (
-                <p className="text-xs text-dark-500 dark:text-dark-400">
+                <p className="text-xs text-faint">
                   Tap a marked area to see its details.
                 </p>
               )}
             </div>
 
-            <aside className="space-y-3">
-              {selected && (
-                <HotspotDetail
-                  label={selected.label}
-                  notes={selected.notes}
-                  item={selected.item}
-                  dimensions={selected.dimensions}
-                  labourCost={selected.labour_cost}
-                  onClose={() => setSelectedId(null)}
+            {selected && (
+              <HotspotDetail
+                popup
+                label={selected.label}
+                notes={selected.notes}
+                item={selected.item}
+                dimensions={selected.dimensions}
+                labourCost={selected.labour_cost}
+                onClose={() => setSelectedId(null)}
+              />
+            )}
+            {design.hotspots.length > 0 && (
+              <div className="surface p-2">
+                <HotspotList
+                  hotspots={design.hotspots}
+                  selectedId={selectedId}
+                  hoveredId={hoveredId}
+                  onSelect={setSelectedId}
+                  onHover={setHoveredId}
                 />
-              )}
-              {design.hotspots.length > 0 && (
-                <ul className="space-y-1">
-                  {design.hotspots.map((h, i) => (
-                    <li key={h.id}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedId(h.id)}
-                        className={`w-full rounded-lg px-3 py-2 text-left text-sm ${
-                          h.id === selectedId
-                            ? 'bg-primary-50 text-primary-700 dark:bg-primary-600/20 dark:text-primary-300'
-                            : 'text-dark-700 hover:bg-dark-100 dark:text-dark-200 dark:hover:bg-dark-800'
-                        }`}
-                      >
-                        <span className="mr-2 text-dark-400">{i + 1}.</span>
-                        {h.label}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </aside>
+              </div>
+            )}
           </div>
         </>
       )}
+
+      <CustomerFooter businessName={view.business_name} />
     </main>
   );
 }

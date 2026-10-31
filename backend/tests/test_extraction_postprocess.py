@@ -36,6 +36,7 @@ class RawItem:
     rate: float | None = None
     est_time: str | None = None
     remarks: str | None = None
+    agreed_price: float | None = None
 
 
 @dataclass
@@ -44,6 +45,7 @@ class RawExtraction:
     meeting_minutes: list[str] = field(default_factory=list)
     client_budget: float | None = None
     unmapped_notes: list[str] = field(default_factory=list)
+    questions: list = field(default_factory=list)
 
 
 QUOTATION = [
@@ -59,7 +61,7 @@ QUOTATION = [
 def _run(transcript: str, items: list[RawItem], **kwargs):
     scope = build_scope_context(transcript, QUOTATION)
     extraction = RawExtraction(line_items=items, **kwargs)
-    return normalize_extraction(extraction, scope, QUOTATION)
+    return normalize_extraction(extraction, scope, QUOTATION, transcript)
 
 
 # ── Ref anchoring ────────────────────────────────────────────────────────────
@@ -402,3 +404,125 @@ def test_minutes_and_budget_are_cleaned():
     )
     assert result.meeting_minutes == ["Budget confirmed"]
     assert result.client_budget == 1200000.0
+
+
+# ── Several items at once ────────────────────────────────────────────────────
+
+
+def _wardrobe_price(room: str = "Kids bed room") -> RawItem:
+    return RawItem(
+        room=room,
+        description="Wardrobe",
+        action="update",
+        target_ref="E1",
+        agreed_price=23000,
+    )
+
+
+def test_each_applies_the_edit_to_every_wardrobe():
+    transcript = "client agrees to 23K price for each wardrobe"
+    scope = build_scope_context(transcript, QUOTATION)
+    ref = next(i.ref for i in scope.items if i.item_id == "id-1")
+    row = RawItem(
+        room="",
+        description="Wardrobe",
+        action="update",
+        target_ref=ref,
+        agreed_price=23000,
+    )
+    result = normalize_extraction(
+        RawExtraction(line_items=[row]), scope, QUOTATION, transcript
+    )
+    assert {i.target_item_id for i in result.line_items} == {"id-1", "id-4"}
+    assert {i.room for i in result.line_items} == {
+        "Kids bed room",
+        "Master bed room",
+    }
+    assert all(i.agreed_price == 23000 for i in result.line_items)
+    assert not result.questions
+
+
+def test_plural_notes_still_say_all():
+    transcript = "the 23K price is for all the wardrobes"
+    scope = build_scope_context(transcript, QUOTATION)
+    ref = next(i.ref for i in scope.items if i.item_id == "id-1")
+    row = RawItem(
+        room="Kids bed room",
+        description="Wardrobe",
+        action="update",
+        target_ref=ref,
+        agreed_price=23000,
+    )
+    result = normalize_extraction(
+        RawExtraction(line_items=[row]), scope, QUOTATION, transcript
+    )
+    assert len(result.line_items) == 2
+
+
+def test_without_each_the_designer_is_asked_instead_of_guessed():
+    transcript = "client agrees to 23K price for the wardrobe"
+    scope = build_scope_context(transcript, QUOTATION)
+    ref = next(i.ref for i in scope.items if i.item_id == "id-1")
+    row = RawItem(
+        room="Kids bed room",
+        description="Wardrobe",
+        action="update",
+        target_ref=ref,
+        agreed_price=23000,
+    )
+    result = normalize_extraction(
+        RawExtraction(line_items=[row]), scope, QUOTATION, transcript
+    )
+    assert len(result.line_items) == 1
+    (question,) = result.questions
+    assert "Kids bed room and Master bed room" in question.question
+    assert "every wardrobe" in (question.suggested_note or "")
+
+
+def test_naming_the_room_makes_it_specific():
+    transcript = "kids bed room wardrobe is agreed at 23K"
+    result = _run(transcript, [_wardrobe_price()])
+    assert len(result.line_items) == 1
+    assert not result.questions
+
+
+def test_row_with_no_room_is_asked_about_not_silently_dropped():
+    result = _run(
+        "sunmica finish for the unit",
+        [RawItem(room="", description="Sunmica finish")],
+    )
+    assert not result.line_items
+    (question,) = result.questions
+    assert "Sunmica finish" in question.question
+    assert any("no room" in w for w in result.warnings)
+
+
+def test_blank_room_resolves_when_only_one_item_matches():
+    result = _run(
+        "make the sofa back panel taller",
+        [RawItem(room="", description="Sofa back panel", remarks="taller")],
+    )
+    (item,) = result.line_items
+    assert item.room == "Living Room"
+    assert item.action == "update"
+    assert item.target_item_id == "id-6"
+
+
+def test_model_questions_are_kept_and_deduplicated():
+    @dataclass
+    class Q:
+        question: str
+        suggested_note: str | None = None
+
+    result = _run(
+        "nothing billable",
+        [],
+        questions=[Q("Which room?"), Q("Which  room?"), Q("")],
+    )
+    assert [q.question for q in result.questions] == ["Which room?"]
+
+
+def test_agreed_price_survives_cleaning():
+    transcript = "kids bed room wardrobe is agreed at 23K"
+    result = _run(transcript, [_wardrobe_price()])
+    assert result.line_items[0].agreed_price == 23000

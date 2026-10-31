@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ThemeProvider } from '@/components/providers';
 
 export const metadata: Metadata = {
   title: 'Design preview',
@@ -12,5 +13,5 @@ export default function ShareLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return <ThemeProvider>{children}</ThemeProvider>;
 }

@@ -43,7 +43,7 @@ export function MarginsCard({ globalMargin, byCategory }: Props) {
               </div>
               <div className="h-2 rounded-full bg-primary-100/80 dark:bg-white/10">
                 <div
-                  className="h-2 rounded-full bg-gradient-to-r from-primary-600 to-secondary-600"
+                  className="h-2 rounded-full bg-brand"
                   style={{ width: `${(margin / max) * 100}%` }}
                 />
               </div>

@@ -19,6 +19,15 @@ export interface ExtractedLineItem {
   rate: number | null;
   est_time: string | null;
   remarks: string | null;
+  /** Total price the client agreed to for this item, if they did. */
+  agreed_price?: number | null;
+}
+
+/** Something the notes leave open, put to the designer. */
+export interface ExtractionQuestion {
+  question: string;
+  /** A sentence the designer can add to the notes to settle it. */
+  suggested_note: string | null;
 }
 
 export interface MaterialHint {
@@ -46,6 +55,7 @@ export interface ExtractionResponse {
   unmapped_notes: string[];
   /** Deterministic corrections applied after the model returned. */
   warnings: string[];
+  questions: ExtractionQuestion[];
   scope: ExtractionScope;
   model: string;
   input_tokens: number;
@@ -73,6 +83,7 @@ export interface ExtractionRecord {
   model: string;
   item_count: number;
   unmapped_notes: string[];
+  questions?: ExtractionQuestion[];
 }
 
 // ── Checkpoint ordering ───────────────────────────────────────────────────────
@@ -109,14 +120,81 @@ export function checkpointNumbers(
   return numbers;
 }
 
+export type ConversationFilter = 'all' | 'pending' | 'added';
+
+export const CONVERSATION_FILTER_LABELS: Record<ConversationFilter, string> = {
+  all: 'All',
+  pending: 'To add',
+  added: 'In quotation',
+};
+
+interface PendingCheck {
+  source: string;
+  added_to_quotation: boolean;
+  structured_diff?: Record<string, unknown> | null;
+}
+
+/**
+ * True when a conversation still has rows waiting to go into the quotation.
+ * Extraction that ran and found nothing has nothing to add; a legacy
+ * ai_extract conversation without stored items counts as pending because its
+ * items are unknown until re-extracted.
+ */
+export function blocksAddition(cp: PendingCheck): boolean {
+  if (cp.added_to_quotation) return false;
+  const diff = cp.structured_diff ?? {};
+  if ('line_items' in diff) {
+    return Array.isArray(diff.line_items) && diff.line_items.length > 0;
+  }
+  if ('extraction' in diff) return false;
+  return cp.source === 'ai_extract';
+}
+
+export type ReviewableCheckpoint = CheckpointOrderKey & PendingCheck;
+
+/** Meetings with rows still to add, oldest first: the order they must go in. */
+export function reviewQueue<T extends ReviewableCheckpoint>(
+  checkpoints: T[]
+): T[] {
+  return checkpoints.filter(blocksAddition).sort(compareCheckpoints);
+}
+
+/** Rows stored on a meeting; 0 for a legacy one not extracted yet. */
+export function storedRowCount(cp: PendingCheck): number {
+  const rows = cp.structured_diff?.line_items;
+  return Array.isArray(rows) ? rows.length : 0;
+}
+
+/** Case-insensitive match on a conversation's summary and raw text; blank matches all. */
+export function matchesConversationQuery(
+  cp: { summary_text: string; raw_conversation?: string | null },
+  query: string
+): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return (
+    cp.summary_text.toLowerCase().includes(q) ||
+    (cp.raw_conversation ?? '').toLowerCase().includes(q)
+  );
+}
+
+export function matchesConversationFilter(
+  cp: PendingCheck,
+  filter: ConversationFilter
+): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'added') return cp.added_to_quotation;
+  return blocksAddition(cp);
+}
+
 export interface FromExtractionRequest {
-  audit_log_id: string;
   summary_text: string;
   raw_transcript: string;
   audio_transcript?: string | null;
   line_items: ConfirmLineItem[];
   client_budget?: number | null;
   unmapped_notes?: string[];
+  questions?: ExtractionQuestion[];
   /** The tier the extraction ran on, recorded on the checkpoint. */
   tier?: ModelTier;
   create_quotation: boolean;
@@ -137,6 +215,8 @@ export interface UpdateQuotationItemsResponse {
   items_added: number;
   items_updated: number;
   items_removed: number;
+  /** Rows that edited an item deleted since the notes were read. */
+  items_skipped: number;
 }
 
 export async function extractFromFile(
@@ -186,4 +266,19 @@ export async function updateQuotationItems(
     `/clients/${clientId}/quotation/update-items`,
     { checkpoint_id: checkpointId, line_items: lineItems }
   );
+}
+
+/** Replaces a draft meeting's notes; its rows are not touched. */
+export async function updateCheckpointNotes(
+  checkpointId: string,
+  rawConversation: string
+): Promise<void> {
+  await api.patch(`/checkpoints/${checkpointId}/notes`, {
+    raw_conversation: rawConversation,
+  });
+}
+
+/** Throws away a meeting that is not on the quotation. */
+export async function deleteCheckpoint(checkpointId: string): Promise<void> {
+  await api.delete(`/checkpoints/${checkpointId}`);
 }

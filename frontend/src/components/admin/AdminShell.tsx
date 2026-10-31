@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { NavSection } from '@/components/layout/AppSidebar';
 import { getSession, signOut } from '@/lib/auth';
 import { AuthUser } from '@/lib/schemas';
-import { Building2, LayoutDashboard } from 'lucide-react';
+import { Buildings, SquaresFour } from '@phosphor-icons/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
 
@@ -12,8 +12,8 @@ const sections: NavSection[] = [
   {
     title: 'Platform',
     items: [
-      { name: 'Overview', href: '/admin', icon: LayoutDashboard },
-      { name: 'Businesses', href: '/admin/businesses', icon: Building2 },
+      { name: 'Overview', href: '/admin', icon: SquaresFour },
+      { name: 'Businesses', href: '/admin/businesses', icon: Buildings },
     ],
   },
 ];

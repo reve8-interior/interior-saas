@@ -72,6 +72,15 @@ class ExtractedLineItem(BaseModel):
     rate: float | None = Field(
         default=None, description="Rate per unit in INR if mentioned"
     )
+    agreed_price: float | None = Field(
+        default=None,
+        description=(
+            "The TOTAL price in INR the client agreed to pay for this "
+            "item, when they settle on one ('agrees to 23K for the "
+            "wardrobe'). Not a per-unit rate. Null when no price was "
+            "agreed."
+        ),
+    )
     est_time: str | None = Field(
         default=None,
         description=(
@@ -81,6 +90,24 @@ class ExtractedLineItem(BaseModel):
     )
     remarks: str | None = Field(
         default=None, description="Clarifications, client preferences"
+    )
+
+
+class ExtractedQuestion(BaseModel):
+    question: str = Field(
+        description=(
+            "A short question for the designer about something in the "
+            "notes you could not safely decide, naming the rooms or items "
+            "involved. Plain words, one sentence."
+        )
+    )
+    suggested_note: str | None = Field(
+        default=None,
+        description=(
+            "One sentence the designer could add to the notes to settle "
+            "it, using the quotation's own room names. Null if only the "
+            "designer knows."
+        ),
     )
 
 
@@ -105,6 +132,13 @@ class CheckpointExtraction(BaseModel):
             "into a line item — an unresolved question, a preference with "
             "no item to attach it to, a decision to revisit later. Never "
             "silently drop scope-relevant content."
+        ),
+    )
+    questions: list[ExtractedQuestion] = Field(
+        default_factory=list,
+        description=(
+            "Things in the notes that are ambiguous against CURRENT "
+            "QUOTATION. Ask instead of guessing."
         ),
     )
 
@@ -166,6 +200,7 @@ def _merge_extractions(
             None,
         ),
         unmapped_notes=[n for p in parts for n in p.unmapped_notes],
+        questions=[q for p in parts for q in p.questions],
     )
 
 

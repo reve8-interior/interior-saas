@@ -62,8 +62,8 @@ export function GuideNav({ sections }: { sections: GuideSection[] }) {
             aria-current={active === s.id ? 'true' : undefined}
             className={`flex h-10 items-center whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-colors ${
               active === s.id
-                ? 'bg-gradient-to-r from-primary-600 to-secondary-600 text-white shadow-brand'
-                : 'text-dark-700 hover:bg-white/70 dark:text-dark-200 dark:hover:bg-white/10'
+                ? 'bg-brand text-white'
+                : 'text-dark-700 hover:bg-text/5 dark:text-dark-200 dark:hover:bg-white/10'
             }`}
           >
             {s.label}

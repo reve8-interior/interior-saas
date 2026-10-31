@@ -16,12 +16,14 @@ const ROLE_LABELS: Record<string, string> = {
   superadmin: 'Super admin',
   admin: 'Admin',
   designer: 'Designer',
+  viewer: 'Viewer',
 };
 
 function ProfileCard() {
   const queryClient = useQueryClient();
   const { data: me } = useQuery({ queryKey: ['me'], queryFn: getMe });
   const [fullName, setFullName] = useState('');
+  const [nameError, setNameError] = useState('');
 
   useEffect(() => {
     if (me) setFullName(me.full_name ?? '');
@@ -39,9 +41,10 @@ function ProfileCard() {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!fullName.trim()) {
-      toast.error('Name is required');
+      setNameError('Name is required');
       return;
     }
+    setNameError('');
     mutation.mutate();
   }
 
@@ -51,26 +54,49 @@ function ProfileCard() {
         Profile
       </h2>
       <div>
-        <label className={LABEL_CLS}>Full name</label>
+        <label htmlFor="acct-name" className={LABEL_CLS}>
+          Full name
+        </label>
         <input
+          id="acct-name"
           className={INPUT_CLS}
           value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
+          onChange={(e) => {
+            setFullName(e.target.value);
+            setNameError('');
+          }}
           maxLength={255}
+          aria-invalid={nameError ? true : undefined}
+          aria-describedby={nameError ? 'acct-name-err' : undefined}
         />
+        {nameError && (
+          <p
+            id="acct-name-err"
+            role="alert"
+            className="mt-1 text-xs text-red-600"
+          >
+            {nameError}
+          </p>
+        )}
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <label className={LABEL_CLS}>Email</label>
+          <label htmlFor="acct-email" className={LABEL_CLS}>
+            Email
+          </label>
           <input
+            id="acct-email"
             className={`${INPUT_CLS} opacity-60`}
             value={me?.email ?? ''}
             disabled
           />
         </div>
         <div>
-          <label className={LABEL_CLS}>Role</label>
+          <label htmlFor="acct-role" className={LABEL_CLS}>
+            Role
+          </label>
           <input
+            id="acct-role"
             className={`${INPUT_CLS} opacity-60`}
             value={me ? (ROLE_LABELS[me.role] ?? me.role) : ''}
             disabled
@@ -78,8 +104,11 @@ function ProfileCard() {
         </div>
         {me?.business_name && (
           <div>
-            <label className={LABEL_CLS}>Business</label>
+            <label htmlFor="acct-business" className={LABEL_CLS}>
+              Business
+            </label>
             <input
+              id="acct-business"
               className={`${INPUT_CLS} opacity-60`}
               value={me.business_name}
               disabled
@@ -87,7 +116,13 @@ function ProfileCard() {
           </div>
         )}
       </div>
-      <button type="submit" className={BTN_CLS} disabled={mutation.isPending}>
+      <button
+        type="submit"
+        className={BTN_CLS}
+        disabled={
+          mutation.isPending || fullName.trim() === (me?.full_name ?? '')
+        }
+      >
         {mutation.isPending ? 'Saving…' : 'Save profile'}
       </button>
     </form>
@@ -99,6 +134,7 @@ export function PasswordCard() {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
 
   const mutation = useMutation({
     mutationFn: () => changePassword(current, next),
@@ -115,13 +151,14 @@ export function PasswordCard() {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (next.length < 8) {
-      toast.error('New password must be at least 8 characters');
+      setError('New password must be at least 8 characters');
       return;
     }
     if (next !== confirm) {
-      toast.error('New passwords do not match');
+      setError('New passwords do not match');
       return;
     }
+    setError('');
     mutation.mutate();
   }
 
@@ -131,8 +168,11 @@ export function PasswordCard() {
         Change password
       </h2>
       <div>
-        <label className={LABEL_CLS}>Current password</label>
+        <label htmlFor="acct-current" className={LABEL_CLS}>
+          Current password
+        </label>
         <input
+          id="acct-current"
           type="password"
           className={INPUT_CLS}
           value={current}
@@ -143,8 +183,11 @@ export function PasswordCard() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className={LABEL_CLS}>New password</label>
+          <label htmlFor="acct-new" className={LABEL_CLS}>
+            New password
+          </label>
           <input
+            id="acct-new"
             type="password"
             className={INPUT_CLS}
             value={next}
@@ -154,8 +197,11 @@ export function PasswordCard() {
           />
         </div>
         <div>
-          <label className={LABEL_CLS}>Confirm new password</label>
+          <label htmlFor="acct-confirm" className={LABEL_CLS}>
+            Confirm new password
+          </label>
           <input
+            id="acct-confirm"
             type="password"
             className={INPUT_CLS}
             value={confirm}
@@ -165,6 +211,14 @@ export function PasswordCard() {
           />
         </div>
       </div>
+      <p className="text-xs text-dark-500 dark:text-dark-400">
+        Use at least 8 characters.
+      </p>
+      {error && (
+        <p role="alert" className="text-sm text-red-600">
+          {error}
+        </p>
+      )}
       <button type="submit" className={BTN_CLS} disabled={mutation.isPending}>
         {mutation.isPending ? 'Updating…' : 'Update password'}
       </button>
@@ -190,11 +244,8 @@ function AppearanceCard() {
             key={value}
             type="button"
             onClick={() => setTheme(value)}
-            className={`flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-semibold transition-colors ${
-              theme === value
-                ? 'border-primary-500 bg-primary-500/10 text-primary-700 dark:text-primary-300'
-                : 'border-line text-dark-600 hover:bg-white/60 dark:border-primary-300/15 dark:text-dark-300 dark:hover:bg-white/5'
-            }`}
+            aria-pressed={theme === value}
+            className="filter-chip"
           >
             <Icon className="h-4 w-4" />
             {label}

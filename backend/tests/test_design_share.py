@@ -540,3 +540,107 @@ def test_portfolio_exposes_dimensions_but_never_labour_cost(api, studio):
     ][0]
     assert spot["dimensions"] == "8ft x 7ft"
     assert spot["labour_cost"] is None
+
+
+def test_portfolio_order_is_saved_and_used_publicly(api, studio):
+    admin, client, design = _shared_setup(api, studio)
+    other = _upload(api, admin, client, name="other.png").json()
+    for d in (design, other):
+        _opt_in(api, admin, client, d)
+
+    order = [other["id"], design["id"]]
+    res = api.put(
+        "/api/v1/portfolio-designs/order",
+        headers=auth(admin),
+        json={"design_ids": order},
+    )
+    assert res.status_code == 204
+    rows = api.get("/api/v1/portfolio-designs", headers=auth(admin)).json()
+    assert [r["id"] for r in rows] == order
+
+    token = (
+        _portfolio_share(api, admin, order).json()["url"].rsplit("/", 1)[-1]
+    )
+    shared = api.get(f"/api/v1/portfolio/{token}").json()["designs"]
+    assert [d["id"] for d in shared] == order
+
+    api.put(
+        "/api/v1/portfolio-designs/order",
+        headers=auth(admin),
+        json={"design_ids": order[::-1]},
+    )
+    rows = api.get("/api/v1/portfolio-designs", headers=auth(admin)).json()
+    assert [r["id"] for r in rows] == order[::-1]
+
+
+def test_portfolio_order_rejects_foreign_or_unlisted_designs(api, studio):
+    admin_a, admin_b, client, *_ = studio
+    _, _, design = _shared_setup(api, studio)
+    url = "/api/v1/portfolio-designs/order"
+
+    # Not in the portfolio yet.
+    body = {"design_ids": [design["id"]]}
+    assert api.put(url, headers=auth(admin_a), json=body).status_code == 404
+    _opt_in(api, admin_a, client, design)
+    assert api.put(url, headers=auth(admin_a), json=body).status_code == 204
+    # Another business cannot place it.
+    assert api.put(url, headers=auth(admin_b), json=body).status_code == 404
+    assert (
+        api.put(
+            url, headers=auth(admin_a), json={"design_ids": []}
+        ).status_code
+        == 422
+    )
+
+
+def test_design_link_is_readable_and_stays_the_same_when_shared_again(
+    api, studio
+):
+    admin, client, design = _shared_setup(api, studio)
+    second = _upload(api, admin, client, name="second.png").json()
+
+    first = _share(api, admin, client, design_ids=[design["id"]]).json()
+    assert first["readable"] is True
+    assert first["url"].rsplit("/", 1)[-1].startswith("mrs-rao-")
+
+    again = _share(api, admin, client, design_ids=[second["id"]]).json()
+    assert again["id"] == first["id"]
+    assert again["url"] == first["url"]
+    token = first["url"].rsplit("/", 1)[-1]
+    shown = api.get(f"/api/v1/share/{token}").json()["designs"]
+    assert [d["id"] for d in shown] == [second["id"]]
+
+    listed = api.get(
+        f"/api/v1/clients/{client.id}/share-links", headers=auth(admin)
+    ).json()
+    assert len(listed) == 1
+
+
+def test_sharing_after_stopping_makes_a_new_link(api, studio):
+    admin, client, _ = _shared_setup(api, studio)
+    first = _share(api, admin, client).json()
+    api.delete(
+        f"/api/v1/clients/{client.id}/share-links/{first['id']}",
+        headers=auth(admin),
+    )
+    new = _share(api, admin, client).json()
+    assert new["id"] != first["id"]
+    assert new["url"] != first["url"]
+
+
+def test_hotspot_icon_is_saved_shared_and_validated(api, studio):
+    admin, client, design = _shared_setup(api, studio)
+    base = f"/api/v1/clients/{client.id}/designs/{design['id']}/hotspots"
+    h = auth(admin)
+    assert (
+        api.post(base, headers=h, json=_hotspot(icon="Bad Icon!")).status_code
+        == 422
+    )
+
+    ok = api.post(base, headers=h, json=_hotspot(icon="armchair"))
+    assert ok.status_code == 201
+    assert ok.json()["icon"] == "armchair"
+
+    token = _share(api, admin, client).json()["url"].rsplit("/", 1)[-1]
+    shown = api.get(f"/api/v1/share/{token}").json()["designs"][0]["hotspots"]
+    assert "armchair" in [x["icon"] for x in shown]

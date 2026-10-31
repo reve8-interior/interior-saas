@@ -75,6 +75,13 @@ class QuotationLineItemRead(BaseModel):
     extra: dict[str, str | float | None] = Field(default_factory=dict)
     status: QuotationItemStatus
     material_id: UUID | None = None
+    # Conversation (checkpoint) this line came from; None if added by hand.
+    source_checkpoint_id: UUID | None = None
+    # Design whose hotspot this line was created from, if any.
+    source_design_id: UUID | None = None
+    source_design_title: str | None = None
+    # The hotspot itself, so the design editor can open on it.
+    source_hotspot_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 

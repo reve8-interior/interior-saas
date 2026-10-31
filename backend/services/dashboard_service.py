@@ -91,36 +91,38 @@ def get_revenue_metrics(db: Session) -> tuple[float, float, dict[str, float]]:
     return float(approved_rev), float(pending_rev), revenue_by_phase
 
 
+def get_ai_usage_and_cost(
+    db: Session,
+) -> tuple[int, int, int, float, dict[str, int], float]:
+    """Call counts, tokens, mean latency and spend in one grouped query."""
+    rows = db.execute(
+        select(
+            AgentAuditLog.operation,
+            func.count(AgentAuditLog.id),
+            func.coalesce(func.sum(AgentAuditLog.input_tokens), 0),
+            func.coalesce(func.sum(AgentAuditLog.output_tokens), 0),
+            func.coalesce(func.sum(AgentAuditLog.latency_ms), 0),
+            func.coalesce(func.sum(AgentAuditLog.cost_usd), 0),
+            func.count(AgentAuditLog.latency_ms),
+        ).group_by(AgentAuditLog.operation)
+    ).all()
+    calls = sum(r[1] for r in rows)
+    timed = sum(r[6] for r in rows)
+    return (
+        calls,
+        int(sum(r[2] for r in rows)),
+        int(sum(r[3] for r in rows)),
+        # Like SQL avg(): rows without a latency do not count.
+        float(sum(r[4] for r in rows)) / timed if timed else 0.0,
+        {r[0]: r[1] for r in rows},
+        float(sum(r[5] for r in rows)),
+    )
+
+
 def get_ai_usage_metrics(
     db: Session,
 ) -> tuple[int, int, int, float, dict[str, int]]:
-
-    # --- AI Usage metrics ---
-    ai_total_calls, ai_total_input, ai_total_output, ai_avg_latency = (
-        db.execute(
-            select(
-                func.count(AgentAuditLog.id),
-                func.coalesce(func.sum(AgentAuditLog.input_tokens), 0),
-                func.coalesce(func.sum(AgentAuditLog.output_tokens), 0),
-                func.coalesce(func.avg(AgentAuditLog.latency_ms), 0),
-            )
-        ).one()
-    )
-
-    ai_op_rows = db.execute(
-        select(AgentAuditLog.operation, func.count(AgentAuditLog.id)).group_by(
-            AgentAuditLog.operation
-        )
-    ).all()
-    ai_calls_by_operation = {row[0]: row[1] for row in ai_op_rows}
-
-    return (
-        ai_total_calls,
-        ai_total_input,
-        ai_total_output,
-        float(ai_avg_latency),
-        ai_calls_by_operation,
-    )
+    return get_ai_usage_and_cost(db)[:5]
 
 
 def get_ai_cost_usd(db: Session) -> float:

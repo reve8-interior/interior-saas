@@ -66,6 +66,8 @@ export interface BusinessUser {
   must_change_password: boolean;
   last_login_at: string | null;
   created_at: string;
+  /** Designers only: clients they lead or can access. */
+  client_count?: number | null;
 }
 
 export interface BusinessUserCreate {

@@ -97,7 +97,7 @@ function SidePicker({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="field min-h-11 w-full"
+        className="field min-h-control w-full"
       >
         <option value={CURRENT}>Current quotation (not saved)</option>
         {versions.map((v) => (
@@ -131,7 +131,7 @@ function Cell({
   return (
     <td
       className={`whitespace-nowrap text-right tabular-nums ${
-        divider ? 'border-l border-line dark:border-primary-300/15' : ''
+        divider ? 'border-l border-line dark:border-line' : ''
       } ${
         field === 'amount' ? 'font-medium text-dark-900 dark:text-white' : ''
       } ${
@@ -166,7 +166,7 @@ function RoomTable({
   const cols: CompareField[] = ['raw_dimension', 'qty', 'rate', 'amount'];
   return (
     <section className="surface overflow-hidden">
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-primary-50/70 px-4 py-3 dark:border-primary-300/15 dark:bg-white/[0.03]">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-primary-50/70 px-4 py-3 dark:border-line dark:bg-white/[0.03]">
         <h3 className="text-sm font-extrabold tracking-tight text-dark-900 dark:text-white">
           {room}
         </h3>
@@ -195,13 +195,13 @@ function RoomTable({
               </th>
               <th
                 colSpan={cols.length}
-                className="border-l border-line text-center dark:border-primary-300/15"
+                className="border-l border-line text-center dark:border-line"
               >
                 {fromTitle}
               </th>
               <th
                 colSpan={cols.length}
-                className="border-l border-line text-center dark:border-primary-300/15"
+                className="border-l border-line text-center dark:border-line"
               >
                 {toTitle}
               </th>
@@ -212,9 +212,7 @@ function RoomTable({
                   <th
                     key={`${side}-${f}`}
                     className={`text-right ${
-                      i === 0
-                        ? 'border-l border-line dark:border-primary-300/15'
-                        : ''
+                      i === 0 ? 'border-l border-line dark:border-line' : ''
                     }`}
                   >
                     {COMPARE_FIELD_LABELS[f]}
@@ -351,7 +349,7 @@ export function VersionCompare({
           type="button"
           onClick={() => onChange(to, from)}
           aria-label="Swap versions"
-          className="btn-secondary min-h-11 self-start sm:self-auto"
+          className="btn-secondary self-start sm:self-auto"
         >
           <ArrowLeftRight className="h-4 w-4" aria-hidden />
           <span className="sm:hidden">Swap</span>
@@ -365,7 +363,7 @@ export function VersionCompare({
       </div>
 
       {from === to ? (
-        <p className="rounded-xl border border-dashed border-line p-8 text-center text-sm text-dark-500 dark:border-primary-300/15 dark:text-dark-400">
+        <p className="rounded-xl border border-dashed border-line p-8 text-center text-sm text-dark-500 dark:border-line dark:text-dark-400">
           Pick two different versions to compare.
         </p>
       ) : !result ? (
@@ -415,7 +413,7 @@ export function VersionCompare({
           </label>
 
           {rooms.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-line p-8 text-center text-sm text-dark-500 dark:border-primary-300/15 dark:text-dark-400">
+            <p className="rounded-xl border border-dashed border-line p-8 text-center text-sm text-dark-500 dark:border-line dark:text-dark-400">
               These two are identical.
             </p>
           ) : (

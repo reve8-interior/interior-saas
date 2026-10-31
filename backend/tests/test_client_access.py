@@ -155,3 +155,21 @@ def test_access_changes_are_audited(api, db):
     ).json()
     assert page["total"] == 1
     assert page["items"][0]["payload"]["granted"] == 1
+
+
+def test_team_overview_counts_each_designers_clients(api, db):
+    biz, admin, ann, bob = setup(db)
+    make_client_row(db, "Led", business_id=biz.id, assigned_designer_id=ann.id)
+    shared = make_client_row(db, "Shared", business_id=biz.id)
+    api.put(
+        f"/api/v1/clients/{shared.id}/access",
+        headers=auth(admin),
+        json={"member_ids": [str(ann.id)]},
+    )
+
+    members = api.get("/api/v1/team", headers=auth(admin)).json()["members"]
+    by_id = {m["id"]: m for m in members}
+    assert by_id[str(ann.id)]["client_count"] == 2
+    assert by_id[str(bob.id)]["client_count"] == 0
+    # Admins see everything, so a count is not meaningful for them.
+    assert by_id[str(admin.id)]["client_count"] is None

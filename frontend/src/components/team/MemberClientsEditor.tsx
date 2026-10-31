@@ -63,7 +63,7 @@ export function MemberClientsEditor({
   }
 
   return (
-    <div className="mt-3 w-full space-y-2 rounded-xl border border-line p-3 dark:border-primary-300/15">
+    <div className="mt-3 w-full space-y-2 rounded-xl bg-surface-2 p-3 dark:border-line">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold">
           Clients this designer can see ({lead.size + selected.size})
@@ -75,7 +75,7 @@ export function MemberClientsEditor({
           onChange={(e) => setFilter(e.target.value)}
         />
       </div>
-      <ul className="max-h-56 divide-y divide-line overflow-y-auto dark:divide-primary-300/10">
+      <ul className="max-h-56 divide-y divide-line overflow-y-auto dark:divide-line">
         {shown.length === 0 && (
           <li className="py-3 text-center text-xs text-dark-500 dark:text-dark-400">
             No clients found.

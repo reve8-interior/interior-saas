@@ -43,6 +43,9 @@ _POLICIES: dict[str, str] = {
     "quotation_shares": (
         "EXISTS (SELECT 1 FROM quotation_versions v WHERE v.id = version_id)"
     ),
+    "quotation_messages": (
+        "EXISTS (SELECT 1 FROM quotations q WHERE q.id = quotation_id)"
+    ),
     "agent_audit_log": _BUSINESS_PREDICATE,
     # Supabase auto-enables RLS on every table; without a portal_app policy,
     # scoped writes to these match 0 rows (StaleDataError).

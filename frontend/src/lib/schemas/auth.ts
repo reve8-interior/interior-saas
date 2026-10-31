@@ -23,6 +23,13 @@ export interface AccessStatus {
   expired: boolean;
 }
 
+/** Whether AI extraction can run; a null limit means no monthly cap. */
+export interface AiStatus {
+  enabled: boolean;
+  monthly_limit: number | null;
+  remaining: number | null;
+}
+
 export interface UserMe {
   id: string;
   email: string;
@@ -31,4 +38,5 @@ export interface UserMe {
   must_change_password: boolean;
   business_name: string | null;
   access: AccessStatus;
+  ai: AiStatus;
 }

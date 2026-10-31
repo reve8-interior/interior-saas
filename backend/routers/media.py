@@ -3,9 +3,11 @@
 from fastapi import APIRouter, HTTPException, Query, Response
 
 from ..services.storage import (
+    THUMB_SUFFIX,
     StorageError,
     content_type_for,
     get_storage,
+    load_or_create_thumbnail,
     verify_media_signature,
 )
 
@@ -23,7 +25,12 @@ def get_media(
     ):
         raise HTTPException(status_code=404, detail="Not found")
     try:
-        data = get_storage().get(path)
+        storage = get_storage()
+        data = (
+            load_or_create_thumbnail(storage, path)
+            if path.endswith(THUMB_SUFFIX)
+            else storage.get(path)
+        )
     except StorageError:
         raise HTTPException(status_code=404, detail="Not found")
     return Response(

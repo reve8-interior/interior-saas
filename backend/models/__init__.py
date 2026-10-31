@@ -1,5 +1,6 @@
 from .agent_audit_log import AgentAuditLog
 from .app_setting import AppSetting
+from .attention_read import AttentionRead
 from .audit import AuditLog
 from .base import Base, TimestampMixin, uuid_pk
 from .business import Business
@@ -17,6 +18,7 @@ from .quotation_line_item import (
     QuotationItemStatus,
     QuotationLineItem,
 )
+from .quotation_message import QuotationMessage
 from .quotation_version import QuotationShare, QuotationVersion
 from .share_link import ShareLink
 from .user import User
@@ -43,6 +45,8 @@ __all__ = [
     "QuotationLineItem",
     "QuotationVersion",
     "QuotationShare",
+    "QuotationMessage",
+    "AttentionRead",
     "AuditLog",
     "AgentAuditLog",
     "AppSetting",

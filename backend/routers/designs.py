@@ -10,7 +10,7 @@ from fastapi import (
     Response,
     UploadFile,
 )
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, selectinload
 
 from ..core import get_db
@@ -22,6 +22,7 @@ from ..models.design import Design, DesignHotspot, DesignSource
 from ..models.material import MaterialRate
 from ..models.user import User
 from ..schemas.design import (
+    DesignCount,
     DesignCreate,
     DesignPortfolioUpdate,
     DesignRead,
@@ -31,6 +32,7 @@ from ..schemas.design import (
     HotspotRead,
     HotspotUpdate,
     PortfolioDesignRead,
+    PortfolioOrderUpdate,
 )
 from ..services.client_access import get_client_or_404, restrict_to_accessible
 from ..services.design_quotation import (
@@ -46,12 +48,21 @@ from ..services.storage import (
     CONTENT_TYPES,
     StorageError,
     get_storage,
+    make_thumbnail,
     signed_media_url,
+    signed_thumb_url,
     sniff_image_ext,
+    thumb_path,
 )
 from .deps import get_current_user
 
 router = APIRouter()
+
+# Placed designs first by position, the rest newest first.
+PORTFOLIO_ORDER = (
+    Design.portfolio_position.asc().nulls_last(),
+    Design.created_at.desc(),
+)
 
 _DESIGN_LOAD = selectinload(Design.hotspots).selectinload(
     DesignHotspot.material
@@ -65,9 +76,21 @@ def design_image_url(design: Design) -> str | None:
     return design.image_url
 
 
+def design_thumb_url(design: Design) -> str | None:
+    """Signed URL for a small preview; legacy external images stay as is."""
+    if design.storage_path:
+        return signed_thumb_url(design.storage_path)
+    return design.image_url
+
+
 def design_to_read(design: Design) -> DesignRead:
     read = DesignRead.model_validate(design)
-    return read.model_copy(update={"image_url": design_image_url(design)})
+    return read.model_copy(
+        update={
+            "image_url": design_image_url(design),
+            "thumb_url": design_thumb_url(design),
+        }
+    )
 
 
 def _design_or_404(client_id: str, design_id: str, db: Session) -> Design:
@@ -99,6 +122,44 @@ def _check_material(db: Session, material_id: uuid.UUID | None) -> None:
         raise HTTPException(status_code=404, detail="Material not found")
 
 
+def _store_thumbnail(path: str, data: bytes) -> None:
+    """Best effort: a missing thumbnail is rebuilt on first request."""
+    try:
+        get_storage().put(
+            thumb_path(path), make_thumbnail(data), CONTENT_TYPES["jpg"]
+        )
+    except (StorageError, OSError):
+        logger.warning("design_thumbnail_failed", path=path)
+
+
+@router.put("/portfolio-designs/order", status_code=204)
+def set_portfolio_order(
+    body: PortfolioOrderUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Place the given portfolio designs in this order (first = shown first)."""
+    wanted = list(dict.fromkeys(body.design_ids))
+    q = (
+        select(Design)
+        .join(Client, Client.id == Design.client_id)
+        .where(Design.id.in_(wanted))
+        .where(Design.in_portfolio.is_(True))
+    )
+    found = {
+        d.id: d
+        for d in db.execute(restrict_to_accessible(q, current_user))
+        .scalars()
+        .all()
+    }
+    if set(found) != set(wanted):
+        raise HTTPException(status_code=404, detail="Design not found")
+    for position, design_id in enumerate(wanted):
+        found[design_id].portfolio_position = position
+    db.commit()
+    return Response(status_code=204)
+
+
 @router.get("/portfolio-designs", response_model=list[PortfolioDesignRead])
 def list_portfolio_designs(
     db: Session = Depends(get_db),
@@ -111,7 +172,7 @@ def list_portfolio_designs(
         .options(_DESIGN_LOAD)
         .where(Client.is_active.is_(True))
         .where(Design.in_portfolio.is_(True))
-        .order_by(Design.created_at.desc())
+        .order_by(*PORTFOLIO_ORDER)
     )
     q = restrict_to_accessible(q, current_user)
     rows = db.execute(q).all()
@@ -121,6 +182,22 @@ def list_portfolio_designs(
         )
         for design, client_name in rows
     ]
+
+
+@router.get("/clients/{client_id}/designs/count", response_model=DesignCount)
+def count_designs(
+    client_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Cheap tab badge: no hotspots, materials or signed URLs to build."""
+    get_client_or_404(client_id, db, current_user)
+    total = db.scalar(
+        select(func.count(Design.id)).where(
+            Design.client_id == uuid.UUID(client_id)
+        )
+    )
+    return DesignCount(count=total or 0)
 
 
 @router.get("/clients/{client_id}/designs", response_model=list[DesignRead])
@@ -204,6 +281,7 @@ def upload_design_image(
     path = f"designs/{client_id}/{design_id}.{ext}"
     try:
         get_storage().put(path, data, CONTENT_TYPES[ext])
+        _store_thumbnail(path, data)
     except StorageError:
         logger.exception("design_image_store_failed", client_id=client_id)
         raise HTTPException(status_code=502, detail="Could not store image")
@@ -238,6 +316,7 @@ def delete_design(
     if path:
         try:
             get_storage().delete(path)
+            get_storage().delete(thumb_path(path))
         except StorageError:
             # The row is gone; an orphaned object is only wasted space.
             logger.warning("design_image_delete_failed", path=path)

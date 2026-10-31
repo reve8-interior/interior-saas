@@ -19,6 +19,17 @@ export function listDesigns(clientId: string): Promise<Design[]> {
   return api.get<Design[]>(designsPath(clientId));
 }
 
+/** Design count for the tab badge; cached under the designs prefix so any design mutation refreshes it. */
+export const designCountKey = (clientId: string) =>
+  ['designs', clientId, 'count'] as const;
+
+export async function countDesigns(clientId: string): Promise<number> {
+  const { count } = await api.get<{ count: number }>(
+    `${designsPath(clientId)}/count`
+  );
+  return count;
+}
+
 export function uploadDesignImage(
   clientId: string,
   file: File,
@@ -161,4 +172,9 @@ export async function getSharedView(token: string): Promise<SharedView> {
     `/share/${encodeURIComponent(token)}`,
     'Link not available'
   );
+}
+
+/** Save the portfolio order; the first id is shown first. */
+export function setPortfolioOrder(designIds: string[]): Promise<void> {
+  return api.put<void>('/portfolio-designs/order', { design_ids: designIds });
 }

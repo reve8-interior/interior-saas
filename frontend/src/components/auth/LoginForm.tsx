@@ -1,5 +1,7 @@
 'use client';
 
+import { ThemeButton } from '@/components/shared/CustomerChrome';
+import { Logo } from '@/components/ui/Logo';
 import { MARKETING_URL } from '@/lib/constants';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import Link from 'next/link';
@@ -24,8 +26,7 @@ export interface LoginFormProps {
   footer?: ReactNode;
 }
 
-const FIELD_CLS =
-  'w-full rounded-xl border border-line bg-white/80 py-3 pl-11 text-dark-900 placeholder:text-dark-400 transition-colors focus:border-secondary-600 focus:outline-none focus:ring-2 focus:ring-secondary-600/30 dark:border-primary-300/15 dark:bg-dark-900/60 dark:text-white';
+const FIELD_CLS = 'field py-3 pl-11 text-base';
 
 export function LoginForm({
   icon,
@@ -61,15 +62,14 @@ export function LoginForm({
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="fixed right-4 top-4">
+        <ThemeButton />
+      </div>
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2.5">
-            <img src="/icon.svg" alt="" className="h-10 w-10" />
-            <span className="font-heading text-[32px] font-extrabold tracking-tight">
-              <span className="text-[#1573cc]">reve</span>
-              <span className="text-dark-900 dark:text-white">8</span>
-            </span>
+            <Logo size={28} />
           </Link>
           <p className="eyebrow mt-3">{portalLabel}</p>
         </div>
@@ -97,11 +97,15 @@ export function LoginForm({
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div>
-              <label className="label-text">Email</label>
+              <label htmlFor="login-email" className="label-text">
+                Email
+              </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-dark-500 dark:text-dark-400" />
                 <input
+                  id="login-email"
                   type="email"
+                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={`${FIELD_CLS} pr-4`}
@@ -113,10 +117,14 @@ export function LoginForm({
 
             {/* Password */}
             <div>
-              <label className="label-text">Password</label>
+              <label htmlFor="login-password" className="label-text">
+                Password
+              </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-dark-500 dark:text-dark-400" />
                 <input
+                  id="login-password"
+                  autoComplete="current-password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -127,7 +135,7 @@ export function LoginForm({
                 <button
                   type="button"
                   onClick={() => setShowPassword((p) => !p)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-dark-500 hover:text-dark-700 dark:text-dark-400 dark:hover:text-dark-200"
+                  className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-dark-500 hover:text-dark-700 focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-dark-400 dark:hover:text-dark-200"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
@@ -152,17 +160,17 @@ export function LoginForm({
                     Remember me
                   </span>
                 </label>
-                <button
-                  type="button"
-                  className="text-sm font-medium text-primary-600 hover:underline dark:text-primary-400"
-                >
-                  Forgot password?
-                </button>
+                <span className="text-sm text-dark-500 dark:text-dark-400">
+                  Forgot your password? Ask your admin to reset it.
+                </span>
               </div>
             )}
 
             {error && (
-              <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300">
+              <div
+                role="alert"
+                className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-400/20 dark:bg-red-500/10 dark:text-red-300"
+              >
                 {error}
               </div>
             )}
@@ -170,9 +178,9 @@ export function LoginForm({
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary h-12 w-full text-base"
+              className="btn-primary btn-lg w-full"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
 

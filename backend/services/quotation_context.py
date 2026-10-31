@@ -112,9 +112,11 @@ def _singular(word: str) -> str:
     """
     if len(word) > 3 and word.endswith("ies"):
         return word[:-3] + "y"
-    if len(word) > 3 and word.endswith("es") and not word.endswith("ses"):
+    # Only sibilant endings take "es" ("boxes", "benches"); "wardrobes"
+    # and "tables" are the plain word plus "s" and must meet it halfway.
+    if len(word) > 3 and word.endswith(("sses", "xes", "zes", "ches", "shes")):
         return word[:-2]
-    if len(word) > 3 and word.endswith("s"):
+    if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
         return word[:-1]
     return word
 

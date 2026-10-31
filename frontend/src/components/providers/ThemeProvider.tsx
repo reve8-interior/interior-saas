@@ -22,27 +22,35 @@ export function useTheme() {
 
 interface ThemeProviderProps {
   children: React.ReactNode;
+  /** Theme for visitors with no saved choice. */
+  defaultTheme?: Theme;
 }
 
-export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>('dark');
+export function ThemeProvider({
+  children,
+  defaultTheme = 'dark',
+}: ThemeProviderProps) {
+  const [theme, setThemeState] = useState<Theme>(defaultTheme);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Check for saved theme preference, default to dark
+    // Check for saved theme preference, otherwise use the default
     const savedTheme = localStorage.getItem('theme') as Theme | null;
 
     if (savedTheme) {
       setThemeState(savedTheme);
       document.documentElement.classList.toggle('dark', savedTheme === 'dark');
     } else {
-      // Default to dark mode
-      setThemeState('dark');
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+      setThemeState(defaultTheme);
+      document.documentElement.classList.toggle(
+        'dark',
+        defaultTheme === 'dark'
+      );
+      // A light default is not saved, so the dashboard keeps its own dark default.
+      if (defaultTheme === 'dark') localStorage.setItem('theme', 'dark');
     }
-  }, []);
+  }, [defaultTheme]);
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
@@ -59,7 +67,11 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   if (!mounted) {
     return (
       <ThemeContext.Provider
-        value={{ theme: 'dark', toggleTheme: () => {}, setTheme: () => {} }}
+        value={{
+          theme: defaultTheme,
+          toggleTheme: () => {},
+          setTheme: () => {},
+        }}
       >
         {children}
       </ThemeContext.Provider>

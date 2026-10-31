@@ -165,7 +165,7 @@ def test_scope_is_reapplied_after_commit(db, two_businesses):
 
 
 def test_apply_rls_is_idempotent(db):
-    from backend.rls import apply_rls
+    from backend.rls import _POLICIES, apply_rls
 
     as_owner(db)
     apply_rls(db.connection())
@@ -176,7 +176,7 @@ def test_apply_rls_is_idempotent(db):
             "WHERE policyname = 'business_isolation'"
         )
     )
-    assert count == 19
+    assert count == len(_POLICIES)
 
 
 def test_scoped_user_can_update_own_row_when_rls_is_auto_enabled(db):

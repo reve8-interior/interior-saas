@@ -16,6 +16,9 @@ while the model stays free to be a language model:
   • dimension validation   — an unparseable dimension is surfaced, never
                              silently multiplied out.
   • de-duplication         — one row per targeted item per checkpoint.
+  • fan-out                — "each wardrobe" edits every wardrobe, not one.
+  • questions              — what cannot be decided is asked, never
+                             guessed and never silently dropped.
 
 Every correction is recorded in `warnings` so the human verifying the
 extraction can see what the pipeline changed and why.
@@ -26,6 +29,7 @@ duck-typed inputs, so the whole layer is unit-testable.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
@@ -34,7 +38,12 @@ from .checkpoint_merge import (
     description_similarity,
 )
 from .dimension_parser import normalize_unit, parse_dimension
-from .quotation_context import ContextItem, ScopeContext, canonical_room
+from .quotation_context import (
+    ContextItem,
+    ScopeContext,
+    canonical_room,
+    tokenize,
+)
 
 VALID_ACTIONS = ("add", "update", "remove")
 
@@ -83,6 +92,15 @@ class NormalizedItem:
     rate: float | None
     est_time: str | None
     remarks: str | None
+    agreed_price: float | None = None
+
+
+@dataclass
+class NormalizedQuestion:
+    """Something the notes leave open, put to the designer."""
+
+    question: str
+    suggested_note: str | None = None
 
 
 @dataclass
@@ -92,6 +110,7 @@ class NormalizedExtraction:
     client_budget: float | None = None
     unmapped_notes: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    questions: list[NormalizedQuestion] = field(default_factory=list)
 
 
 # ── Field-level cleaning ─────────────────────────────────────────────────────
@@ -129,6 +148,7 @@ def _clean_number(
 
 def _resolve_target(
     raw: RawItem,
+    room: str,
     scope: ScopeContext,
     existing_items: list[ExistingItem],
     row: str,
@@ -152,7 +172,7 @@ def _resolve_target(
             "sent to it — falling back to a description match."
         )
 
-    room_key = canonical_room(raw.room, scope.known_rooms)
+    room_key = canonical_room(room, scope.known_rooms)
     best: ExistingItem | None = None
     best_score = 0.0
     for item in existing_items:
@@ -177,11 +197,17 @@ def normalize_extraction(
     extraction: RawExtraction,
     scope: ScopeContext,
     existing_items: list[ExistingItem] | None = None,
+    transcript: str = "",
 ) -> NormalizedExtraction:
-    """Resolve a raw agent extraction against the live quotation."""
+    """Resolve a raw agent extraction against the live quotation.
+
+    `transcript` is the notes the agent read; it is only used to tell
+    whether the designer meant "each/all" of something.
+    """
     existing = list(existing_items or [])
     by_id = {str(item.id): item for item in existing}
     warnings: list[str] = []
+    questions: list[NormalizedQuestion] = _model_questions(extraction)
     notes = [
         n for n in (_clean_text(x) for x in extraction.unmapped_notes) if n
     ]
@@ -208,9 +234,26 @@ def normalize_extraction(
             )
             action = "add"
 
+        if not room and description:
+            # The model left the room empty. Infer it from the quotation
+            # rather than dropping the row or guessing.
+            like = _live_like(description, existing)
+            if len(like) == 1 or (
+                like and _is_quantified(transcript, description)
+            ):
+                room = like[0].room
+                if action == "add":
+                    action = "update"
+            else:
+                questions.append(_room_question(description, like))
+                warnings.append(
+                    f"{row}: no room given, so it was asked about."
+                )
+                continue
+
         target = None
         if action in ("update", "remove"):
-            target = _resolve_target(raw, scope, existing, row, warnings)
+            target = _resolve_target(raw, room, scope, existing, row, warnings)
             if target is None:
                 if action == "remove":
                     notes.append(
@@ -257,11 +300,6 @@ def normalize_extraction(
         if not description:
             warnings.append(f"{row}: dropped, no work description.")
             continue
-        if not room:
-            warnings.append(
-                f"{row}: dropped, no room and none could be inferred."
-            )
-            continue
 
         stated_unit = _clean_text(raw.unit)
         stated_unit = normalize_unit(stated_unit) if stated_unit else None
@@ -290,6 +328,12 @@ def normalize_extraction(
             rate=_clean_number(raw.rate, "rate", row, warnings),
             est_time=_clean_text(raw.est_time),
             remarks=_clean_text(raw.remarks),
+            agreed_price=_clean_number(
+                getattr(raw, "agreed_price", None),
+                "agreed price",
+                row,
+                warnings,
+            ),
         )
 
         # A unit inherited from the target is not something the client
@@ -322,6 +366,9 @@ def normalize_extraction(
         else:
             by_identity[_identity(item)] = len(out) - 1
 
+    out, fanned = _fan_out(out, by_id, existing, scope, transcript, questions)
+    warnings.extend(fanned)
+
     return NormalizedExtraction(
         meeting_minutes=[
             m
@@ -334,6 +381,7 @@ def normalize_extraction(
         ),
         unmapped_notes=notes,
         warnings=warnings,
+        questions=_dedupe_questions(questions),
     )
 
 
@@ -342,6 +390,7 @@ _PAYLOAD_FIELDS = (
     "raw_dimension",
     "qty",
     "rate",
+    "agreed_price",
     "est_time",
     "remarks",
 )
@@ -364,3 +413,189 @@ def _absorb(target: NormalizedItem, extra: NormalizedItem) -> None:
             setattr(target, name, value)
     if extra.action == "remove":
         target.action = "remove"
+
+
+# ── Many items at once, and what to ask ──────────────────────────────────────
+
+_QUANTIFIERS = r"(?:each|every|all|both)"
+_MAX_QUESTIONS = 5
+
+
+def _is_live(item: ExistingItem) -> bool:
+    status = getattr(item, "status", None)
+    return str(getattr(status, "value", status) or "") != "removed"
+
+
+def _same_kind(a: str, b: str) -> bool:
+    """Whether two descriptions are the same kind of work.
+
+    The shorter description's words must all appear in the longer one:
+    "Wardrobe" is the same kind as "Wardrobe with sliding doors", but
+    "Kids wardrobe" is not the same kind as "Master wardrobe".
+    """
+    ta, tb = tokenize(a), tokenize(b)
+    small, large = (ta, tb) if len(ta) <= len(tb) else (tb, ta)
+    return bool(small) and small <= large
+
+
+def _live_like(
+    description: str, items: list[ExistingItem]
+) -> list[ExistingItem]:
+    return [
+        i
+        for i in items
+        if _is_live(i) and _same_kind(description, i.description)
+    ]
+
+
+def _is_quantified(transcript: str, description: str) -> bool:
+    """Whether the notes say "each/all/every/both" next to this work."""
+    text = (transcript or "").lower()
+    for token in tokenize(description):
+        stem = re.escape(token[: max(4, len(token) - 2)])
+        pattern = rf"\b{_QUANTIFIERS}\b(?:\W+\w+){{0,3}}?\W+{stem}\w*"
+        if re.search(pattern, text):
+            return True
+    return False
+
+
+def _rooms_of(items: list[ExistingItem]) -> list[str]:
+    rooms: list[str] = []
+    for item in items:
+        if item.room not in rooms:
+            rooms.append(item.room)
+    return rooms
+
+
+def _join(rooms: list[str]) -> str:
+    if len(rooms) <= 2:
+        return " and ".join(rooms)
+    return ", ".join(rooms[:-1]) + " and " + rooms[-1]
+
+
+def _room_question(
+    description: str, like: list[ExistingItem]
+) -> NormalizedQuestion:
+    if like:
+        rooms = _join(_rooms_of(like))
+        return NormalizedQuestion(
+            question=(
+                f'"{description}" is on the quotation in {rooms}. '
+                "Which one do you mean, or all of them?"
+            ),
+            suggested_note=f"This applies to every {description.lower()}: {rooms}.",
+        )
+    return NormalizedQuestion(
+        question=f'Which room is "{description}" for?',
+    )
+
+
+def _model_questions(extraction: RawExtraction) -> list[NormalizedQuestion]:
+    out: list[NormalizedQuestion] = []
+    for q in getattr(extraction, "questions", None) or []:
+        text = _clean_text(getattr(q, "question", None))
+        if text:
+            out.append(
+                NormalizedQuestion(
+                    question=text,
+                    suggested_note=_clean_text(
+                        getattr(q, "suggested_note", None)
+                    ),
+                )
+            )
+    return out
+
+
+def _dedupe_questions(
+    questions: list[NormalizedQuestion],
+) -> list[NormalizedQuestion]:
+    seen: set[str] = set()
+    out: list[NormalizedQuestion] = []
+    for q in questions:
+        key = " ".join(q.question.lower().split())
+        if key not in seen:
+            seen.add(key)
+            out.append(q)
+    return out[:_MAX_QUESTIONS]
+
+
+def _fan_out(
+    rows: list[NormalizedItem],
+    by_id: dict[str, ExistingItem],
+    existing: list[ExistingItem],
+    scope: ScopeContext,
+    transcript: str,
+    questions: list[NormalizedQuestion],
+) -> tuple[list[NormalizedItem], list[str]]:
+    """Apply an edit to every item it was meant for.
+
+    A row that edits one wardrobe while the quotation has three is
+    either "each wardrobe" (the notes say so: copy the row onto the
+    others) or an ambiguity (ask). A room the notes name makes it
+    specific, so neither happens.
+    """
+    targeted = {r.target_item_id for r in rows if r.target_item_id}
+    named_rooms = set(scope.matched_rooms)
+    result: list[NormalizedItem] = []
+    notes: list[str] = []
+    for row in rows:
+        result.append(row)
+        target = by_id.get(row.target_item_id or "")
+        if target is None or row.action not in ("update", "remove"):
+            continue
+        if target.room in named_rooms:
+            continue
+        siblings = [
+            i
+            for i in existing
+            if str(i.id) not in targeted
+            and i is not target
+            and _is_live(i)
+            and _same_kind(target.description, i.description)
+        ]
+        if not siblings:
+            continue
+        if _is_quantified(transcript, target.description):
+            for sib in siblings:
+                targeted.add(str(sib.id))
+                result.append(_clone_for(row, target, sib))
+            notes.append(
+                f'"{target.description}": applied to all '
+                f"{len(siblings) + 1} because the notes say each/all."
+            )
+        else:
+            rooms = _join(_rooms_of([target, *siblings]))
+            questions.append(
+                NormalizedQuestion(
+                    question=(
+                        f'"{target.description}" is on the quotation in '
+                        f"{rooms}. Does this apply to all of them, or "
+                        f"only {target.room}?"
+                    ),
+                    suggested_note=(
+                        f"This applies to every "
+                        f"{target.description.lower()}: {rooms}."
+                    ),
+                )
+            )
+    return result, notes
+
+
+def _clone_for(
+    row: NormalizedItem, source: ExistingItem, sibling: ExistingItem
+) -> NormalizedItem:
+    """The same edit, aimed at a sibling item."""
+    inherited = (
+        row.unit is not None
+        and source.unit
+        and (normalize_unit(source.unit) == row.unit)
+    )
+    return NormalizedItem(
+        **{
+            **vars(row),
+            "target_item_id": str(sibling.id),
+            "room": sibling.room,
+            "description": sibling.description,
+            "unit": normalize_unit(sibling.unit) if inherited else row.unit,
+        }
+    )

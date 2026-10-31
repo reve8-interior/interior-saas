@@ -7,7 +7,41 @@ CHECKPOINT_PROMPT_VERSION at it; older versions stay for comparison.
 
 from __future__ import annotations
 
-CHECKPOINT_PROMPT_VERSION = "v1"
+CHECKPOINT_PROMPT_VERSION = "v2"
+
+# v2 = v1 plus the rules for notes that talk about many items at once
+# ("each wardrobe") or that are ambiguous against the quotation.
+_V2_RULES = """\
+
+Several items at once — read the quantifier:
+• "each", "every", "all", "both" before a kind of work means EVERY
+  matching item in CURRENT QUOTATION, in every room. Emit one update row
+  per matching item, each with its own target_ref and the same change.
+  Never fold them into a single row and never leave the room empty.
+• Example: the notes say "client agrees to 23K for each wardrobe" and
+  CURRENT QUOTATION lists three wardrobes (E2, E5, E9). Return three
+  update rows, targets E2, E5 and E9, agreed_price 23000 on each.
+• "agrees to X for the …" or "settled at X" is a total price the client
+  agreed to: put it in agreed_price, not in rate.
+
+Rooms:
+• Every row needs a room. For update and remove it is the room of the
+  referenced item. For new work, use the room the client named.
+• If a kind of work could be in several rooms and the notes do not say
+  which or say "each/all", do not guess a room. Leave that work out of
+  line_items and add a question instead.
+
+Questions — ask instead of guessing:
+• When the notes are ambiguous against CURRENT QUOTATION, add an entry to
+  questions. Name the rooms or items involved and ask one short thing,
+  e.g. "You have wardrobes in Master bed room, Kids bed room and Guest
+  bed room. Does the 23K apply to all three?"
+• suggested_note is one sentence the designer can add to the notes to
+  settle it, e.g. "The 23K applies to all three wardrobes." Use the
+  quotation's own room names. Null if only the designer knows the answer.
+• Do not ask about things the notes already make clear. At most five
+  questions.
+"""
 
 PROMPTS: dict[str, str] = {
     "v1": """\
@@ -75,3 +109,5 @@ Language style — applies to every free-text field you write
   the wording only, never the facts.
 """,
 }
+
+PROMPTS["v2"] = PROMPTS["v1"] + _V2_RULES

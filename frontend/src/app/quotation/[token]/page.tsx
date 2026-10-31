@@ -1,53 +1,26 @@
 'use client';
 
+import { CustomerResponseBar } from '@/components/shared/CustomerResponseBar';
 import { LoadingRegion, PageHeaderSkeleton, Skeleton } from '@/components/ui';
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
+import { SharedLinkError } from '@/components/shared/SharedLinkError';
+import { ChevronDown, ChevronRight, Image as ImageIcon } from 'lucide-react';
 import {
-  ChevronDown,
-  ChevronRight,
-  Image as ImageIcon,
-  Moon,
-  Sun,
-} from 'lucide-react';
-import { useTheme } from '@/components/providers/ThemeProvider';
+  CustomerFooter,
+  PrintButton,
+  ThemeButton,
+} from '@/components/shared/CustomerChrome';
 import { HotspotDetail } from '@/components/designs/HotspotDetail';
 import { HotspotImage } from '@/components/designs/HotspotImage';
 import { fmtRate } from '@/lib/format';
 import { getSharedQuotation } from '@/lib/quotationVersions';
-import type {
-  SharedQuotationRoom,
-  SharedQuotationView,
-} from '@/lib/schemas/quotationVersion';
+import { useSharedLink } from '@/lib/hooks/useSharedLink';
+import type { SharedQuotationRoom } from '@/lib/schemas/quotationVersion';
 import { Badge } from '@/components/ui/Badge';
 
-type LoadState =
-  | { status: 'loading' }
-  | { status: 'unavailable' }
-  | { status: 'ready'; view: SharedQuotationView };
-
-const TH_CLS =
-  'px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-dark-500 dark:text-dark-400';
-const TD_CLS = 'px-3 py-2 text-sm text-dark-800 dark:text-dark-200';
-
-function ThemeButton() {
-  const { theme, toggleTheme } = useTheme();
-  const next = theme === 'dark' ? 'light' : 'dark';
-  return (
-    <button
-      type="button"
-      onClick={toggleTheme}
-      aria-label={`Switch to ${next} mode`}
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-dark-200 text-dark-700 hover:bg-dark-100 dark:border-dark-700 dark:text-dark-200 dark:hover:bg-dark-800"
-    >
-      {theme === 'dark' ? (
-        <Sun className="h-5 w-5" aria-hidden />
-      ) : (
-        <Moon className="h-5 w-5" aria-hidden />
-      )}
-    </button>
-  );
-}
+const TH_CLS = 'px-3 py-2 text-left type-label';
+const TD_CLS = 'px-3 py-2 text-sm tabular-nums text-text';
 
 interface RoomSectionProps {
   room: SharedQuotationRoom;
@@ -74,13 +47,13 @@ function RoomSection({
     null;
 
   return (
-    <section className="overflow-hidden rounded-lg border border-dark-200 dark:border-dark-700">
+    <section className="surface overflow-hidden">
       <h2>
         <button
           type="button"
           onClick={onToggle}
           aria-expanded={open}
-          className="flex w-full items-center gap-2 bg-dark-50 px-3 py-2 text-left font-heading text-sm font-semibold text-dark-900 dark:bg-dark-800 dark:text-white"
+          className="flex w-full items-center gap-2 px-4 py-3 text-left font-heading text-sm font-semibold text-text transition-colors hover:bg-surface-2"
         >
           {open ? (
             <ChevronDown className="h-4 w-4 shrink-0" />
@@ -89,7 +62,7 @@ function RoomSection({
           )}
           <span className="flex-1">{room.room}</span>
           {room.designs.length > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-500/20 dark:text-primary-200">
+            <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-accent-text">
               <ImageIcon className="h-3 w-3" aria-hidden />
               {room.designs.length}{' '}
               {room.designs.length === 1 ? 'image' : 'images'}
@@ -111,15 +84,16 @@ function RoomSection({
                   selectedId={selectedId}
                   onSelect={onSelect}
                   onImageError={onImageError}
+                  zoomable
                 />
               )}
               {room.designs.length > 1 && (
-                <p className="text-xs font-medium text-dark-500 dark:text-dark-400">
+                <p className="text-xs font-medium text-faint">
                   Image {index + 1} of {room.designs.length}
                 </p>
               )}
               {(design.title || design.description) && (
-                <figcaption className="text-sm text-dark-600 dark:text-dark-300">
+                <figcaption className="text-sm text-muted">
                   {design.title}
                   {design.title && design.description ? ' — ' : ''}
                   {design.description}
@@ -129,6 +103,7 @@ function RoomSection({
           ))}
           {selected && (
             <HotspotDetail
+              popup
               label={selected.label}
               notes={selected.notes}
               item={selected.item}
@@ -138,7 +113,31 @@ function RoomSection({
             />
           )}
 
-          <div className="overflow-x-auto">
+          <ul className="divide-y divide-line sm:hidden">
+            {room.items.map((item, i) => (
+              <li key={i} className="py-3">
+                <p className="text-sm font-medium text-text">
+                  {item.description}
+                </p>
+                <p className="mt-0.5 text-xs text-muted">
+                  {[
+                    item.raw_dimension,
+                    item.qty != null ? `${item.qty} ${item.unit}` : null,
+                    item.est_time,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || '—'}
+                </p>
+                {showPrices && item.amount !== null && (
+                  <p className="mt-1 text-right text-sm font-semibold tabular-nums text-text">
+                    {fmtRate(item.amount)}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full">
               <thead>
                 <tr>
@@ -150,7 +149,7 @@ function RoomSection({
                   {showPrices && <th className={TH_CLS}>Amount</th>}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-dark-100 dark:divide-dark-800">
+              <tbody className="divide-y divide-line">
                 {room.items.map((item, i) => (
                   <tr key={i}>
                     <td className={TD_CLS}>{item.description}</td>
@@ -183,42 +182,13 @@ function RoomSection({
 /** Public, view-only quotation reached from a designer's share link. */
 export default function SharedQuotationPage() {
   const { token } = useParams<{ token: string }>();
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
-
-  const [openRooms, setOpenRooms] = useState<Set<string>>(new Set());
+  const { state, retry, onImageError } = useSharedLink(
+    token,
+    getSharedQuotation
+  );
+  // null until the visitor toggles a room; then the first room shows open.
+  const [toggledRooms, setToggledRooms] = useState<Set<string> | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const refetched = useRef(false);
-
-  const load = useCallback(async () => {
-    try {
-      const view = await getSharedQuotation(token);
-      setState({ status: 'ready', view });
-      // Start with the first room open so the page is never blank.
-      setOpenRooms((cur) =>
-        cur.size || !view.rooms[0] ? cur : new Set([view.rooms[0].room])
-      );
-    } catch {
-      setState({ status: 'unavailable' });
-    }
-  }, [token]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  // Signed image URLs expire; fetch fresh ones once if an image fails.
-  const onImageError = () => {
-    if (refetched.current) return;
-    refetched.current = true;
-    load();
-  };
-
-  const toggleRoom = (room: string) =>
-    setOpenRooms((cur) => {
-      const next = new Set(cur);
-      if (!next.delete(room)) next.add(room);
-      return next;
-    });
 
   if (state.status === 'loading') {
     return (
@@ -234,33 +204,31 @@ export default function SharedQuotationPage() {
 
   if (state.status === 'unavailable') {
     return (
-      <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-2 p-6 text-center">
-        <h1 className="font-heading text-xl font-semibold text-dark-900 dark:text-white">
-          This link is no longer available
-        </h1>
-        <p className="text-sm text-dark-500 dark:text-dark-400">
-          It may have expired or been withdrawn. Please ask your designer for a
-          new link.
-        </p>
-      </main>
+      <SharedLinkError subject="quotation" gone={state.gone} onRetry={retry} />
     );
   }
 
   const { view } = state;
+  // Start with the first room open so the page is never blank.
+  const openRooms =
+    toggledRooms ?? new Set(view.rooms[0] ? [view.rooms[0].room] : []);
+  const toggleRoom = (room: string) => {
+    const next = new Set(openRooms);
+    if (!next.delete(room)) next.add(room);
+    setToggledRooms(next);
+  };
 
   return (
-    <main className="mx-auto max-w-4xl space-y-6 p-4 sm:p-8">
+    <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
       <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           {view.business_name && (
-            <p className="text-xs font-semibold uppercase tracking-wider text-dark-500 dark:text-dark-400">
-              {view.business_name}
-            </p>
+            <p className="type-label">{view.business_name}</p>
           )}
-          <h1 className="font-heading text-2xl font-bold text-dark-900 dark:text-white">
+          <h1 className="font-heading text-2xl font-bold text-text">
             {view.project_name}
           </h1>
-          <p className="mt-1 text-sm text-dark-500 dark:text-dark-400">
+          <p className="mt-1 text-sm text-muted">
             Quotation v{view.version_number}
             {view.label ? ` · ${view.label}` : ''} ·{' '}
             {new Date(view.created_at).toLocaleDateString()}
@@ -271,7 +239,31 @@ export default function SharedQuotationPage() {
             </p>
           )}
         </div>
-        <ThemeButton />
+        <div className="flex items-center gap-2">
+          {view.rooms.length > 1 && (
+            <button
+              type="button"
+              onClick={() =>
+                setToggledRooms(
+                  openRooms.size === view.rooms.length
+                    ? new Set()
+                    : new Set(view.rooms.map((r) => r.room))
+                )
+              }
+              className="btn-secondary print:hidden"
+            >
+              {openRooms.size === view.rooms.length
+                ? 'Collapse all'
+                : 'Expand all'}
+            </button>
+          )}
+          <PrintButton
+            beforePrint={() =>
+              setToggledRooms(new Set(view.rooms.map((r) => r.room)))
+            }
+          />
+          <ThemeButton />
+        </div>
       </header>
 
       {view.rooms.map((room) => (
@@ -287,11 +279,20 @@ export default function SharedQuotationPage() {
         />
       ))}
 
+      <CustomerResponseBar
+        token={token}
+        initialKind={view.responded_kind}
+        contactEmail={view.contact_email}
+        contactPhone={view.contact_phone}
+      />
+
       {view.total !== null && (
-        <p className="text-right font-heading text-lg font-bold text-dark-900 dark:text-white">
+        <p className="surface px-4 py-3 text-right font-heading text-lg font-bold tabular-nums text-text">
           Total: {fmtRate(view.total)}
         </p>
       )}
+
+      <CustomerFooter businessName={view.business_name} />
     </main>
   );
 }

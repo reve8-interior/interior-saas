@@ -36,6 +36,14 @@ class AccessStatus(BaseModel):
     expired: bool = False
 
 
+class AiStatus(BaseModel):
+    """Whether AI extraction can run; a null limit means no monthly cap."""
+
+    enabled: bool = False
+    monthly_limit: int | None = None
+    remaining: int | None = None
+
+
 class UserMe(BaseModel):
     id: UUID
     email: str
@@ -44,3 +52,4 @@ class UserMe(BaseModel):
     must_change_password: bool = False
     business_name: str | None = None
     access: AccessStatus = Field(default_factory=AccessStatus)
+    ai: AiStatus = Field(default_factory=AiStatus)

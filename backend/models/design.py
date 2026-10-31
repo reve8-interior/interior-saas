@@ -9,6 +9,7 @@ from sqlalchemy import (
     Enum,
     Float,
     ForeignKey,
+    Integer,
     Numeric,
     String,
 )
@@ -54,6 +55,9 @@ class Design(Base, TimestampMixin):
     in_portfolio: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
+    # Order on the portfolio (lowest first); None = not placed yet, listed
+    # after placed designs, newest first.
+    portfolio_position: Mapped[int | None] = mapped_column(Integer)
 
     client: Mapped["Client"] = relationship("Client", back_populates="designs")  # type: ignore[name-defined]
     hotspots: Mapped[list["DesignHotspot"]] = relationship(
@@ -84,6 +88,7 @@ class DesignHotspot(Base):
         UUID(as_uuid=True),
         ForeignKey("materials_rates.id", ondelete="SET NULL"),
         nullable=True,
+        index=True,
     )
     # The quotation line created from this hotspot; cleared if that line is
     # deleted so the hotspot can be added again.
@@ -91,11 +96,15 @@ class DesignHotspot(Base):
         UUID(as_uuid=True),
         ForeignKey("quotation_line_items.id", ondelete="SET NULL"),
         nullable=True,
+        index=True,
     )
     label: Mapped[str] = mapped_column(String(255), nullable=False)
     notes: Mapped[str | None] = mapped_column(String(2000))
     # Free text, e.g. "8ft x 7ft".
     dimensions: Mapped[str | None] = mapped_column(String(100))
+    # Pin icon picked by the designer (a key the frontend knows); null guesses
+    # from the label.
+    icon: Mapped[str | None] = mapped_column(String(32))
     labour_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     x: Mapped[float] = mapped_column(Float, nullable=False)
     y: Mapped[float] = mapped_column(Float, nullable=False)

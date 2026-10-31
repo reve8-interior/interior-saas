@@ -63,7 +63,7 @@ export default function AdminOverviewPage() {
         />
         <MetricCard
           icon={CheckSquare}
-          label="Checkpoints"
+          label="Meetings"
           value={fmtNum(totals.checkpoints)}
         />
         <MetricCard
@@ -112,7 +112,7 @@ export default function AdminOverviewPage() {
                 'Users',
                 'Clients',
                 'Quotations',
-                'Checkpoints',
+                'Meetings',
                 'AI calls',
                 'AI cost',
                 'Last activity',
@@ -142,7 +142,7 @@ export default function AdminOverviewPage() {
                     ? router.push(`/admin/businesses/${b.id}`)
                     : router.push('/admin/businesses/unassigned')
                 }
-                className="cursor-pointer border-t border-line hover:bg-primary-50/70 dark:border-primary-300/15 dark:hover:bg-white/[0.06]"
+                className="cursor-pointer border-t border-line hover:bg-primary-50/70 dark:border-line dark:hover:bg-white/[0.06]"
               >
                 <td className="px-4 py-3 font-medium">
                   {b.name}

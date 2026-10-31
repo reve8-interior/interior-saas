@@ -7,6 +7,7 @@ import {
   importQuotationVersion,
   listQuotationVersions,
   listVersionShares,
+  moveShareLink,
   revokeVersionShare,
   saveQuotationVersion,
   setVersionActive,
@@ -95,5 +96,49 @@ describe('client pick', () => {
     expect(api.put).toHaveBeenCalledWith('/quotation-versions/v1/agree', {});
     await unagreeVersion('v1');
     expect(api.delete).toHaveBeenCalledWith('/quotation-versions/v1/agree');
+  });
+});
+
+describe('moveShareLink', () => {
+  const share = (expires_at: string | null) => ({
+    id: 's1',
+    show_prices: true,
+    expires_at,
+  });
+
+  it('creates the link on the new version with the same settings', async () => {
+    const end = new Date(Date.now() + 5 * 86_400_000).toISOString();
+    vi.mocked(api.get).mockResolvedValue([share(end)]);
+    vi.mocked(api.post).mockResolvedValue({ id: 's1' });
+    await moveShareLink('v1', 'v2');
+    expect(api.get).toHaveBeenCalledWith('/quotation-versions/v1/shares');
+    expect(api.post).toHaveBeenCalledWith('/quotation-versions/v2/shares', {
+      show_prices: true,
+      expires_at: end,
+    });
+  });
+
+  it('keeps an open-ended link open-ended', async () => {
+    vi.mocked(api.get).mockResolvedValue([share(null)]);
+    await moveShareLink('v1', 'v2');
+    expect(api.post).toHaveBeenCalledWith('/quotation-versions/v2/shares', {
+      show_prices: true,
+      expires_at: null,
+    });
+  });
+
+  it('gives an expired link a fresh end date', async () => {
+    vi.mocked(api.get).mockResolvedValue([share('2000-01-01T00:00:00Z')]);
+    await moveShareLink('v1', 'v2');
+    const body = vi.mocked(api.post).mock.calls[0][1] as {
+      expires_at: string;
+    };
+    expect(new Date(body.expires_at).getTime()).toBeGreaterThan(Date.now());
+  });
+
+  it('does nothing when there is no link to move', async () => {
+    vi.mocked(api.get).mockResolvedValue([]);
+    expect(await moveShareLink('v1', 'v2')).toBeNull();
+    expect(api.post).not.toHaveBeenCalled();
   });
 });

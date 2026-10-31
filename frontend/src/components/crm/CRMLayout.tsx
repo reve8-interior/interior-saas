@@ -2,9 +2,15 @@
 
 import { NavSection } from '@/components/layout/AppSidebar';
 import { AppLayout } from '@/components/layout/AppLayout';
+import {
+  CommandPalette,
+  CommandPaletteButton,
+} from '@/components/layout/CommandPalette';
 import { AccessGate } from '@/components/crm/AccessGate';
 import { PasswordGate } from '@/components/crm/PasswordGate';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 import { getSession, signOut } from '@/lib/auth';
+import { useReplyToasts } from '@/lib/useReplyToasts';
 import { api } from '@/lib/api';
 import { getMe } from '@/lib/profile';
 import { AuthUser } from '@/lib/schemas';
@@ -12,13 +18,14 @@ import type { Client } from '@/lib/schemas/client';
 import { useQuery } from '@tanstack/react-query';
 import {
   BookOpen,
-  Columns3,
-  GalleryHorizontal,
-  LayoutDashboard,
-  UserCog,
+  Columns,
+  Images,
+  LinkSimple,
+  SquaresFour,
+  UserGear,
   Users,
   Wrench,
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 
@@ -26,17 +33,23 @@ const navigationSections: NavSection[] = [
   {
     title: 'Portal',
     items: [
-      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Dashboard', href: '/dashboard', icon: SquaresFour },
       {
         name: 'Clients',
-        href: '/dashboard/clients',
+        href: '/dashboard/board',
         icon: Users,
-        alsoActiveOn: ['/dashboard/board'],
+        alsoActiveOn: ['/dashboard/clients'],
       },
       {
         name: 'Portfolio',
         href: '/dashboard/portfolio',
-        icon: GalleryHorizontal,
+        icon: Images,
+      },
+      {
+        name: 'Shared links',
+        tabLabel: 'Links',
+        href: '/dashboard/shared',
+        icon: LinkSimple,
       },
       {
         name: 'Material Library',
@@ -52,14 +65,14 @@ const navigationSections: NavSection[] = [
       {
         name: 'Quotation Columns',
         href: '/dashboard/settings/columns',
-        icon: Columns3,
+        icon: Columns,
       },
       { name: 'Guide', href: '/dashboard/guide', icon: BookOpen },
     ],
   },
 ];
 
-const TEAM_ITEM = { name: 'Team', href: '/dashboard/team', icon: UserCog };
+const TEAM_ITEM = { name: 'Team', href: '/dashboard/team', icon: UserGear };
 
 const CLIENT_PAGE = /^\/dashboard\/clients\/([^/]+)(?:\/|$)/;
 
@@ -77,6 +90,7 @@ function getPageTitle(pathname: string, clientName?: string): string {
   if (pathname.startsWith('/dashboard/clients')) return 'Clients';
   if (pathname.startsWith('/dashboard/materials')) return 'Material Library';
   if (pathname === '/dashboard/portfolio') return 'Portfolio';
+  if (pathname === '/dashboard/shared') return 'Shared links';
   if (pathname === '/dashboard/guide') return 'Guide';
   if (pathname === '/dashboard/team') return 'Team';
   if (pathname === '/dashboard/settings') return 'Settings';
@@ -120,6 +134,12 @@ export default function CRMLayout({ children }: { children: ReactNode }) {
     [user]
   );
 
+  const pages = useMemo(
+    () => sections.flatMap((section) => section.items),
+    [sections]
+  );
+
+  useReplyToasts();
   const clientId = clientIdFromPath(pathname);
   const { data: client } = useQuery<Client>({
     queryKey: ['client', clientId],
@@ -137,12 +157,20 @@ export default function CRMLayout({ children }: { children: ReactNode }) {
       rootHref="/dashboard"
       pageTitle={getPageTitle(pathname, client?.name)}
       bgClass="bg-transparent"
+      headerExtra={
+        <>
+          <CommandPaletteButton />
+          <NotificationBell />
+        </>
+      }
+      mobileExtra={<NotificationBell />}
       user={user}
       onLogout={() => {
         signOut();
         router.push('/login');
       }}
     >
+      <CommandPalette pages={pages} />
       <PasswordGate required={me?.must_change_password}>
         <AccessGate access={me?.access}>{children}</AccessGate>
       </PasswordGate>

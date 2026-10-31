@@ -54,7 +54,7 @@ export function ClientsByPhaseChart({ data, total }: Props) {
             ))}
           </div>
 
-          <ul className="divide-y divide-line dark:divide-primary-300/10">
+          <ul className="divide-y divide-line dark:divide-line">
             {rows.map((r) => (
               <li
                 key={r.phase}

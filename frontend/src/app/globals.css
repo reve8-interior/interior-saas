@@ -1,30 +1,100 @@
-/*
- * Font configuration is managed in src/data/theme.json
- * To change fonts, update the theme.json file and this import URL
- */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* CSS Custom Properties for fonts - sourced from theme.json */
+/* ── Design tokens (from RupeeFrame) ─────────────────────────────────────────
+   Neutral canvas: colour lives in the accent and the data, not the page. Light mode is navy ink on near-white; dark
+   mode is a neutral black canvas with near-black surfaces and hairline white borders, no blue cast. Colours are RGB
+   channels so Tailwind opacity modifiers (bg-surface/60) keep working; tailwind.config.js maps them to classes.
+   ─────────────────────────────────────────────────────────────────────────── */
 :root {
-  --font-primary: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-heading: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  color-scheme: light;
+  /* Every button, input, select, chip and tab shares this height; phones and tablets get the 44px touch target. */
+  --control-h: 2.5rem;
+  --brand-1: 30 79 214;
+  --brand-2: 12 150 194;
+  --accent-text: 30 79 214;
 
-  /* Font sizes */
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-base: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.25rem;
-  --text-2xl: 1.5rem;
-  --text-3xl: 1.875rem;
-  --text-4xl: 2.25rem;
-  --text-5xl: 3rem;
-  --text-6xl: 3.75rem;
+  --ink: 246 247 249;
+  --surface: 255 255 255;
+  --surface-2: 238 241 246;
+  --text: 10 19 48;
+  --muted: 61 72 103;
+  --faint: 84 95 128;
+  --line: rgb(20 40 110 / 0.14);
+  --line-strong: rgb(20 40 110 / 0.24);
+
+  /* Neutral ramp behind the dark-* and gray-* classes: navy-tinted ink */
+  --n-50: 248 249 251;
+  --n-100: 241 243 247;
+  --n-200: 227 231 238;
+  --n-300: 205 211 223;
+  --n-400: 116 128 159;
+  --n-500: 84 95 128;
+  --n-600: 61 72 103;
+  --n-700: 42 52 82;
+  --n-800: 23 32 65;
+  --n-900: 10 19 48;
+  --n-950: 5 10 31;
+
+  --glass-bg: rgb(255 255 255 / 0.82);
+  --glass-menu-bg: rgb(255 255 255 / 0.9);
+  --glass-edge: rgb(255 255 255 / 0.85);
+  --glass-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.9) inset,
+    0 20px 50px -24px rgb(20 40 110 / 0.32);
+  --card-shadow:
+    0 1px 2px rgb(20 40 110 / 0.04), 0 12px 32px -16px rgb(20 40 110 / 0.14);
+  --dot: rgb(30 55 140 / 0.22);
+
+  /* Sidebar follows the theme: it is the surface colour with a hairline edge. */
+  --side-bg: 255 255 255;
+  --side-fg: 10 19 48;
+  --side-muted: 82 96 128;
+  --side-line: rgb(20 40 110 / 0.12);
+}
+
+.dark {
+  color-scheme: dark;
+  --brand-1: 61 91 199;
+  --brand-2: 36 148 179;
+  --accent-text: 123 155 255;
+
+  --ink: 0 0 0;
+  --surface: 10 10 10;
+  --surface-2: 20 20 20;
+  --text: 237 237 237;
+  --muted: 161 161 161;
+  --faint: 143 143 143;
+  --line: rgb(255 255 255 / 0.1);
+  --line-strong: rgb(255 255 255 / 0.18);
+
+  --n-50: 250 250 250;
+  --n-100: 237 237 237;
+  --n-200: 212 212 212;
+  --n-300: 161 161 161;
+  --n-400: 143 143 143;
+  --n-500: 110 110 110;
+  --n-600: 46 46 46;
+  --n-700: 31 31 31;
+  --n-800: 20 20 20;
+  --n-900: 10 10 10;
+  --n-950: 0 0 0;
+
+  --glass-bg: rgb(10 10 10 / 0.8);
+  --glass-menu-bg: rgb(10 10 10 / 0.92);
+  --glass-edge: rgb(255 255 255 / 0.1);
+  --glass-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.05) inset, 0 24px 60px -28px rgb(0 0 0 / 0.9);
+  --card-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.06), 0 16px 36px -18px rgb(0 0 0 / 0.9);
+  --dot: rgb(140 165 255 / 0.25);
+
+  /* Sidebar follows the theme. */
+  --side-bg: 10 10 10;
+  --side-fg: 237 237 237;
+  --side-muted: 161 161 161;
+  --side-line: rgb(255 255 255 / 0.1);
 }
 
 @layer base {
@@ -32,54 +102,51 @@
     scroll-behavior: smooth;
   }
 
-  /* Apply consistent font to ALL elements */
-  *,
-  *::before,
-  *::after {
-    font-family: var(--font-primary);
-  }
-
   /* Keyboard focus is always visible; mouse focus stays clean */
   :focus-visible {
-    @apply outline-none ring-2 ring-primary-500/70 ring-offset-2 ring-offset-white dark:ring-offset-dark-900;
+    outline: 2px solid rgb(var(--brand-2));
+    outline-offset: 3px;
   }
 
+  /* The page: neutral canvas under an even dot grid, fixed so it stays put while the content scrolls. */
   body {
-    font-family: var(--font-primary);
-    font-size: var(--text-sm);
+    font-size: 0.875rem;
     font-feature-settings: 'cv11', 'ss01';
-    @apply bg-canvas text-dark-900 antialiased dark:bg-dark-950 dark:text-white;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='1.25' fill='%231e378c' fill-opacity='0.28'/%3E%3C/svg%3E");
+    background-color: rgb(var(--ink));
+    background-image: radial-gradient(
+      circle at 15px 15px,
+      var(--dot) 1.25px,
+      transparent 1.5px
+    );
+    background-size: 30px 30px;
     background-attachment: fixed;
-  }
-  .dark body {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='1.25' fill='%238ca5ff' fill-opacity='0.2'/%3E%3C/svg%3E");
+    color: rgb(var(--text));
+    -webkit-font-smoothing: antialiased;
+    transition:
+      background-color 240ms ease,
+      color 240ms ease;
   }
 
-  /* Headings use the same font but can be styled differently */
   h1,
   h2,
   h3,
   h4,
   h5,
   h6 {
-    font-family: var(--font-heading);
     letter-spacing: -0.02em;
     text-wrap: balance;
   }
 
+  /* Bold runs inside text are emphasis, not headings: one step above body text. */
+  b,
+  strong {
+    font-weight: 550;
+  }
+
   ::selection {
-    background: rgb(30 79 214 / 0.3);
+    background: rgb(var(--brand-1) / 0.35);
   }
 
-  /* Code elements use mono font */
-  code,
-  pre,
-  kbd {
-    font-family: var(--font-mono);
-  }
-
-  /* Ensure buttons and inputs inherit font */
   button,
   input,
   select,
@@ -89,161 +156,155 @@
 }
 
 @layer components {
-  .container-custom {
-    @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+  /* Buttons: one radius, solid vs outline; no gradient, no glow and no hover scale. */
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline,
+  .btn-danger,
+  .btn-danger-soft,
+  .btn-success {
+    @apply inline-flex min-h-control items-center justify-center gap-2 whitespace-nowrap rounded-control px-4 text-sm font-semibold transition-[background-color,border-color,color,filter] disabled:cursor-not-allowed disabled:opacity-45;
   }
-
+  .btn-ghost {
+    @apply inline-flex min-h-control items-center justify-center gap-2 whitespace-nowrap rounded-control px-4 text-sm font-semibold text-muted transition-colors hover:bg-text/5 hover:text-text disabled:cursor-not-allowed disabled:opacity-45;
+  }
+  .btn-sm {
+    @apply px-3 text-xs;
+  }
+  .btn-lg {
+    @apply min-h-12 px-6 text-base;
+  }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-primary-600 to-secondary-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_20px_-8px_rgb(30_79_214/0.7)] transition-all hover:brightness-110 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40;
+    @apply bg-brand text-white hover:brightness-110;
   }
-
-  .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white/70 px-4 py-2 text-sm font-semibold text-dark-800 transition-colors hover:bg-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 dark:border-primary-300/20 dark:bg-white/5 dark:text-dark-100 dark:hover:bg-white/10;
-  }
-
+  .btn-secondary,
   .btn-outline {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-transparent px-4 py-2 text-sm font-semibold text-dark-700 transition-colors hover:border-primary-400 hover:text-primary-600 focus:outline-none dark:border-primary-300/20 dark:text-dark-200 dark:hover:border-primary-400 dark:hover:text-primary-300;
+    @apply border border-line-strong text-text hover:bg-text/5;
+  }
+  .btn-danger-soft {
+    @apply border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-400/30 dark:text-red-400 dark:hover:bg-red-500/10;
+  }
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-500;
+  }
+  .btn-success {
+    @apply bg-green-600 text-white hover:bg-green-500;
   }
 
   /* Compact button for use inside the top bar */
-  .btn-banner {
-    @apply inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold transition-colors focus:outline-none;
-  }
   .btn-banner-primary {
-    @apply btn-banner bg-gradient-to-r from-primary-600 to-secondary-600 text-white shadow-brand hover:brightness-110;
-  }
-  .btn-banner-secondary {
-    @apply btn-banner border border-line bg-white/70 text-dark-800 hover:bg-white dark:border-primary-300/20 dark:bg-white/5 dark:text-dark-100 dark:hover:bg-white/10;
+    @apply inline-flex min-h-control items-center gap-1.5 rounded-control bg-brand px-3.5 text-sm font-semibold text-white transition-[filter] hover:brightness-110;
   }
 
-  /* Small uppercase section label, brand blue (RupeeFrame "HOW IT WORKS") */
+  /* Above a section title, in the accent: a short sentence-case label. No caps: calmer, reads as copy. */
   .eyebrow {
-    @apply text-[11px] font-bold uppercase tracking-[0.2em] text-primary-600 dark:text-primary-400;
+    @apply text-sm font-medium leading-snug text-accent-text;
+  }
+  /* The same shape, quiet: labels inside cards, panels and table heads. */
+  .type-label {
+    @apply text-[0.8125rem] font-medium leading-snug text-faint;
   }
 
   /* Status / tag pill */
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-white/70 px-3 py-1 text-xs font-medium text-dark-700 dark:border-primary-300/15 dark:bg-white/5 dark:text-dark-200;
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line-strong px-3 py-1 text-xs font-semibold text-muted;
   }
 
-  .section-heading {
-    @apply font-heading text-3xl font-extrabold tracking-tight text-dark-900 dark:text-white md:text-4xl lg:text-5xl;
+  /* Content surfaces: one surface, a hairline, one radius and a soft low shadow so they lift off the canvas.
+     A surface's own `rounded-xl` / `rounded-full` still wins, for small tiles and chips. */
+  .surface,
+  .card,
+  .client-card {
+    @apply rounded-card border border-line bg-surface shadow-card;
   }
-
-  .section-subheading {
-    @apply max-w-3xl text-lg text-dark-500 dark:text-dark-400 md:text-xl;
+  .card {
+    @apply p-6;
   }
-
-  /* Standard raised panel: white on the tinted light canvas, flat in dark mode.
-     Call sites may override the dark background (e.g. dark:bg-dark-900). */
-  .surface {
-    @apply rounded-2xl border border-line bg-white/80 shadow-[0_20px_50px_-24px_rgb(20_40_110/0.32)] backdrop-blur-xl dark:border-primary-300/15 dark:bg-dark-800/60 dark:shadow-[0_24px_60px_-28px_rgb(0_0_0/0.7)];
+  .client-card {
+    @apply p-5;
+  }
+  /* A card you can click: its hairline takes the accent on hover; no lift, no glow. */
+  .card,
+  .client-card {
+    @apply transition-[border-color] hover:border-brand/45;
   }
 
   /* Table header row inside a .surface */
   .table-head {
-    @apply border-b border-line bg-primary-50/70 text-[11px] font-bold uppercase tracking-[0.14em] text-dark-600 dark:border-primary-300/10 dark:bg-white/[0.03] dark:text-dark-400;
-  }
-
-  .card {
-    @apply rounded-2xl border border-line bg-white/80 p-6 shadow-card backdrop-blur-xl hover:border-primary-300 hover:shadow-card-hover dark:border-primary-300/15 dark:bg-dark-800/60 dark:shadow-none dark:hover:border-primary-400/50;
-  }
-
-  .card-gradient {
-    @apply rounded-2xl border border-primary-200 bg-gradient-to-br from-white to-primary-50 p-6 shadow-card transition-all duration-300 hover:shadow-card-hover dark:border-primary-300/15 dark:from-dark-800 dark:to-primary-900/30;
-  }
-
-  .gradient-text {
-    @apply bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent dark:from-primary-400 dark:to-secondary-400;
-  }
-
-  .input-field {
-    @apply w-full rounded-xl border border-line bg-white/80 px-4 py-3 text-dark-900 transition-all duration-200 placeholder:text-dark-400 focus:border-secondary-600 focus:outline-none focus:ring-2 focus:ring-secondary-600/30 dark:border-primary-300/15 dark:bg-dark-900/60 dark:text-white dark:placeholder:text-dark-500;
+    @apply border-b border-line bg-surface-2/60 text-[0.8125rem] font-medium text-faint;
   }
 
   .label-text {
-    @apply mb-2 block text-sm font-semibold text-dark-700 dark:text-dark-300;
-  }
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+    @apply mb-2 block text-sm font-medium text-muted;
   }
 
-  .animation-delay-100 {
-    animation-delay: 100ms;
+  /* Inputs: the control radius, a hairline on the surface, the brand ring on focus */
+  .field {
+    @apply min-h-control w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-sm text-text transition-colors placeholder:text-faint focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand;
+  }
+  /* A quotation row arrived at from a design: a brief tint so the eye lands on it */
+  .line-flash {
+    animation: line-flash 2.4s ease-out;
+  }
+  .field-invalid {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-500 dark:border-red-400/60;
+  }
+  /* Small caption above a field: sentence case, quiet */
+  .field-label {
+    @apply mb-1.5 block text-[0.8125rem] font-medium leading-snug text-faint;
   }
 
-  .animation-delay-200 {
-    animation-delay: 200ms;
+  /* Status / action badge (same shape everywhere; colour comes from the tone classes) */
+  .badge {
+    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold;
   }
 
-  .animation-delay-300 {
-    animation-delay: 300ms;
+  /* Inline text action ("Add row", "Verify all") with a real touch target */
+  .link-action,
+  .link-action-muted {
+    @apply inline-flex min-h-control items-center gap-1.5 rounded-control px-2 text-sm font-semibold transition-colors hover:bg-text/5 disabled:opacity-50;
+  }
+  .link-action {
+    @apply text-accent-text;
+  }
+  .link-action-muted {
+    @apply text-muted hover:text-text;
   }
 
-  .animation-delay-400 {
-    animation-delay: 400ms;
+  /* Segmented control (tabs): a tinted track, the chosen option a solid brand pill */
+  .seg {
+    @apply inline-flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-line bg-canvas/60 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
   }
-}
+  .seg-btn {
+    @apply inline-flex min-h-[calc(var(--control-h)-0.5rem-2px)] shrink-0 items-center whitespace-nowrap rounded-xl px-4 text-sm font-semibold text-muted transition-colors hover:text-text disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .seg-btn[aria-selected='true'] {
+    @apply bg-brand text-white hover:text-white;
+  }
 
-/* Button motion: a barely-there lift on hover and a small press on click, with
-   no overshoot. Uses the individual `scale` property so it
-   never clashes with Tailwind's transform utilities (e.g. -translate-y-1/2). */
-:is(button, a, label):is(
-    [class~='rounded-full'],
-    .btn-primary,
-    .btn-secondary,
-    .btn-outline,
-    .btn-banner,
-    .btn-banner-primary,
-    .btn-banner-secondary
-  ):not(:disabled, [aria-disabled='true'], .no-bounce) {
-  transition:
-    scale 160ms cubic-bezier(0.2, 0, 0, 1),
-    color 150ms ease,
-    background-color 150ms ease,
-    border-color 150ms ease,
-    box-shadow 150ms ease,
-    filter 150ms ease,
-    opacity 150ms ease;
-}
-:is(button, a, label):is(
-    [class~='rounded-full'],
-    .btn-primary,
-    .btn-secondary,
-    .btn-outline,
-    .btn-banner,
-    .btn-banner-primary,
-    .btn-banner-secondary
-  ):not(:disabled, [aria-disabled='true'], .no-bounce):hover {
-  scale: 1.01;
-}
-:is(button, a, label):is(
-    [class~='rounded-full'],
-    .btn-primary,
-    .btn-secondary,
-    .btn-outline,
-    .btn-banner,
-    .btn-banner-primary,
-    .btn-banner-secondary
-  ):not(:disabled, [aria-disabled='true'], .no-bounce):active {
-  scale: 0.98;
-  transition-duration: 80ms, 150ms, 150ms, 150ms, 150ms, 150ms, 150ms;
-}
-@media (prefers-reduced-motion: reduce) {
-  :is(button, a, label):is(
-    [class~='rounded-full'],
-    .btn-primary,
-    .btn-secondary,
-    .btn-outline,
-    .btn-banner,
-    .btn-banner-primary,
-    .btn-banner-secondary
-  ) {
-    transition: none;
-    scale: none !important;
+  /* Filter chip (.filter-chip): a pill that toggles a filter; aria-pressed marks the chosen one */
+  .filter-chip {
+    @apply inline-flex min-h-control items-center gap-1.5 whitespace-nowrap rounded-full border border-line px-4 text-sm font-semibold text-muted transition-colors hover:bg-text/5 hover:text-text disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .filter-chip[aria-pressed='true'] {
+    @apply border-brand bg-brand/10 text-accent-text;
+  }
+
+  /* One table look: 13px text, quiet sentence-case headers, roomy rows */
+  .data-table {
+    @apply w-full text-left text-[13px] tabular-nums;
+  }
+  .data-table thead {
+    @apply border-b border-line bg-surface-2/60 text-[0.8125rem] font-medium text-faint;
+  }
+  .data-table th {
+    @apply whitespace-nowrap px-3 py-2 text-left font-medium;
+  }
+  .data-table td {
+    @apply px-3 py-1.5 align-middle;
+  }
+  .data-table tbody {
+    @apply divide-y divide-line;
   }
 }
 
@@ -252,7 +313,7 @@
   position: relative;
   overflow: hidden;
   border-radius: 0.75rem;
-  background-color: rgb(219 230 251 / 0.7);
+  background-color: rgb(var(--text) / 0.06);
 }
 .skeleton::after {
   content: '';
@@ -262,22 +323,29 @@
   background-image: linear-gradient(
     90deg,
     transparent,
-    rgb(255 255 255 / 0.55),
+    rgb(var(--surface) / 0.55),
     transparent
   );
   animation: skeleton-shimmer 1.6s ease-in-out infinite;
-}
-.dark .skeleton {
-  background-color: rgb(255 255 255 / 0.08);
 }
 .dark .skeleton::after {
   background-image: linear-gradient(
     90deg,
     transparent,
-    rgb(255 255 255 / 0.08),
+    rgb(255 255 255 / 0.06),
     transparent
   );
 }
+@keyframes line-flash {
+  0%,
+  60% {
+    background-color: rgb(var(--brand-2) / 0.18);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 @keyframes skeleton-shimmer {
   to {
     transform: translateX(100%);
@@ -291,8 +359,8 @@
   }
 }
 
-/* Modal: backdrop fades, panel eases in. `animate-in` utilities need a plugin
-   this project does not install, so the keyframes live here. */
+/* Modal: backdrop fades, the panel arrives from just under full size. `animate-in` utilities need a plugin this
+   project does not install, so the keyframes live here. */
 @keyframes modal-backdrop-in {
   from {
     opacity: 0;
@@ -301,14 +369,24 @@
 @keyframes modal-panel-in {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.97);
+    transform: scale(0.97);
+  }
+}
+@keyframes modal-sheet-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+@media (max-width: 639px) {
+  .modal-panel {
+    animation: modal-sheet-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 }
 .modal-backdrop {
-  animation: modal-backdrop-in 150ms ease-out both;
+  animation: modal-backdrop-in 160ms ease-out both;
 }
 .modal-panel {
-  animation: modal-panel-in 180ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: modal-panel-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @media (prefers-reduced-motion: reduce) {
   .modal-backdrop,
@@ -329,7 +407,7 @@
   }
 }
 .board-card-in {
-  animation: board-card-in 200ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation: board-card-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @media (prefers-reduced-motion: reduce) {
   .board-card-in {
@@ -337,44 +415,20 @@
   }
 }
 
-/* Custom scrollbar */
+/* Thin, quiet scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  @apply rounded bg-dark-300 dark:bg-dark-600;
+  border-radius: 9999px;
+  background: rgb(var(--text) / 0.16);
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-dark-400 dark:bg-dark-500;
-}
-
-/* Dashboard specific styles */
-.client-card {
-  @apply rounded-2xl border border-line bg-white/80 p-5 shadow-card backdrop-blur-xl transition-all duration-150 hover:-translate-y-px hover:border-primary-300 hover:shadow-card-hover dark:border-primary-300/15 dark:bg-dark-800/60 dark:shadow-none dark:hover:border-primary-400/50;
-}
-
-.client-stat {
-  @apply rounded-2xl bg-gradient-to-br from-primary-600 to-secondary-600 p-5 text-white shadow-lg;
-}
-
-.sidebar-link {
-  @apply flex items-center gap-3 rounded-xl px-4 py-3 text-dark-600 transition-all duration-200 hover:bg-primary-50 hover:text-primary-600 dark:text-dark-300 dark:hover:bg-primary-900/30 dark:hover:text-primary-400;
-}
-
-.sidebar-link-active {
-  @apply flex items-center gap-3 rounded-xl bg-primary-50 px-4 py-3 font-semibold text-primary-600 dark:bg-primary-900/30 dark:text-primary-400;
-}
-
-/* Chart container */
-.chart-container {
-  @apply h-64 w-full md:h-80;
+  background: rgb(var(--text) / 0.28);
 }
 
 /* ── Mobile foundation ───────────────────────────────────────────────────── */
@@ -418,22 +472,13 @@ summary {
   margin: 0 !important;
 }
 
-/* iOS-style frosted pill: translucent, strongly blurred, hairline edge, soft depth */
+/* iOS-style frosted chrome for the phone navigation and its menus (RupeeFrame's ios-glass) */
 .ios-pill {
-  border: 1px solid rgb(255 255 255 / 0.7);
-  background: rgb(255 255 255 / 0.62);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  backdrop-filter: blur(24px) saturate(180%);
-  box-shadow:
-    0 1px 0 0 rgb(255 255 255 / 0.9) inset,
-    0 14px 40px -18px rgb(20 40 110 / 0.45);
-}
-.dark .ios-pill {
-  border-color: rgb(255 255 255 / 0.1);
-  background: rgb(18 27 50 / 0.58);
-  box-shadow:
-    0 1px 0 0 rgb(255 255 255 / 0.06) inset,
-    0 18px 44px -20px rgb(0 0 0 / 0.75);
+  border: 1px solid var(--glass-edge);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  backdrop-filter: blur(14px) saturate(160%);
+  box-shadow: var(--glass-shadow);
 }
 .mobile-nav-pill {
   top: max(0.75rem, env(safe-area-inset-top));
@@ -444,7 +489,7 @@ summary {
 .mobile-nav-panel {
   bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 4.5rem);
   transform-origin: bottom center;
-  animation: nav-sheet 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: nav-sheet 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @keyframes nav-sheet {
   from {
@@ -478,27 +523,25 @@ summary {
 
 /* 44px minimum touch targets on phones and tablets */
 @media (max-width: 1023px) {
-  .btn-primary,
-  .btn-secondary,
-  .btn-outline,
-  .btn-banner {
-    min-height: 44px;
+  :root {
+    --control-h: 2.75rem;
   }
 }
 
-/* Same background as <body> (plain color + SVG dot grid, fixed to the viewport). Sticky bars use it so they
-   look like part of the page while still hiding whatever scrolls underneath them. */
+/* Same background as <body> (canvas + fixed dot grid). Sticky bars use it so they look like part of the page while
+   still hiding whatever scrolls underneath them. */
 .bg-page {
-  background-color: #e2e9fa;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='1.25' fill='%231e378c' fill-opacity='0.28'/%3E%3C/svg%3E");
+  background-color: rgb(var(--ink));
+  background-image: radial-gradient(
+    circle at 15px 15px,
+    var(--dot) 1.25px,
+    transparent 1.5px
+  );
+  background-size: 30px 30px;
   background-attachment: fixed;
 }
-.dark .bg-page {
-  background-color: #070b15;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30'%3E%3Ccircle cx='15' cy='15' r='1.25' fill='%238ca5ff' fill-opacity='0.2'/%3E%3C/svg%3E");
-}
 
-/* ── Shared controls: one look for every checkbox, radio, select and table ─── */
+/* ── Shared controls: one look for every checkbox, radio and select ─────────── */
 input[type='checkbox'],
 input[type='radio'] {
   appearance: none;
@@ -510,17 +553,11 @@ input[type='radio'] {
   height: 1.25rem;
   margin: 0;
   cursor: pointer;
-  border: 1.5px solid rgb(61 72 103 / 0.45);
-  background-color: rgb(255 255 255 / 0.9);
+  border: 1.5px solid var(--line-strong);
+  background-color: rgb(var(--surface));
   transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    box-shadow 150ms ease;
-}
-.dark input[type='checkbox'],
-.dark input[type='radio'] {
-  border-color: rgb(140 165 255 / 0.4);
-  background-color: rgb(14 21 38 / 0.7);
+    background-color 160ms ease,
+    border-color 160ms ease;
 }
 input[type='checkbox'] {
   border-radius: 0.4rem;
@@ -530,12 +567,12 @@ input[type='radio'] {
 }
 input[type='checkbox']:hover:not(:disabled),
 input[type='radio']:hover:not(:disabled) {
-  border-color: #1e4fd6;
+  border-color: rgb(var(--brand-1));
 }
 input[type='checkbox']:checked,
 input[type='radio']:checked {
   border-color: transparent;
-  background-image: linear-gradient(135deg, #1e4fd6, #0c96c2);
+  background-color: rgb(var(--brand-1));
 }
 input[type='checkbox']:checked::after {
   content: '';
@@ -553,7 +590,7 @@ input[type='radio']:checked::after {
 }
 input[type='checkbox']:focus-visible,
 input[type='radio']:focus-visible {
-  outline: 2px solid #0c96c2;
+  outline: 2px solid rgb(var(--brand-2));
   outline-offset: 2px;
 }
 input[type='checkbox']:disabled,
@@ -566,7 +603,7 @@ input[type='radio']:disabled {
 select {
   appearance: none;
   -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23566280' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23545f80' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 0.65rem center;
   background-size: 1rem;
@@ -574,74 +611,27 @@ select {
   cursor: pointer;
 }
 .dark select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239aa4c0' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1a1' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
-@layer components {
-  /* Compact input used inside tables and item cards */
-  .field {
-    @apply w-full rounded-xl border border-line bg-white/80 px-3 py-2 text-sm text-dark-900 transition-colors placeholder:text-dark-400 focus:border-secondary-600 focus:outline-none focus:ring-2 focus:ring-secondary-600/30 dark:border-primary-300/15 dark:bg-dark-900/60 dark:text-white;
+/* Hotspot pins: one slow pulse ring on pins not yet opened, so they read as tappable. */
+@keyframes pin-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
   }
-  .field-invalid {
-    @apply border-red-400 focus:border-red-500 focus:ring-red-500/30 dark:border-red-400/60;
-  }
-  /* Small caption above a field */
-  .field-label {
-    @apply mb-1 block text-[11px] font-bold uppercase tracking-[0.1em] text-dark-500 dark:text-dark-400;
-  }
-
-  /* Status / action badge (same shape everywhere; colour comes from the tone classes) */
-  .badge {
-    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold;
-  }
-
-  /* Inline text action ("+ Add row", "Verify all") with a real touch target */
-  .link-action {
-    @apply inline-flex min-h-9 items-center gap-1.5 rounded-full px-2 text-sm font-semibold text-primary-600 transition-colors hover:bg-primary-50 hover:text-primary-700 disabled:opacity-50 dark:text-primary-400 dark:hover:bg-white/10 dark:hover:text-primary-300;
-  }
-  .link-action-muted {
-    @apply inline-flex min-h-9 items-center gap-1.5 rounded-full px-2 text-sm font-medium text-dark-500 transition-colors hover:bg-primary-50 hover:text-primary-700 disabled:opacity-50 dark:text-dark-400 dark:hover:bg-white/10 dark:hover:text-primary-300;
-  }
-
-  /* Destructive outline button */
-  .btn-danger-soft {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-red-300 bg-white/60 px-4 py-2 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-400/30 dark:bg-transparent dark:text-red-400 dark:hover:bg-red-500/10;
-  }
-  .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgb(212_42_60/0.7)] transition-all hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  /* Pill segmented control (tabs): replaces underline tabs everywhere */
-  .seg {
-    @apply inline-flex max-w-full gap-1 overflow-x-auto rounded-full border border-line bg-white/60 p-1 [scrollbar-width:none] dark:border-primary-300/15 dark:bg-white/5 [&::-webkit-scrollbar]:hidden;
-  }
-  .seg-btn {
-    @apply inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full px-4 text-sm font-semibold text-dark-600 transition-colors hover:bg-white/70 disabled:cursor-not-allowed disabled:opacity-50 dark:text-dark-300 dark:hover:bg-white/10;
-  }
-  .seg-btn[aria-selected='true'] {
-    @apply bg-gradient-to-r from-primary-600 to-secondary-600 text-white shadow-brand hover:brightness-110;
-  }
-
-  /* One table look: 14px text, uppercase eyebrow headers, roomy rows */
-  .data-table {
-    @apply w-full text-left text-[13px];
-  }
-  .data-table thead {
-    @apply border-b border-line bg-primary-50/70 text-[11px] font-bold uppercase tracking-[0.1em] text-dark-600 dark:border-primary-300/10 dark:bg-white/[0.03] dark:text-dark-400;
-  }
-  .data-table th {
-    @apply whitespace-nowrap px-3 py-2 text-left font-bold;
-  }
-  .data-table td {
-    @apply px-3 py-1.5 align-middle;
-  }
-  .data-table tbody {
-    @apply divide-y divide-line dark:divide-primary-300/10;
+  70%,
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
   }
 }
-
-@layer components {
-  .btn-success {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_-10px_rgb(31_157_85/0.7)] transition-all hover:bg-green-500 disabled:cursor-not-allowed disabled:opacity-50;
+.pin-pulse {
+  animation: pin-pulse 2.4s ease-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pin-pulse {
+    animation: none;
+    display: none;
   }
 }

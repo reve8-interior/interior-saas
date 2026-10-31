@@ -82,6 +82,153 @@ def test_versions_are_numbered_and_frozen(api, studio, db):
     assert detail["line_items"][0]["initial_price"] == 10000
 
 
+def test_restore_replaces_live_items_and_keeps_a_backup(api, studio, db):
+    admin, _, client, quotation = studio
+    v1 = _save(api, admin, client).json()
+    quotation.line_items[0].description = "Edited cabinets"
+    db.flush()
+
+    res = api.post(
+        f"/api/v1/quotation-versions/{v1['id']}/restore", headers=auth(admin)
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["restored_number"] == 1
+    assert body["items_restored"] == 1
+    assert body["backup"]["number"] == 2
+
+    db.expire_all()
+    descriptions = [i.description for i in quotation.line_items]
+    assert descriptions == ["Modular cabinets"]
+    backup = api.get(
+        f"/api/v1/quotation-versions/{body['backup']['id']}",
+        headers=auth(admin),
+    ).json()
+    assert backup["line_items"][0]["description"] == "Edited cabinets"
+
+
+def _public_token(api, admin, client):
+    version = _save(api, admin, client).json()
+    share = api.post(
+        f"/api/v1/quotation-versions/{version['id']}/shares",
+        headers=auth(admin),
+        json={},
+    ).json()
+    return version, share, share["url"].rsplit("/", 1)[1]
+
+
+def test_one_link_follows_the_shared_version_and_resets_the_reply(api, studio):
+    admin, _, client, _ = studio
+    v1, _, old_token = _public_token(api, admin, client)
+    api.post(
+        f"/api/v1/quotation-share/{old_token}/respond",
+        json={"kind": "question", "name": "Mrs Rao", "message": "Finish?"},
+    )
+
+    def listed():
+        rows = api.get(
+            f"/api/v1/clients/{client.id}/quotation/versions",
+            headers=auth(admin),
+        ).json()
+        return {r["number"]: r for r in rows}
+
+    assert listed()[1]["is_shared"] is True
+    assert listed()[1]["reply_kind"] == "question"
+    assert listed()[1]["reply_message"] == "Finish?"
+
+    v2, _, new_token = _public_token(api, admin, client)
+    rows = listed()
+    assert rows[2]["is_shared"] is True
+    assert rows[1]["is_shared"] is False
+    assert rows[1]["reply_kind"] is None
+    # Same URL, now showing version 2, and the old answer is gone.
+    assert new_token == old_token
+    page = api.get(f"/api/v1/quotation-share/{old_token}")
+    assert page.status_code == 200
+    assert rows[2]["reply_kind"] is None
+    assert page.json().get("responded_kind") is None
+
+
+def test_new_links_are_readable_and_named_after_the_client(api, studio):
+    admin, _, client, _ = studio
+    _, _, token = _public_token(api, admin, client)
+    slug = client.name.lower().replace(" ", "-")
+    assert token.startswith(slug[:10])
+    assert len(token.rsplit("-", 1)[1]) == 8
+    assert api.get(f"/api/v1/quotation-share/{token}").status_code == 200
+
+
+def test_public_views_are_counted(api, studio):
+    admin, _, client, _ = studio
+    version, _, token = _public_token(api, admin, client)
+
+    api.get(f"/api/v1/quotation-share/{token}")
+    api.get(f"/api/v1/quotation-share/{token}")
+
+    shares = api.get(
+        f"/api/v1/quotation-versions/{version['id']}/shares",
+        headers=auth(admin),
+    ).json()
+    assert shares[0]["view_count"] == 2
+    assert shares[0]["last_viewed_at"] is not None
+
+
+def test_customer_can_approve_or_ask_a_question(api, studio):
+    admin, _, client, _ = studio
+    version, _, token = _public_token(api, admin, client)
+    url = f"/api/v1/quotation-share/{token}/respond"
+
+    assert (
+        api.post(url, json={"kind": "question", "name": "Mrs Rao"}).status_code
+        == 422
+    )
+
+    sent = api.post(
+        url,
+        json={
+            "kind": "question",
+            "name": "Mrs Rao",
+            "message": "Can we change the finish?",
+        },
+    )
+    assert sent.status_code == 204
+
+    shares = api.get(
+        f"/api/v1/quotation-versions/{version['id']}/shares",
+        headers=auth(admin),
+    ).json()
+    assert shares[0]["response_kind"] == "question"
+    assert shares[0]["response_message"] == "Can we change the finish?"
+    assert (
+        api.get(f"/api/v1/quotation-share/{token}").json()["responded_kind"]
+        == "question"
+    )
+
+
+def test_responses_are_rate_limited_per_link(api, studio):
+    admin, _, client, _ = studio
+    _, _, token = _public_token(api, admin, client)
+    url = f"/api/v1/quotation-share/{token}/respond"
+    body = {"kind": "approved", "name": "Mrs Rao"}
+
+    assert api.post(url, json=body).status_code == 204
+    assert api.post(url, json=body).status_code == 429
+
+
+def test_revoked_link_rejects_responses(api, studio):
+    admin, _, client, _ = studio
+    version, share, token = _public_token(api, admin, client)
+    api.delete(
+        f"/api/v1/quotation-versions/{version['id']}/shares/{share['id']}",
+        headers=auth(admin),
+    )
+    res = api.post(
+        f"/api/v1/quotation-share/{token}/respond",
+        json={"kind": "approved", "name": "Mrs Rao"},
+    )
+    assert res.status_code == 404
+
+
 def test_empty_quotation_cannot_be_versioned(api, studio):
     admin, _, client, quotation = studio
     for item in list(quotation.line_items):
@@ -138,6 +285,36 @@ def test_share_expiry_and_revoke(api, studio):
     assert api.get(f"/api/v1/quotation-share/{token}").status_code == 404
     # A stopped link is deleted, not kept in the list.
     assert api.get(base, headers=auth(admin)).json() == []
+
+
+def test_share_expiry_can_be_extended(api, studio):
+    admin_a, admin_b, client, _ = studio
+    version = _save(api, admin_a, client).json()
+    base = f"/api/v1/quotation-versions/{version['id']}/shares"
+    soon = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+    share = api.post(
+        base, headers=auth(admin_a), json={"expires_at": soon}
+    ).json()
+    path = f"{base}/{share['id']}"
+
+    later = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
+    res = api.patch(path, headers=auth(admin_a), json={"expires_at": later})
+    assert res.status_code == 200
+    assert res.json()["url"] == share["url"]
+    assert res.json()["expires_at"] is not None
+
+    past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    assert (
+        api.patch(
+            path, headers=auth(admin_a), json={"expires_at": past}
+        ).status_code
+        == 422
+    )
+    assert (
+        api.patch(path, headers=auth(admin_a), json={}).json()["expires_at"]
+        is None
+    )
+    assert api.patch(path, headers=auth(admin_b), json={}).status_code == 404
 
 
 def test_other_business_cannot_touch_versions(api, studio):
@@ -394,3 +571,21 @@ def test_inactive_version_cannot_be_picked(api, studio):
         json={"is_active": False},
     )
     assert _agree(api, admin_a, version["id"]).status_code == 409
+
+
+def test_quotation_lines_name_the_design_they_came_from(api, studio, db):
+    admin, _, client, quotation = studio
+    design = _design(db, client)
+    hotspot = design.hotspots[0] if design.hotspots else None
+    if hotspot is None:
+        hotspot = db.query(DesignHotspot).filter_by(design_id=design.id).one()
+    hotspot.quotation_line_item_id = quotation.line_items[0].id
+    db.flush()
+
+    body = api.get(
+        f"/api/v1/clients/{client.id}/quotation", headers=auth(admin)
+    ).json()
+    line = body["rooms"][0]["items"][0]
+    assert line["source_design_id"] == str(design.id)
+    assert line["source_design_title"] == "Kitchen render"
+    assert line["source_hotspot_id"]

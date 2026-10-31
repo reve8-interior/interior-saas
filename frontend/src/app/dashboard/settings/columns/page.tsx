@@ -1,6 +1,7 @@
 'use client';
 
 import { LoadingRegion, Skeleton } from '@/components/ui';
+import { Switch } from '@/components/ui/Switch';
 import { TopBarActions } from '@/components/layout/TopBarActions';
 import {
   LineItemColumnDef,
@@ -20,9 +21,6 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-const inputCls =
-  'w-full rounded-xl border border-line bg-white/80 px-3 py-2 text-sm text-dark-900 transition-colors focus:border-secondary-600 focus:outline-none focus:ring-2 focus:ring-secondary-600/30 dark:border-primary-300/15 dark:bg-dark-900/60 dark:text-white';
-
 /** Edits are saved this long after the last change, so typing isn't saved per keystroke. */
 const AUTOSAVE_DELAY_MS = 600;
 
@@ -35,41 +33,6 @@ function slugify(label: string): string {
     .replace(/^_+|_+$/g, '')
     .replace(/^([0-9])/, 'c$1')
     .slice(0, 30);
-}
-
-/** Accessible on/off switch with a 44px touch row. */
-function Toggle({
-  checked,
-  disabled,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  disabled?: boolean;
-  onChange: (next: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-        checked
-          ? 'bg-gradient-to-r from-primary-600 to-secondary-600'
-          : 'bg-dark-300 dark:bg-white/15'
-      }`}
-    >
-      <span
-        className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-          checked ? 'translate-x-5' : ''
-        }`}
-      />
-    </button>
-  );
 }
 
 function SaveStatus({
@@ -186,7 +149,7 @@ export default function ColumnSetupPage() {
 
   if (!draft) {
     return (
-      <LoadingRegion className="max-w-3xl space-y-3">
+      <LoadingRegion className="mx-auto max-w-3xl space-y-3">
         <Skeleton className="h-24 rounded-2xl" />
         <Skeleton className="h-64 rounded-2xl" />
       </LoadingRegion>
@@ -238,13 +201,13 @@ export default function ColumnSetupPage() {
         <SaveStatus state={saveState} onRetry={retry} />
       </TopBarActions>
 
-      <div className="max-w-3xl space-y-4">
+      <div className="mx-auto max-w-3xl space-y-4">
         <p className="text-sm leading-relaxed text-dark-500 dark:text-dark-400">
-          These columns appear on conversation AI extracts and the quotation.
+          These columns appear on AI-drafted meeting rows and the quotation.
           <span className="font-semibold"> Mandatory</span> columns must be
-          filled before a conversation item can be added to the quotation.
-          Disabled columns are hidden everywhere. Room and Description are
-          locked — they identify an item when conversations merge.
+          filled before a meeting row can be added to the quotation. Disabled
+          columns are hidden everywhere. Room and Description are locked — they
+          identify an item when meetings merge.
         </p>
 
         {/* Add a column first on phones: it's the main action, and it saves on its own */}
@@ -255,7 +218,7 @@ export default function ColumnSetupPage() {
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addColumn()}
-              className={inputCls}
+              className="field"
               placeholder="e.g. Brand, Finish, Warranty"
               enterKeyHint="done"
             />
@@ -268,7 +231,7 @@ export default function ColumnSetupPage() {
                 onChange={(e) =>
                   setNewType(e.target.value as 'text' | 'number')
                 }
-                className={inputCls}
+                className="field"
               >
                 <option value="text">text</option>
                 <option value="number">number</option>
@@ -277,7 +240,7 @@ export default function ColumnSetupPage() {
             <button
               type="button"
               onClick={addColumn}
-              className="btn-primary h-11 shrink-0 px-5"
+              className="btn-primary shrink-0 px-5"
             >
               <Plus className="h-4 w-4" /> Add
             </button>
@@ -298,7 +261,7 @@ export default function ColumnSetupPage() {
                 <input
                   value={col.label}
                   onChange={(e) => update(idx, { label: e.target.value })}
-                  className={`${inputCls} font-semibold`}
+                  className="field font-semibold"
                   aria-label="Column name"
                 />
                 {!col.builtin && (
@@ -324,19 +287,19 @@ export default function ColumnSetupPage() {
                       update(idx, { type: e.target.value as 'text' | 'number' })
                     }
                     aria-label="Column type"
-                    className="rounded-full border border-line bg-white/80 px-3 py-1 text-xs dark:border-primary-300/15 dark:bg-dark-900/60"
+                    className="rounded-full border border-line bg-surface px-3 py-1 text-xs dark:border-line dark:bg-dark-900/60"
                   >
                     <option value="text">text</option>
                     <option value="number">number</option>
                   </select>
                 )}
               </div>
-              <div className="divide-y divide-line rounded-2xl border border-line dark:divide-primary-300/10 dark:border-primary-300/10">
+              <div className="divide-y divide-line rounded-2xl bg-surface-2 dark:divide-line dark:border-line">
                 <div className="flex min-h-12 items-center justify-between px-3.5">
                   <span className="text-sm font-medium text-dark-800 dark:text-dark-100">
                     Mandatory
                   </span>
-                  <Toggle
+                  <Switch
                     checked={col.required}
                     disabled={col.locked}
                     onChange={(v) => update(idx, { required: v })}
@@ -347,7 +310,7 @@ export default function ColumnSetupPage() {
                   <span className="text-sm font-medium text-dark-800 dark:text-dark-100">
                     Show
                   </span>
-                  <Toggle
+                  <Switch
                     checked={col.enabled}
                     disabled={col.locked}
                     onChange={(v) => update(idx, { enabled: v })}
@@ -373,7 +336,7 @@ export default function ColumnSetupPage() {
                 )}
               </tr>
             </thead>
-            <tbody className="divide-y divide-line dark:divide-primary-300/10">
+            <tbody className="divide-y divide-line dark:divide-line">
               {draft.map((col, idx) => (
                 <tr key={col.key}>
                   <td className="w-8 px-3 py-2 text-dark-400">
@@ -387,7 +350,7 @@ export default function ColumnSetupPage() {
                     <input
                       value={col.label}
                       onChange={(e) => update(idx, { label: e.target.value })}
-                      className={inputCls}
+                      className="field"
                       aria-label="Column name"
                     />
                   </td>
@@ -412,7 +375,7 @@ export default function ColumnSetupPage() {
                             type: e.target.value as 'text' | 'number',
                           })
                         }
-                        className={inputCls}
+                        className="field"
                         aria-label="Column type"
                       >
                         <option value="text">text</option>
@@ -422,7 +385,7 @@ export default function ColumnSetupPage() {
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex justify-center">
-                      <Toggle
+                      <Switch
                         checked={col.required}
                         disabled={col.locked}
                         onChange={(v) => update(idx, { required: v })}
@@ -432,7 +395,7 @@ export default function ColumnSetupPage() {
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex justify-center">
-                      <Toggle
+                      <Switch
                         checked={col.enabled}
                         disabled={col.locked}
                         onChange={(v) => update(idx, { enabled: v })}

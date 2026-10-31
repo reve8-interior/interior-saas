@@ -1,4 +1,4 @@
-import { describeAudit } from '@/components/team/TeamManager';
+import { describeAudit } from '@/lib/teamAudit';
 import { businessTeamApi, ownTeamApi } from '@/lib/team';
 import { AuditEntry } from '@/lib/schemas/business';
 import { describe, expect, it } from 'vitest';

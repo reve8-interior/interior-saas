@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, Image, MessagesSquare, User } from 'lucide-react';
+import { FileText, Image, User } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
@@ -8,20 +8,25 @@ import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Skeleton } from '@/components/ui';
-import { listDesigns } from '@/lib/designs';
+import { countDesigns, designCountKey } from '@/lib/designs';
+import { ATTENTION_KEY, getAttention } from '@/lib/attention';
+import { reviewQueue, type ReviewableCheckpoint } from '@/lib/checkpoints';
+import { getMe } from '@/lib/profile';
 import { listQuotationVersions } from '@/lib/quotationVersions';
-import type { QuotationVersionSummary } from '@/lib/schemas/quotationVersion';
+import { QuotationSections } from '@/components/quotation/QuotationSections';
 
 interface Tab {
   href: string;
   label: string;
   /** Sibling routes that keep this tab highlighted. */
-  alsoActiveOn?: string;
+  alsoActiveOn?: string[];
   icon: LucideIcon;
   /** Small number shown beside the label, once known. */
   count?: number;
   /** True while the count is still loading: renders a placeholder pill. */
   countLoading?: boolean;
+  /** Items waiting on the designer in this section; shown as a red badge. */
+  attention?: number;
 }
 
 /**
@@ -36,57 +41,64 @@ export default function ClientWorkspaceLayout({
   const { id } = useParams<{ id: string }>();
   const pathname = usePathname();
 
-  const { data: designs, isLoading: designsLoading } = useQuery({
-    queryKey: ['designs', id],
-    queryFn: () => listDesigns(id),
+  const { data: designCount, isLoading: designsLoading } = useQuery({
+    queryKey: designCountKey(id),
+    queryFn: () => countDesigns(id),
   });
-  const { data: versions, isLoading: versionsLoading } = useQuery<
-    QuotationVersionSummary[]
-  >({
+  const { data: meetings = [] } = useQuery<ReviewableCheckpoint[]>({
+    queryKey: ['checkpoints', id],
+    queryFn: () =>
+      api.get<ReviewableCheckpoint[]>(`/clients/${id}/checkpoints`),
+  });
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: getMe });
+
+  const { data: attentionItems = [] } = useQuery({
+    queryKey: ATTENTION_KEY,
+    queryFn: getAttention,
+  });
+  // Customer questions live on Details; the rest of the feed belongs to Quotation.
+  const clientItems = attentionItems.filter((i) => i.client_id === id);
+  const openQuestions = clientItems.filter(
+    (i) => i.kind === 'customer_question'
+  ).length;
+  const waiting =
+    clientItems.filter((i) => !i.read && i.kind !== 'customer_question')
+      .length + reviewQueue(meetings).length;
+  const { data: versions } = useQuery({
     queryKey: ['quotation-versions', id],
     queryFn: () => listQuotationVersions(id),
   });
-  const { data: conversations, isLoading: conversationsLoading } = useQuery<
-    { id: string }[]
-  >({
-    queryKey: ['checkpoints', id],
-    queryFn: () => api.get<{ id: string }[]>(`/clients/${id}/checkpoints`),
-  });
 
   const base = `/dashboard/clients/${id}`;
+  const quotationPaths = [
+    `${base}/quotation`,
+    `${base}/checkpoints`,
+    `${base}/versions`,
+  ];
   const tabs: Tab[] = [
-    { href: base, label: 'Details', icon: User },
+    { href: base, label: 'Details', icon: User, attention: openQuestions },
     {
       href: `${base}/designs`,
       label: 'Designs',
       icon: Image,
-      count: designs?.length,
+      count: designCount,
       countLoading: designsLoading,
-    },
-    {
-      href: `${base}/checkpoints`,
-      label: 'Conversations',
-      icon: MessagesSquare,
-      count: conversations?.length,
-      countLoading: conversationsLoading,
     },
     {
       href: `${base}/quotation`,
       label: 'Quotation',
       icon: FileText,
-      alsoActiveOn: `${base}/versions`,
+      alsoActiveOn: quotationPaths,
+      attention: waiting,
     },
   ];
-  const inQuotation =
-    pathname === `${base}/quotation` || pathname === `${base}/versions`;
-
   return (
     <div>
       {/* Pinned under the title bar. lg:-mt-6 cancels main's top padding so the
           resting spot equals the pinned spot. pb-6 is an opaque strip, so content
           scrolls out under it and the gap below the tabs never shrinks. */}
       <div className="bg-page sticky top-[calc(max(0.75rem,env(safe-area-inset-top))+4rem)] z-20 -mx-4 pb-6 sm:-mx-6 lg:top-16 lg:-mx-8 lg:-mt-6">
-        <div className="border-b border-line px-4 dark:border-primary-300/15 sm:px-6 lg:px-8">
+        <div className="border-b border-line px-4 dark:border-line sm:px-6 lg:px-8">
           <nav
             aria-label="Client sections"
             className="-mb-px flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -99,8 +111,12 @@ export default function ClientWorkspaceLayout({
                 count,
                 countLoading,
                 alsoActiveOn,
+                attention,
               }) => {
-                const active = href === pathname || alsoActiveOn === pathname;
+                const active =
+                  href === pathname ||
+                  alsoActiveOn?.includes(pathname) ||
+                  (href !== base && pathname.startsWith(`${href}/`));
                 return (
                   <Link
                     key={label}
@@ -128,6 +144,15 @@ export default function ClientWorkspaceLayout({
                         {count}
                       </span>
                     )}
+                    {attention ? (
+                      <span
+                        role="status"
+                        aria-label={`${attention} waiting on you`}
+                        className="rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-white"
+                      >
+                        {attention}
+                      </span>
+                    ) : null}
                   </Link>
                 );
               }
@@ -136,40 +161,14 @@ export default function ClientWorkspaceLayout({
         </div>
       </div>
 
-      {inQuotation && (
-        <nav
-          aria-label="Quotation views"
-          className="mb-4 inline-flex gap-1 rounded-full border border-line bg-white/60 p-1 dark:border-primary-300/15 dark:bg-white/5"
-        >
-          {[
-            { href: `${base}/quotation`, label: 'Current' },
-            {
-              href: `${base}/versions`,
-              label: 'Saved versions',
-              count: versions?.length,
-              countLoading: versionsLoading,
-            },
-          ].map(({ href, label, count, countLoading }) => (
-            <Link
-              key={href}
-              href={href}
-              aria-current={href === pathname ? 'page' : undefined}
-              className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-4 text-sm font-semibold transition-colors ${
-                href === pathname
-                  ? 'bg-primary-600 text-white'
-                  : 'text-dark-600 hover:text-dark-900 dark:text-dark-300 dark:hover:text-white'
-              }`}
-            >
-              {label}
-              {countLoading && count === undefined && (
-                <Skeleton className="h-4 w-5 rounded-full" />
-              )}
-              {count !== undefined && (
-                <span className="tabular-nums opacity-80">{count}</span>
-              )}
-            </Link>
-          ))}
-        </nav>
+      {quotationPaths.includes(pathname) && (
+        <QuotationSections
+          base={base}
+          pathname={pathname}
+          showNotes={!!me?.ai.enabled || meetings.length > 0}
+          notesCount={meetings.length}
+          versionsCount={versions?.length}
+        />
       )}
 
       {children}

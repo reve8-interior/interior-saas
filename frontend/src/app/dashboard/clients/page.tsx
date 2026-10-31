@@ -1,17 +1,33 @@
 'use client';
 
-import { ListSkeleton } from '@/components/ui';
+import { EmptyState, ErrorState, ListSkeleton } from '@/components/ui';
 import { useEffect, useState } from 'react';
 import { TopBarActions } from '@/components/layout/TopBarActions';
-import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api';
 import { PHASE_LABELS, PHASE_ORDER } from '@/lib/constants';
+import {
+  CLIENT_SORT_LABELS,
+  COLUMN_SORTS,
+  buildClientQuery,
+  filterSortClients,
+  nextColumnSort,
+  parseClientParams,
+  type ClientListParams,
+  type ClientSort,
+} from '@/lib/clientsList';
 import type { Client } from '@/lib/schemas/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronRight, RotateCcw, Search } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronRight,
+  RotateCcw,
+  Search,
+} from 'lucide-react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { NewClientModal } from '@/components/crm/NewClientModal';
 import { ClientsViewSwitch } from '@/components/crm/ClientsViewSwitch';
@@ -52,13 +68,31 @@ function PhaseSelect({
 export default function ClientsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tab = searchParams.get('tab') ?? 'active';
-  const showInactive = tab === 'inactive';
+  const pathname = usePathname();
+  const params = parseClientParams(searchParams);
+  const showInactive = params.tab === 'inactive';
+  const tab = params.tab;
+  const needle = params.q.trim();
   const qc = useQueryClient();
   const [showNewClient, setShowNewClient] = useState(false);
-  const [deactivateTarget, setDeactivateTarget] = useState<Client | null>(null);
+  const [search, setSearch] = useState(params.q);
 
-  const [search, setSearch] = useState('');
+  /** Merge a patch into the URL so list state survives reload and sharing. */
+  function updateParams(patch: Partial<ClientListParams>) {
+    const qs = buildClientQuery({ ...params, ...patch });
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+
+  // Debounce typing into the URL; also follows back/forward navigation.
+  useEffect(() => {
+    if (search === params.q) return;
+    const t = setTimeout(() => updateParams({ q: search }), 250);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
+  useEffect(() => {
+    setSearch(params.q);
+  }, [params.q]);
 
   // "n" opens New Client unless the user is typing.
   useEffect(() => {
@@ -77,23 +111,23 @@ export default function ClientsPage() {
     return () => document.removeEventListener('keydown', onKey);
   }, [showInactive]);
 
-  const { data: allClients = [], isLoading } = useQuery<Client[]>({
+  const {
+    data: allClients = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery<Client[]>({
     queryKey: ['clients', showInactive],
     queryFn: () =>
       api.get<Client[]>(`/clients${showInactive ? '?show_inactive=true' : ''}`),
   });
-  const needle = search.trim().toLowerCase();
-  // Most recently touched first, so stale clients sink instead of new ones.
-  const sortedClients = [...allClients].sort((a, b) =>
-    b.updated_at.localeCompare(a.updated_at)
-  );
-  const clients = needle
-    ? sortedClients.filter((c) =>
-        [c.name, c.contact_info?.phone, c.contact_info?.email]
-          .filter(Boolean)
-          .some((v) => String(v).toLowerCase().includes(needle))
-      )
-    : sortedClients;
+  const clients = filterSortClients(allClients, params);
+  const hasFilters = Boolean(needle || params.phase);
+  const clearFilters = () => {
+    setSearch('');
+    updateParams({ q: '', phase: '' });
+  };
+  const totalCount = allClients.length;
 
   const activateMutation = useMutation({
     mutationFn: (clientId: string) =>
@@ -106,37 +140,107 @@ export default function ClientsPage() {
   });
 
   const deactivateMutation = useMutation({
-    mutationFn: (clientId: string) =>
-      api.patch(`/clients/${clientId}/deactivate`, {}),
-    onSuccess: () => {
+    mutationFn: (client: Client) =>
+      api.patch(`/clients/${client.id}/deactivate`, {}),
+    onSuccess: (_data, client) => {
       qc.invalidateQueries({ queryKey: ['clients'] });
-      toast.success('Client deactivated');
-      setDeactivateTarget(null);
+      toast.success(`${client.name} deactivated`, {
+        action: {
+          label: 'Undo',
+          onClick: () => activateMutation.mutate(client.id),
+        },
+      });
     },
     onError: () => toast.error('Failed to deactivate client'),
   });
 
   const phaseMutation = useMutation({
-    mutationFn: ({ clientId, phase }: { clientId: string; phase: string }) =>
-      api.put(`/clients/${clientId}/phase`, { phase }),
-    onSuccess: (_data, { clientId }) => {
+    mutationFn: ({
+      clientId,
+      phase,
+    }: {
+      clientId: string;
+      phase: string;
+      previous?: string;
+    }) => api.put(`/clients/${clientId}/phase`, { phase }),
+    onSuccess: (_data, { clientId, phase, previous }) => {
       qc.invalidateQueries({ queryKey: ['clients'] });
       qc.invalidateQueries({ queryKey: ['client', clientId] });
-      toast.success('Phase updated');
+      toast.success(`Moved to ${PHASE_LABELS[phase] ?? phase}`, {
+        action: previous
+          ? {
+              label: 'Undo',
+              onClick: () =>
+                phaseMutation.mutate({ clientId, phase: previous }),
+            }
+          : undefined,
+      });
     },
     onError: () => toast.error('Could not change the phase'),
   });
 
   const setPhase = (client: Client) => (phase: string) =>
-    phaseMutation.mutate({ clientId: client.id, phase });
-
-  function switchTab(t: string) {
-    const params = new URLSearchParams();
-    params.set('tab', t);
-    router.replace(`/dashboard/clients?${params.toString()}`, {
-      scroll: false,
+    phaseMutation.mutate({
+      clientId: client.id,
+      phase,
+      previous: client.current_phase,
     });
+
+  function switchTab(t: ClientListParams['tab']) {
+    updateParams({ tab: t });
   }
+
+  const sortHeader = (column: keyof typeof COLUMN_SORTS, label: string) => {
+    const active = (COLUMN_SORTS[column] as readonly ClientSort[]).includes(
+      params.sort
+    );
+    const descending = params.sort === COLUMN_SORTS[column][1];
+    const Icon = !active ? ArrowUpDown : descending ? ArrowDown : ArrowUp;
+    return (
+      <th
+        className="px-4 py-3"
+        aria-sort={!active ? 'none' : descending ? 'descending' : 'ascending'}
+      >
+        <button
+          type="button"
+          onClick={() =>
+            updateParams({ sort: nextColumnSort(column, params.sort) })
+          }
+          className="inline-flex min-h-11 items-center gap-1 font-semibold uppercase"
+        >
+          {label}
+          <Icon
+            className={`h-3.5 w-3.5 ${active ? '' : 'opacity-40'}`}
+            aria-hidden
+          />
+        </button>
+      </th>
+    );
+  };
+
+  const emptyState = hasFilters ? (
+    <EmptyState
+      action={
+        <Button variant="secondary" size="sm" onClick={clearFilters}>
+          Clear filters
+        </Button>
+      }
+    >
+      No clients match your filters.
+    </EmptyState>
+  ) : showInactive ? (
+    <EmptyState>No deactivated clients.</EmptyState>
+  ) : (
+    <EmptyState
+      action={
+        <Button size="sm" onClick={() => setShowNewClient(true)}>
+          + Add your first client
+        </Button>
+      }
+    >
+      No clients yet.
+    </EmptyState>
+  );
 
   return (
     <div className="space-y-6">
@@ -156,7 +260,7 @@ export default function ClientsPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         {/* Tabs */}
-        <div className="inline-flex gap-1 rounded-full border border-line bg-white/60 p-1 dark:border-primary-300/15 dark:bg-white/5">
+        <div className="inline-flex gap-1 rounded-full border border-line bg-surface p-1 dark:border-line dark:bg-white/5">
           {(
             [
               ['active', 'Active Clients'],
@@ -166,9 +270,10 @@ export default function ClientsPage() {
             <button
               key={t}
               onClick={() => switchTab(t)}
+              aria-pressed={tab === t}
               className={`rounded-full px-5 py-1.5 text-sm font-semibold transition-colors ${
                 tab === t
-                  ? 'bg-gradient-to-r from-primary-600 to-secondary-600 text-white shadow-brand'
+                  ? 'bg-brand text-white'
                   : 'text-dark-500 hover:text-dark-700 dark:text-dark-400 dark:hover:text-dark-200'
               }`}
             >
@@ -190,10 +295,49 @@ export default function ClientsPage() {
             className="field !pl-9"
           />
         </div>
+        <select
+          value={params.phase}
+          onChange={(e) => updateParams({ phase: e.target.value })}
+          aria-label="Filter by phase"
+          className="field !w-auto"
+        >
+          <option value="">All phases</option>
+          {PHASE_ORDER.map((phase) => (
+            <option key={phase} value={phase}>
+              {PHASE_LABELS[phase] ?? phase}
+            </option>
+          ))}
+        </select>
+        <select
+          value={params.sort}
+          onChange={(e) => updateParams({ sort: e.target.value as ClientSort })}
+          aria-label="Sort clients"
+          className="field !w-auto"
+        >
+          {(Object.keys(CLIENT_SORT_LABELS) as ClientSort[]).map((key) => (
+            <option key={key} value={key}>
+              {CLIENT_SORT_LABELS[key]}
+            </option>
+          ))}
+        </select>
+        {!isLoading && !isError && (
+          <p
+            className="text-sm text-dark-500 dark:text-dark-400"
+            aria-live="polite"
+          >
+            {hasFilters
+              ? `${clients.length} of ${totalCount}`
+              : `${totalCount} ${totalCount === 1 ? 'client' : 'clients'}`}
+          </p>
+        )}
       </div>
 
       {isLoading ? (
         <ListSkeleton rows={5} className="space-y-2" />
+      ) : isError ? (
+        <ErrorState onRetry={() => refetch()}>
+          Couldn&apos;t load your clients.
+        </ErrorState>
       ) : (
         <>
           {/* Mobile: card list */}
@@ -236,7 +380,7 @@ export default function ClientsPage() {
                     </Link>
                   )}
 
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line px-4 py-2 dark:border-primary-300/15">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line px-4 py-2 dark:border-line">
                     <label className="flex items-center gap-2 text-xs text-dark-500 dark:text-dark-400">
                       Phase
                       {showInactive ? (
@@ -269,7 +413,7 @@ export default function ClientsPage() {
                       <Button
                         variant="danger-subtle"
                         size="sm"
-                        onClick={() => setDeactivateTarget(client)}
+                        onClick={() => deactivateMutation.mutate(client)}
                         isLoading={deactivateMutation.isPending}
                       >
                         Deactivate
@@ -279,25 +423,7 @@ export default function ClientsPage() {
                 </div>
               );
             })}
-            {clients.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-line px-4 py-12 text-center text-dark-500 dark:border-primary-300/15 dark:text-dark-400">
-                {needle ? (
-                  'No clients match your search.'
-                ) : showInactive ? (
-                  'No deactivated clients.'
-                ) : (
-                  <>
-                    No clients yet.{' '}
-                    <button
-                      onClick={() => setShowNewClient(true)}
-                      className="text-primary-600 hover:underline dark:text-primary-400"
-                    >
-                      Add one
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
+            {clients.length === 0 && emptyState}
           </div>
 
           {/* Desktop: table */}
@@ -305,15 +431,15 @@ export default function ClientsPage() {
             <table className="w-full text-sm">
               <thead className="table-head text-left">
                 <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Phase</th>
+                  {sortHeader('name', 'Name')}
+                  {sortHeader('phase', 'Phase')}
                   <th className="px-4 py-3">Budget</th>
                   <th className="px-4 py-3">Contact</th>
-                  <th className="px-4 py-3">Updated</th>
+                  {sortHeader('updated', 'Updated')}
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line dark:divide-primary-300/10">
+              <tbody className="divide-y divide-line dark:divide-line">
                 {clients.map((client) => (
                   <tr
                     key={client.id}
@@ -388,7 +514,7 @@ export default function ClientsPage() {
                         <Button
                           variant="danger-subtle"
                           size="sm"
-                          onClick={() => setDeactivateTarget(client)}
+                          onClick={() => deactivateMutation.mutate(client)}
                           isLoading={deactivateMutation.isPending}
                         >
                           Deactivate
@@ -399,25 +525,8 @@ export default function ClientsPage() {
                 ))}
                 {clients.length === 0 && (
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="px-4 py-12 text-center text-dark-500 dark:text-dark-400"
-                    >
-                      {needle ? (
-                        'No clients match your search.'
-                      ) : showInactive ? (
-                        'No deactivated clients.'
-                      ) : (
-                        <>
-                          No clients yet.{' '}
-                          <button
-                            onClick={() => setShowNewClient(true)}
-                            className="text-primary-600 hover:underline dark:text-primary-400"
-                          >
-                            Add one
-                          </button>
-                        </>
-                      )}
+                    <td colSpan={6} className="p-4">
+                      {emptyState}
                     </td>
                   </tr>
                 )}
@@ -426,18 +535,6 @@ export default function ClientsPage() {
           </div>
         </>
       )}
-
-      <ConfirmDeleteModal
-        isOpen={!!deactivateTarget}
-        isLoading={deactivateMutation.isPending}
-        title="Deactivate Client"
-        description={`Deactivate ${deactivateTarget?.name}? They will be moved to the inactive list and can be reactivated anytime.`}
-        confirmLabel="Deactivate"
-        onConfirm={() => {
-          if (deactivateTarget) deactivateMutation.mutate(deactivateTarget.id);
-        }}
-        onCancel={() => setDeactivateTarget(null)}
-      />
 
       {showNewClient && (
         <NewClientModal

@@ -2,10 +2,18 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy, Link2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { shareStatus } from '@/lib/shareStatus';
+import { endOfDayIso } from '@/lib/dates';
 import { Modal } from '@/components/ui/Modal';
-import { INPUT_CLS } from '@/lib/constants';
+import {
+  defaultExpiry,
+  ExpiryPicker,
+  SendLinkPanel,
+  StopSharingButton,
+  copyLink,
+} from '@/components/shared/ShareControls';
 import {
   createShareLink,
   listShareLinks,
@@ -22,35 +30,34 @@ interface ShareModalProps {
   onClose: () => void;
 }
 
-function linkStatus(link: ShareLink): 'active' | 'revoked' | 'expired' {
-  if (link.revoked_at) return 'revoked';
-  if (link.expires_at && new Date(link.expires_at) <= new Date())
-    return 'expired';
-  return 'active';
-}
-
 /** Create and manage the public view-only links for a client's designs. */
 export function ShareModal({ clientId, designIds, onClose }: ShareModalProps) {
   const qc = useQueryClient();
   const [showPrices, setShowPrices] = useState(false);
-  const [expires, setExpires] = useState('');
+  const [expires, setExpires] = useState(defaultExpiry);
 
   const { data: links = [] } = useQuery<ShareLink[]>({
     queryKey: ['share-links', clientId],
     queryFn: () => listShareLinks(clientId),
   });
 
+  // The customer's stable link: sharing again updates it instead of adding one.
+  const current = links.find((l) => l.readable && shareStatus(l) === 'active');
+
+  // Start from the link's own settings so updating it changes only the images.
+  useEffect(() => {
+    if (!current) return;
+    setShowPrices(current.show_prices);
+    setExpires(
+      current.expires_at
+        ? new Date(current.expires_at).toLocaleDateString('en-CA')
+        : ''
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current?.id]);
+
   const refresh = () =>
     qc.invalidateQueries({ queryKey: ['share-links', clientId] });
-
-  const copy = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success('Link copied');
-    } catch {
-      toast.error('Copy failed — select the link and copy it manually');
-    }
-  };
 
   const create = useMutation({
     mutationFn: () =>
@@ -58,14 +65,15 @@ export function ShareModal({ clientId, designIds, onClose }: ShareModalProps) {
         design_ids: designIds,
         show_prices: showPrices,
         // The date input has no time; expire at the end of that day.
-        expires_at: expires
-          ? new Date(`${expires}T23:59:59`).toISOString()
-          : null,
+        expires_at: endOfDayIso(expires),
       }),
     onSuccess: (link) => {
       refresh();
-      copy(link.url);
-      setExpires('');
+      toast.success(
+        link.id === current?.id
+          ? 'Link updated. The customer keeps the same link.'
+          : 'Link created'
+      );
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -79,8 +87,6 @@ export function ShareModal({ clientId, designIds, onClose }: ShareModalProps) {
     onError: (e) => toast.error(errorMessage(e)),
   });
 
-  const today = new Date().toISOString().slice(0, 10);
-
   return (
     <Modal
       open
@@ -91,35 +97,41 @@ export function ShareModal({ clientId, designIds, onClose }: ShareModalProps) {
     >
       <div className="space-y-6">
         <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-dark-500 dark:text-dark-400">
-            New link
-          </h3>
+          <h3 className="type-label">{current ? 'Update link' : 'New link'}</h3>
 
           <p className="text-sm text-dark-700 dark:text-dark-300">
             {designIds.length} image{designIds.length === 1 ? '' : 's'} selected
           </p>
-
-          <label className="flex items-center gap-2 text-sm text-dark-800 dark:text-dark-200">
-            <input
-              type="checkbox"
-              checked={showPrices}
-              onChange={(e) => setShowPrices(e.target.checked)}
-            />
-            Show rates to the customer
-          </label>
+          {current && (
+            <p className="text-xs text-dark-500 dark:text-dark-400">
+              The customer already has a link. Updating it changes the images
+              they see; the link itself stays the same.
+            </p>
+          )}
 
           <div>
-            <label className="mb-1 block text-xs text-dark-500 dark:text-dark-300">
-              Expires on (optional)
+            <label
+              htmlFor="share-show-prices"
+              className="flex items-center gap-2 text-sm text-dark-800 dark:text-dark-200"
+            >
+              <input
+                id="share-show-prices"
+                type="checkbox"
+                checked={showPrices}
+                onChange={(e) => setShowPrices(e.target.checked)}
+              />
+              Show rates to the customer
             </label>
-            <input
-              type="date"
-              min={today}
-              value={expires}
-              onChange={(e) => setExpires(e.target.value)}
-              className={`${INPUT_CLS} max-w-48`}
-            />
+            <p className="mt-1 text-xs text-dark-500 dark:text-dark-400">
+              Off by default: the customer sees images and notes only.
+            </p>
           </div>
+
+          <ExpiryPicker
+            id="share-expiry"
+            value={expires}
+            onChange={setExpires}
+          />
 
           <button
             type="button"
@@ -128,14 +140,26 @@ export function ShareModal({ clientId, designIds, onClose }: ShareModalProps) {
             className="btn-primary"
           >
             <Link2 className="h-4 w-4" />
-            {create.isPending ? 'Creating…' : 'Create & copy link'}
+            {create.isPending
+              ? current
+                ? 'Updating…'
+                : 'Creating…'
+              : current
+                ? 'Update link'
+                : 'Create link'}
           </button>
         </section>
 
+        {current && (
+          <SendLinkPanel
+            url={current.url}
+            message="Here are the designs we discussed:"
+            subject="Your designs"
+          />
+        )}
+
         <section className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-dark-500 dark:text-dark-400">
-            Existing links
-          </h3>
+          <h3 className="type-label">Existing links</h3>
           {links.length === 0 ? (
             <p className="text-sm text-dark-500 dark:text-dark-400">
               No links yet.
@@ -143,7 +167,7 @@ export function ShareModal({ clientId, designIds, onClose }: ShareModalProps) {
           ) : (
             <ul className="space-y-2">
               {links.map((link) => {
-                const status = linkStatus(link);
+                const status = shareStatus(link);
                 return (
                   <li
                     key={link.id}
@@ -154,6 +178,7 @@ export function ShareModal({ clientId, designIds, onClose }: ShareModalProps) {
                         {link.url}
                       </p>
                       <p className="mt-0.5 text-xs text-dark-500 dark:text-dark-400">
+                        {`Created ${fmtDate(link.created_at)} · `}
                         {status === 'active'
                           ? link.expires_at
                             ? `Expires ${fmtDate(link.expires_at)}`
@@ -173,20 +198,16 @@ export function ShareModal({ clientId, designIds, onClose }: ShareModalProps) {
                       <div className="flex shrink-0 gap-2">
                         <button
                           type="button"
-                          onClick={() => copy(link.url)}
+                          onClick={() => copyLink(link.url)}
                           aria-label="Copy link"
-                          className="btn-secondary px-2.5"
+                          className="btn-secondary min-w-11 px-2.5"
                         >
                           <Copy className="h-4 w-4" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => revoke.mutate(link.id)}
+                        <StopSharingButton
+                          onConfirm={() => revoke.mutate(link.id)}
                           disabled={revoke.isPending}
-                          className="btn-secondary text-red-600 dark:text-red-400"
-                        >
-                          Stop sharing
-                        </button>
+                        />
                       </div>
                     )}
                   </li>

@@ -28,19 +28,29 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   }, [router]);
 
   if (isChecking) {
-    // Mirrors the real shell (dark sidebar + content) so nothing jumps on hydrate.
+    // Mirrors the real shell (themed sidebar + header bar + content) so nothing jumps on hydrate.
     return (
       <LoadingRegion label="Loading workspace" className="min-h-dvh">
         <aside
           aria-hidden="true"
-          className="fixed inset-y-0 left-0 hidden w-64 space-y-3 bg-dark-900 p-4 lg:block"
+          className="fixed inset-y-0 left-0 hidden w-64 border-r border-side-line bg-side lg:block"
         >
-          <Skeleton className="h-8 w-32 !bg-white/10" />
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full !bg-white/10" />
-          ))}
+          <div className="flex h-16 items-center border-b border-side-line px-6">
+            <Skeleton className="h-6 w-24" />
+          </div>
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
         </aside>
-        <div className="p-4 pt-24 sm:p-6 sm:pt-24 lg:pl-72 lg:pt-6">
+        <div
+          aria-hidden="true"
+          className="fixed left-64 right-0 top-0 hidden h-16 items-center border-b border-side-line bg-side px-8 lg:flex"
+        >
+          <Skeleton className="h-6 w-40" />
+        </div>
+        <div className="p-4 pt-24 sm:p-6 sm:pt-24 lg:pl-72 lg:pt-24">
           <div className="space-y-4">
             <PageHeaderSkeleton />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

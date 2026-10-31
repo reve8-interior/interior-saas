@@ -59,7 +59,7 @@ export function QuotationPipelineCard({
             ))}
           </div>
 
-          <ul className="divide-y divide-line dark:divide-primary-300/10">
+          <ul className="divide-y divide-line dark:divide-line">
             {SEGMENTS.map((s) => (
               <li key={s.key} className="flex items-center gap-3 py-2 text-sm">
                 <span

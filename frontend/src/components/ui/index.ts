@@ -17,3 +17,4 @@ export { Badge } from './Badge';
 export type { BadgeTone } from './Badge';
 export { PageLoader } from './PageLoader';
 export { EmptyState } from './EmptyState';
+export { ErrorState } from './ErrorState';

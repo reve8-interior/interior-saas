@@ -9,7 +9,7 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-line p-12 text-center dark:border-primary-300/15">
+    <div className="rounded-2xl border border-dashed border-line p-12 text-center dark:border-line">
       <p className="text-dark-500 dark:text-dark-400">{children}</p>
       {action && <div className="mt-4">{action}</div>}
     </div>

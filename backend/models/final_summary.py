@@ -28,6 +28,7 @@ class FinalSummary(Base):
         UUID(as_uuid=True),
         ForeignKey("checkpoints.id", ondelete="SET NULL"),
         nullable=True,
+        index=True,
     )
     summary_text: Mapped[str] = mapped_column(Text, nullable=False)
     confirmed_by: Mapped[str | None] = mapped_column(

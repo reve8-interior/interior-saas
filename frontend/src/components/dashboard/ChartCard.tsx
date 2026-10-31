@@ -41,7 +41,7 @@ export function ChartCard({
 
 export function EmptyChart({ message }: { message: string }) {
   return (
-    <div className="flex h-full min-h-[10rem] items-center justify-center rounded-xl border border-dashed border-line text-xs text-dark-500 dark:border-primary-300/15 dark:text-dark-400">
+    <div className="flex h-full min-h-[10rem] items-center justify-center rounded-xl border border-dashed border-line text-xs text-dark-500 dark:border-line dark:text-dark-400">
       {message}
     </div>
   );

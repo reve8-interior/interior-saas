@@ -269,7 +269,7 @@ export function AiSettingsCard({ businessId }: { businessId: string }) {
             Users pick one tier per request and see its cost. Put a cheaper
             model on Economy and a stronger one on Premium.
           </p>
-          <div className="divide-y divide-line rounded-xl border border-line dark:divide-primary-300/15 dark:border-primary-300/15">
+          <div className="divide-y divide-line rounded-xl bg-surface-2 dark:divide-line dark:border-line">
             {TIERS.map((t) => (
               <div
                 key={t.key}
@@ -351,7 +351,7 @@ export function AiSettingsCard({ businessId }: { businessId: string }) {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4 dark:border-primary-300/15">
+        <div className="flex flex-wrap items-center gap-2 border-t border-line pt-4 dark:border-line">
           <button
             type="submit"
             disabled={!dirty || save.isPending}

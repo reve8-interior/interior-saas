@@ -11,7 +11,7 @@ interface Props {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-line bg-white/60 px-3 py-2.5 dark:border-primary-300/10 dark:bg-dark-900/50">
+    <div className="rounded-xl border border-line bg-surface px-3 py-2.5 dark:border-line dark:bg-dark-900/50">
       <p className="text-xs text-dark-500 dark:text-dark-400">{label}</p>
       <p className="text-lg font-bold tabular-nums text-dark-900 dark:text-white">
         {value}
@@ -61,7 +61,7 @@ export function AiUsageChart({
                 </div>
                 <div className="h-2 rounded-full bg-primary-100/80 dark:bg-white/10">
                   <div
-                    className="h-2 rounded-full bg-gradient-to-r from-primary-600 to-secondary-600"
+                    className="h-2 rounded-full bg-brand"
                     style={{ width: `${(r.value / max) * 100}%` }}
                   />
                 </div>

@@ -58,6 +58,7 @@ class QuotationVersion(Base):
     checkpoint_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("checkpoints.id", ondelete="SET NULL"),
+        index=True,
     )
     created_by_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
@@ -110,4 +111,17 @@ class QuotationShare(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow
+    )
+    view_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    last_viewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    # The customer's answer from the public page: "approved" or "question".
+    response_kind: Mapped[str | None] = mapped_column(String(16))
+    response_name: Mapped[str | None] = mapped_column(String(120))
+    response_message: Mapped[str | None] = mapped_column(String(2000))
+    responded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
     )

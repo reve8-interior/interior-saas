@@ -17,7 +17,7 @@ export default function ThemeToggle({
 
   return (
     <div
-      className={`relative flex h-9 items-center rounded-full border border-primary-300/15 bg-dark-800 transition-all duration-300 ${
+      className={`relative flex h-9 items-center rounded-full border border-line bg-dark-800 transition-all duration-300 ${
         isExpanded ? 'w-full' : 'w-9'
       } ${className}`}
     >

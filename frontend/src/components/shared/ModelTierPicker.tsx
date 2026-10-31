@@ -48,7 +48,7 @@ export function ModelTierPicker({
         </label>
         <select
           id="ai-model-tier"
-          className="cursor-pointer rounded-full border-0 bg-white/80 py-1.5 pl-3 pr-8 text-sm font-semibold text-dark-900 focus:ring-2 focus:ring-primary-400 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-dark-900/70 dark:text-white"
+          className="cursor-pointer rounded-full border-0 bg-surface py-1.5 pl-3 pr-8 text-sm font-semibold text-dark-900 focus:ring-2 focus:ring-primary-400 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-dark-900/70 dark:text-white"
           value={selected.tier}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value as ModelTier)}

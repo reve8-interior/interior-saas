@@ -82,11 +82,7 @@ export function RoomTagsModal({
                   type="button"
                   aria-pressed={on}
                   onClick={() => toggle(room)}
-                  className={`min-h-11 rounded-full border px-4 text-sm font-medium transition-colors ${
-                    on
-                      ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-600/20 dark:text-primary-300'
-                      : 'border-line text-dark-700 hover:bg-dark-100 dark:border-primary-300/15 dark:text-dark-300 dark:hover:bg-dark-800'
-                  }`}
+                  className="filter-chip"
                 >
                   {room}
                 </button>

@@ -23,11 +23,17 @@ from ..schemas.share import (
     SharedView,
     ShareLinkCreate,
     ShareLinkRead,
+    SharedLinkRow,
 )
 from ..services import share_links
+from ..services.shared_links_overview import list_shared_links
 from ..services.client_access import get_client_or_404, restrict_to_accessible
 from .deps import get_current_user
-from .designs import design_image_url
+from .designs import (
+    PORTFOLIO_ORDER,
+    design_image_url,
+    design_thumb_url,
+)
 
 router = APIRouter()
 public_router = APIRouter()
@@ -38,6 +44,7 @@ def _to_read(link: ShareLink) -> ShareLinkRead:
         id=link.id,
         client_id=link.client_id,
         url=share_links.public_url("share", link.token),
+        readable=share_links.is_readable(link.token),
         design_ids=[uuid.UUID(d) for d in link.design_ids]
         if link.design_ids
         else None,
@@ -46,6 +53,15 @@ def _to_read(link: ShareLink) -> ShareLinkRead:
         revoked_at=link.revoked_at,
         created_at=link.created_at,
     )
+
+
+@router.get("/shared-links", response_model=list[SharedLinkRow])
+def list_all_shared_links(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Every live design, quotation and portfolio link, newest first."""
+    return list_shared_links(db, current_user)
 
 
 @router.get(
@@ -80,7 +96,7 @@ def create_share_link(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    get_client_or_404(client_id, db, current_user)
+    client = get_client_or_404(client_id, db, current_user)
 
     share_links.validate_future_expiry(body.expires_at)
 
@@ -100,16 +116,36 @@ def create_share_link(
             raise HTTPException(status_code=404, detail="Design not found")
         design_ids = sorted(str(d) for d in wanted)
 
-    link = ShareLink(
-        client_id=uuid.UUID(client_id),
-        token=share_links.new_token(),
-        design_ids=design_ids,
-        show_prices=body.show_prices,
-        expires_at=body.expires_at,
-        created_by_id=current_user.id,
-        created_at=share_links.now(),
+    # One stable, readable link per client: sharing again changes what it
+    # shows, so the URL the customer already has keeps working. Old random
+    # links are left alone and a readable one is made next to them.
+    link = next(
+        (
+            existing
+            for existing in db.execute(
+                select(ShareLink)
+                .where(ShareLink.client_id == uuid.UUID(client_id))
+                .where(ShareLink.revoked_at.is_(None))
+                .order_by(ShareLink.created_at.desc())
+            )
+            .scalars()
+            .all()
+            if share_links.is_readable(existing.token)
+            and not share_links.is_expired(existing.expires_at)
+        ),
+        None,
     )
-    db.add(link)
+    if link is None:
+        link = ShareLink(
+            client_id=uuid.UUID(client_id),
+            token=share_links.readable_token(client.name),
+            created_by_id=current_user.id,
+            created_at=share_links.now(),
+        )
+        db.add(link)
+    link.design_ids = design_ids
+    link.show_prices = body.show_prices
+    link.expires_at = body.expires_at
     db.commit()
     db.refresh(link)
     return _to_read(link)
@@ -154,6 +190,7 @@ def _shared_hotspot(h: DesignHotspot, show_prices: bool) -> SharedHotspot:
         label=h.label,
         notes=h.notes,
         dimensions=h.dimensions,
+        icon=h.icon,
         labour_cost=h.labour_cost if show_prices else None,
         x=h.x,
         y=h.y,
@@ -181,7 +218,7 @@ def _portfolio_designs_q(business_id: uuid.UUID):
         .where(Client.business_id == business_id)
         .where(Client.is_active.is_(True))
         .where(Design.in_portfolio.is_(True))
-        .order_by(Design.created_at.desc())
+        .order_by(*PORTFOLIO_ORDER)
     )
 
 
@@ -200,6 +237,7 @@ def _portfolio_view(
                 title=d.title,
                 description=d.description,
                 image_url=design_image_url(d),
+                thumb_url=design_thumb_url(d),
                 hotspots=[_shared_hotspot(h, False) for h in d.hotspots],
             )
             for d in designs
@@ -362,6 +400,7 @@ def view_shared(token: str, db: Session = Depends(get_db)):
                 title=d.title,
                 description=d.description,
                 image_url=design_image_url(d),
+                thumb_url=design_thumb_url(d),
                 hotspots=[
                     _shared_hotspot(h, link.show_prices) for h in d.hotspots
                 ],

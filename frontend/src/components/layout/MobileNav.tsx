@@ -1,22 +1,23 @@
 'use client';
 
+import { Logo } from '@/components/ui/Logo';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import type { NavSection } from '@/components/layout/AppSidebar';
 import { isNavItemActive } from '@/components/layout/AppSidebar';
 import { AuthUser } from '@/lib/schemas';
 import { AccessStatus } from '@/lib/schemas/auth';
 import {
-  ChevronRight,
-  LogOut,
-  Menu,
+  CaretRight,
+  DotsThree,
+  GearSix,
   Moon,
-  Settings,
+  SignOut,
   Sun,
   X,
-} from 'lucide-react';
+} from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 
 interface MobileNavProps {
   sections: NavSection[];
@@ -25,18 +26,18 @@ interface MobileNavProps {
   access?: AccessStatus;
   user: AuthUser | null;
   rootHref: string;
+  /** Shown beside the theme toggle in the top pill. */
+  extra?: ReactNode;
   onLogout: () => void;
 }
 
 const TAB_CLS = (active: boolean) =>
   `flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 rounded-full text-[11px] font-semibold transition-colors ${
-    active
-      ? 'text-primary-700 dark:text-primary-300'
-      : 'text-dark-500 hover:text-dark-900 dark:text-dark-400 dark:hover:text-white'
+    active ? 'bg-brand/10 text-accent-text' : 'text-muted hover:text-text'
   }`;
 
 const ICON_BTN =
-  'flex h-11 w-11 items-center justify-center rounded-full text-dark-700 transition-colors hover:bg-primary-50 dark:text-dark-200 dark:hover:bg-white/10';
+  'flex h-11 w-11 items-center justify-center rounded-full text-text transition-colors hover:bg-text/5';
 
 /**
  * Phone navigation: a fixed, frosted-glass pill (logo, theme toggle, menu) that
@@ -50,12 +51,15 @@ export function MobileNav({
   access,
   user,
   rootHref,
+  extra,
   onLogout,
 }: MobileNavProps) {
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const panelId = useId();
+  const moreRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
   // Up to four primary destinations get a one-tap slot; the rest live under More.
   const tabItems = sections[0]?.items.slice(0, 4) ?? [];
 
@@ -74,7 +78,12 @@ export function MobileNav({
   // Escape closes; the page behind stays put while the sheet is open.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    panelRef.current?.querySelector<HTMLElement>('a, button')?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      moreRef.current?.focus();
+    };
     document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -102,17 +111,10 @@ export function MobileNav({
           className="flex items-center gap-2"
           aria-label={label}
         >
-          <img
-            src="/icon.svg"
-            alt=""
-            className="h-auto w-[33px] translate-y-[1.5px]"
-          />
-          <span className="font-heading text-2xl font-extrabold leading-none tracking-tight">
-            <span className="text-[#1573cc]">reve</span>
-            <span className="text-dark-900 dark:text-white">8</span>
-          </span>
+          <Logo size={19} />
         </Link>
         <div className="flex items-center">
+          {extra}
           <button
             type="button"
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
@@ -141,14 +143,20 @@ export function MobileNav({
               aria-current={active ? 'page' : undefined}
               className={TAB_CLS(active)}
             >
-              <item.icon className="h-5 w-5" aria-hidden />
+              <item.icon
+                weight={active ? 'fill' : 'regular'}
+                className="h-5 w-5"
+                aria-hidden
+              />
               <span>{item.tabLabel ?? item.name}</span>
             </Link>
           );
         })}
         <button
+          ref={moreRef}
           type="button"
           onClick={() => setOpen((o) => !o)}
+          aria-haspopup="true"
           aria-expanded={open}
           aria-controls={panelId}
           className={TAB_CLS(open)}
@@ -156,7 +164,7 @@ export function MobileNav({
           {open ? (
             <X className="h-5 w-5" aria-hidden />
           ) : (
-            <Menu className="h-5 w-5" aria-hidden />
+            <DotsThree weight="bold" className="h-5 w-5" aria-hidden />
           )}
           <span>More</span>
         </button>
@@ -165,13 +173,14 @@ export function MobileNav({
       {open && (
         <nav
           id={panelId}
+          ref={panelRef}
           aria-label="Main menu"
           className="mobile-nav-panel ios-pill fixed inset-x-3 z-50 max-h-[calc(100dvh-9rem)] overflow-y-auto overscroll-contain rounded-3xl p-3"
         >
           {(businessName || label) && (
-            <div className="mb-2 flex items-center justify-between gap-2 rounded-2xl bg-primary-50/70 px-3 py-2.5 dark:bg-white/5">
+            <div className="mb-2 flex items-center justify-between gap-2 rounded-2xl bg-text/[0.04] px-3 py-2.5">
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-dark-900 dark:text-white">
+                <p className="truncate text-sm font-semibold text-text">
                   {businessName ?? label}
                 </p>
                 {businessName && label && (
@@ -181,7 +190,7 @@ export function MobileNav({
                 )}
               </div>
               {access && (
-                <span className="shrink-0 rounded-full bg-primary-600/10 px-2.5 py-1 text-[11px] font-bold uppercase text-primary-700 dark:bg-primary-400/15 dark:text-primary-300">
+                <span className="shrink-0 rounded-full bg-brand/10 px-2.5 py-1 text-[11px] font-semibold uppercase text-accent-text">
                   {access.plan}
                 </span>
               )}
@@ -190,9 +199,7 @@ export function MobileNav({
 
           {sections.map((section) => (
             <div key={section.title} className="mb-1">
-              <p className="eyebrow px-3 pb-1 pt-3 !text-[10px] !text-dark-500 dark:!text-dark-400">
-                {section.title}
-              </p>
+              <p className="type-label px-3 pb-1 pt-3">{section.title}</p>
               <ul>
                 {section.items.map((item) => {
                   const active = isNavItemActive(pathname, item, rootHref);
@@ -203,21 +210,24 @@ export function MobileNav({
                         aria-current={active ? 'page' : undefined}
                         className={`flex min-h-12 items-center gap-3 rounded-2xl px-3 py-1.5 text-[15px] font-semibold transition-colors ${
                           active
-                            ? 'bg-white text-primary-700 shadow-card dark:bg-primary-400/10 dark:text-primary-300 dark:shadow-none'
-                            : 'text-dark-800 hover:bg-white/70 dark:text-dark-100 dark:hover:bg-white/5'
+                            ? 'bg-brand/10 text-accent-text'
+                            : 'text-text hover:bg-text/5'
                         }`}
                       >
                         <span
                           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                             active
-                              ? 'bg-primary-600 text-white'
-                              : 'bg-primary-100/80 text-primary-700 dark:bg-white/10 dark:text-primary-300'
+                              ? 'bg-brand text-white'
+                              : 'bg-text/5 text-muted'
                           }`}
                         >
-                          <item.icon className="h-[18px] w-[18px]" />
+                          <item.icon
+                            weight={active ? 'fill' : 'regular'}
+                            className="h-[18px] w-[18px]"
+                          />
                         </span>
                         <span className="flex-1">{item.name}</span>
-                        <ChevronRight className="h-4 w-4 text-dark-400" />
+                        <CaretRight className="h-4 w-4 text-dark-400" />
                       </Link>
                     </li>
                   );
@@ -226,7 +236,7 @@ export function MobileNav({
             </div>
           ))}
 
-          <div className="mt-2 border-t border-line pt-2 dark:border-primary-300/10">
+          <div className="mt-2 border-t border-line pt-2 dark:border-line">
             <p className="truncate px-3 pb-1 text-xs text-dark-500 dark:text-dark-400">
               Signed in as{' '}
               <span className="font-semibold capitalize text-dark-800 dark:text-dark-100">
@@ -235,10 +245,10 @@ export function MobileNav({
             </p>
             <Link
               href={settingsHref}
-              className="flex min-h-12 items-center gap-3 rounded-2xl px-3 text-[15px] font-semibold text-dark-800 hover:bg-white/70 dark:text-dark-100 dark:hover:bg-white/5"
+              className="flex min-h-12 items-center gap-3 rounded-2xl px-3 text-[15px] font-semibold text-text hover:bg-text/5"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-100/80 text-primary-700 dark:bg-white/10 dark:text-primary-300">
-                <Settings className="h-[18px] w-[18px]" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-text/5 text-muted">
+                <GearSix className="h-[18px] w-[18px]" />
               </span>
               Account settings
             </Link>
@@ -251,7 +261,7 @@ export function MobileNav({
               className="flex min-h-12 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-400">
-                <LogOut className="h-[18px] w-[18px]" />
+                <SignOut className="h-[18px] w-[18px]" />
               </span>
               Log out
             </button>

@@ -3,6 +3,11 @@ import {
   checkpointNumbers,
   compareCheckpoints,
   extractFromText,
+  blocksAddition,
+  matchesConversationFilter,
+  matchesConversationQuery,
+  reviewQueue,
+  storedRowCount,
 } from '@/lib/checkpoints';
 
 vi.mock('@/lib/api', () => ({ api: { postForm: vi.fn(), post: vi.fn() } }));
@@ -63,5 +68,89 @@ describe('extractFromText', () => {
     await extractFromText('c1', 'hello');
     const fd = vi.mocked(api.postForm).mock.calls.at(-1)![1] as FormData;
     expect(fd.has('tier')).toBe(false);
+  });
+});
+
+describe('blocksAddition', () => {
+  const cp = (over: Partial<Parameters<typeof blocksAddition>[0]> = {}) => ({
+    source: 'manual',
+    added_to_quotation: false,
+    structured_diff: {},
+    ...over,
+  });
+
+  it('is true while extracted rows are waiting', () => {
+    expect(
+      blocksAddition(cp({ structured_diff: { line_items: [{ a: 1 }] } }))
+    ).toBe(true);
+  });
+
+  it('is false once added, or when extraction found nothing', () => {
+    expect(blocksAddition(cp({ added_to_quotation: true }))).toBe(false);
+    expect(blocksAddition(cp({ structured_diff: { line_items: [] } }))).toBe(
+      false
+    );
+    expect(
+      blocksAddition(cp({ structured_diff: { extraction: { ran_at: 'x' } } }))
+    ).toBe(false);
+  });
+
+  it('treats a legacy ai_extract conversation without items as pending', () => {
+    expect(blocksAddition(cp({ source: 'ai_extract' }))).toBe(true);
+    expect(blocksAddition(cp())).toBe(false);
+  });
+});
+
+describe('matchesConversationFilter', () => {
+  it('splits pending from added', () => {
+    const pending = {
+      source: 'manual',
+      added_to_quotation: false,
+      structured_diff: { line_items: [{ a: 1 }] },
+    };
+    const added = { ...pending, added_to_quotation: true };
+    expect(matchesConversationFilter(pending, 'pending')).toBe(true);
+    expect(matchesConversationFilter(added, 'pending')).toBe(false);
+    expect(matchesConversationFilter(added, 'added')).toBe(true);
+    expect(matchesConversationFilter(pending, 'all')).toBe(true);
+  });
+});
+
+describe('matchesConversationQuery', () => {
+  const cp = { summary_text: 'Kitchen cabinets', raw_conversation: 'use teak' };
+
+  it('matches summary or raw text, ignoring case', () => {
+    expect(matchesConversationQuery(cp, 'KITCHEN')).toBe(true);
+    expect(matchesConversationQuery(cp, 'teak')).toBe(true);
+    expect(matchesConversationQuery(cp, 'wardrobe')).toBe(false);
+  });
+
+  it('matches everything for a blank query', () => {
+    expect(matchesConversationQuery(cp, '  ')).toBe(true);
+  });
+});
+
+describe('reviewQueue', () => {
+  const meeting = (id: string, created_at: string, added = false) => ({
+    id,
+    created_at,
+    source: 'ai_extract',
+    added_to_quotation: added,
+    structured_diff: { line_items: [{}, {}] },
+  });
+
+  it('lists pending meetings oldest first and skips added ones', () => {
+    const queue = reviewQueue([
+      meeting('new', '2026-03-01'),
+      meeting('done', '2026-01-01', true),
+      meeting('old', '2026-02-01'),
+    ]);
+    expect(queue.map((m) => m.id)).toEqual(['old', 'new']);
+  });
+  it('counts stored rows, 0 when none are stored', () => {
+    expect(storedRowCount(meeting('a', '2026-01-01'))).toBe(2);
+    expect(
+      storedRowCount({ source: 'ai_extract', added_to_quotation: false })
+    ).toBe(0);
   });
 });

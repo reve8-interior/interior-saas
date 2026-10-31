@@ -1,4 +1,8 @@
-from pydantic import BaseModel
+import enum
+import uuid
+from datetime import datetime
+
+from pydantic import BaseModel, Field
 
 
 class DashboardStats(BaseModel):
@@ -29,3 +33,30 @@ class DashboardStats(BaseModel):
     recent_checkpoints_30d: int
     quotations_pending: int
     avg_project_days: float
+
+
+class AttentionKind(str, enum.Enum):
+    """Declaration order is display priority."""
+
+    customer_question = "customer_question"
+    customer_approved = "customer_approved"
+    link_expiring = "link_expiring"
+    needs_clarity = "needs_clarity"
+
+
+class AttentionItem(BaseModel):
+    kind: AttentionKind
+    client_id: uuid.UUID
+    client_name: str
+    title: str
+    detail: str | None
+    at: datetime | None
+    # Frontend route that resolves the item.
+    path: str
+    # Names the item and its state; a new reply gets a new key.
+    key: str
+    read: bool = False
+
+
+class AttentionMarkRead(BaseModel):
+    keys: list[str] = Field(min_length=1, max_length=100)

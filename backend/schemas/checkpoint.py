@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CheckpointCreate(BaseModel):
@@ -28,8 +28,14 @@ class CheckpointRead(BaseModel):
     audio_transcript: str | None
     added_to_quotation: bool
     created_at: datetime
+    applied_at: datetime | None = None
+    applied_by_name: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+class CheckpointNotesUpdate(BaseModel):
+    raw_conversation: str = Field(min_length=1, max_length=15_000)
 
 
 class FinalSummaryCreate(BaseModel):

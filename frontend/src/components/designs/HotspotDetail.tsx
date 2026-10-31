@@ -21,6 +21,8 @@ interface HotspotDetailProps {
   labourCost?: string | number | null;
   onClose: () => void;
   actions?: ReactNode;
+  /** Centred popup over a dimmed page instead of the side drawer. */
+  popup?: boolean;
 }
 
 /**
@@ -35,6 +37,7 @@ export function HotspotDetail({
   labourCost,
   onClose,
   actions,
+  popup = false,
 }: HotspotDetailProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -45,11 +48,23 @@ export function HotspotDetail({
   }, [onClose]);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-50 flex items-end justify-end sm:items-stretch">
+    <div
+      className={
+        popup
+          ? 'fixed inset-0 z-50 flex items-end justify-center bg-dark-950/50 sm:items-center sm:p-4'
+          : 'pointer-events-none fixed inset-0 z-50 flex items-end justify-end sm:items-stretch'
+      }
+      onClick={popup ? onClose : undefined}
+    >
       <div
         role="dialog"
         aria-label={label}
-        className="pointer-events-auto relative flex max-h-[50vh] w-full animate-fade-in flex-col rounded-t-2xl bg-white shadow-xl dark:bg-dark-900 sm:max-h-none sm:w-96 sm:rounded-none"
+        onClick={popup ? (e) => e.stopPropagation() : undefined}
+        className={
+          popup
+            ? 'relative flex max-h-[70vh] w-full animate-fade-in flex-col rounded-t-2xl bg-white shadow-xl dark:bg-dark-900 sm:max-w-md sm:rounded-2xl'
+            : 'pointer-events-auto relative flex max-h-[50vh] w-full animate-fade-in flex-col rounded-t-2xl bg-white shadow-xl dark:bg-dark-900 sm:max-h-none sm:w-96 sm:rounded-none'
+        }
       >
         <div className="flex items-start justify-between gap-3 border-b border-dark-200 p-4 dark:border-dark-700">
           <h3 className="font-heading text-base font-semibold text-dark-900 dark:text-white">
@@ -59,6 +74,7 @@ export function HotspotDetail({
             type="button"
             onClick={onClose}
             aria-label="Close details"
+            title="Close details"
             className="rounded-lg p-1 text-dark-500 hover:bg-dark-100 dark:text-dark-400 dark:hover:bg-dark-700"
           >
             <X className="h-4 w-4" />

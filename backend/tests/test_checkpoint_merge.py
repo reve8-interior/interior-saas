@@ -286,6 +286,7 @@ class Anchored(Incoming):
 
     action: str = "add"
     target_item_id: str | None = None
+    agreed_price: float | None = None
 
 
 class TestAnchoredMerge:
@@ -323,6 +324,50 @@ class TestAnchoredMerge:
         assert result.updated == 1 and result.added == 0
         assert small.rate == 1400
         assert large.rate is None
+
+    def test_agreed_price_becomes_the_negotiated_price(self):
+        cp = uuid.uuid4()
+        wardrobe = _item(room="Kids bed room", description="Wardrobe")
+        quotation = _quotation([wardrobe])
+
+        merge_checkpoint_items(
+            quotation,
+            cp,
+            [
+                Anchored(
+                    room="Kids bed room",
+                    description="Wardrobe",
+                    action="update",
+                    target_item_id=str(wardrobe.id),
+                    agreed_price=23000,
+                )
+            ],
+            FakeSession(),
+        )
+
+        assert wardrobe.negotiated_price == 23000
+        assert wardrobe.status == QuotationItemStatus.agreed
+
+    def test_row_for_a_vanished_item_is_skipped(self):
+        quotation = _quotation([_item(description="Wardrobe")])
+
+        result = merge_checkpoint_items(
+            quotation,
+            uuid.uuid4(),
+            [
+                Anchored(
+                    room="Hall",
+                    description="Mandir",
+                    action="update",
+                    target_item_id=str(uuid.uuid4()),
+                    rate=500,
+                )
+            ],
+            FakeSession(),
+        )
+
+        assert result.skipped == 1
+        assert result.updated == 0 and result.added == 0
 
     def test_anchored_update_never_appends(self):
         cp = uuid.uuid4()

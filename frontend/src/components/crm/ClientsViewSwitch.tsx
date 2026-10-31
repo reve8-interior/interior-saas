@@ -2,8 +2,8 @@ import { Kanban, List } from 'lucide-react';
 import Link from 'next/link';
 
 const VIEWS = [
-  { key: 'list', label: 'List', href: '/dashboard/clients', icon: List },
   { key: 'board', label: 'Board', href: '/dashboard/board', icon: Kanban },
+  { key: 'list', label: 'List', href: '/dashboard/clients', icon: List },
 ] as const;
 
 /** One place for clients, two ways to look at them. */
@@ -11,7 +11,7 @@ export function ClientsViewSwitch({ active }: { active: 'list' | 'board' }) {
   return (
     <nav
       aria-label="Client view"
-      className="inline-flex gap-1 rounded-full border border-line bg-white/60 p-1 dark:border-primary-300/15 dark:bg-white/5"
+      className="inline-flex gap-1 rounded-full border border-line bg-surface p-1 dark:border-line dark:bg-white/5"
     >
       {VIEWS.map(({ key, label, href, icon: Icon }) => (
         <Link

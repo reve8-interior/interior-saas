@@ -1,13 +1,14 @@
 'use client';
 
 import { Modal, ModalFooter } from '@/components/ui/Modal';
-import { ApiError } from '@/lib/api';
 import { createBusiness, updateBusiness } from '@/lib/businesses';
 import { Plan } from '@/lib/schemas/auth';
 import { Business } from '@/lib/schemas/business';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
 import { toast } from 'sonner';
+import { errorMessage } from '@/lib/errors';
+import { endOfDayIso } from '@/lib/dates';
 
 interface FormState {
   name: string;
@@ -52,18 +53,6 @@ function monthsFromToday(months: number): string {
   const d = new Date();
   d.setMonth(d.getMonth() + months);
   return toDateInput(d);
-}
-
-/** Access runs through the end of the chosen local day. */
-function endOfDayIso(date: string): string | null {
-  if (!date) return null;
-  return new Date(`${date}T23:59:59`).toISOString();
-}
-
-function errorMessage(err: unknown): string {
-  return err instanceof ApiError || err instanceof Error
-    ? err.message
-    : 'Something went wrong';
 }
 
 function formFor(business: Business | null): FormState {
@@ -211,7 +200,7 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
           </div>
         </div>
 
-        <fieldset className="space-y-3 rounded-xl border border-line p-3 dark:border-primary-300/15">
+        <fieldset className="space-y-3 rounded-xl bg-surface-2 p-3 dark:border-line">
           <legend className="px-1 text-xs font-medium text-dark-500 dark:text-dark-400">
             Plan &amp; access
           </legend>
@@ -258,7 +247,7 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
                 onClick={() =>
                   setForm((f) => ({ ...f, access_date: monthsFromToday(m) }))
                 }
-                className="rounded-full border border-line px-3 py-1.5 text-xs text-dark-700 hover:bg-primary-50/70 dark:border-primary-300/15 dark:text-dark-300 dark:hover:bg-white/[0.06]"
+                className="rounded-full border border-line px-3 py-1.5 text-xs text-dark-700 hover:bg-primary-50/70 dark:border-line dark:text-dark-300 dark:hover:bg-white/[0.06]"
               >
                 {m} mo from today
               </button>
@@ -266,18 +255,18 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
             <button
               type="button"
               onClick={() => setForm((f) => ({ ...f, access_date: '' }))}
-              className="rounded-full border border-line px-3 py-1.5 text-xs text-dark-700 hover:bg-primary-50/70 dark:border-primary-300/15 dark:text-dark-300 dark:hover:bg-white/[0.06]"
+              className="rounded-full border border-line px-3 py-1.5 text-xs text-dark-700 hover:bg-primary-50/70 dark:border-line dark:text-dark-300 dark:hover:bg-white/[0.06]"
             >
               No limit
             </button>
           </div>
           <p className="text-xs text-dark-500 dark:text-dark-400">
-            After this date the business is blocked from clients, board,
-            conversations and quotations until you extend it.
+            After this date the business is blocked from clients, board, meeting
+            notes and quotations until you extend it.
           </p>
         </fieldset>
 
-        <fieldset className="space-y-3 rounded-xl border border-line p-3 dark:border-primary-300/15">
+        <fieldset className="space-y-3 rounded-xl bg-surface-2 p-3 dark:border-line">
           <legend className="px-1 text-xs font-medium text-dark-500 dark:text-dark-400">
             Team
           </legend>
@@ -301,7 +290,7 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
           </p>
         </fieldset>
 
-        <fieldset className="space-y-3 rounded-xl border border-line p-3 dark:border-primary-300/15">
+        <fieldset className="space-y-3 rounded-xl bg-surface-2 p-3 dark:border-line">
           <legend className="px-1 text-xs font-medium text-dark-500 dark:text-dark-400">
             Image uploads
           </legend>
@@ -340,7 +329,7 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
         </fieldset>
 
         {!editing && (
-          <fieldset className="space-y-3 rounded-xl border border-line p-3 dark:border-primary-300/15">
+          <fieldset className="space-y-3 rounded-xl bg-surface-2 p-3 dark:border-line">
             <legend className="px-1 text-xs font-medium text-dark-500 dark:text-dark-400">
               First login (optional)
             </legend>
