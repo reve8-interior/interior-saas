@@ -3,7 +3,8 @@
 import { Logo } from '@/components/ui/Logo';
 import { useTheme } from '@/components/providers/ThemeProvider';
 import type { NavSection } from '@/components/layout/AppSidebar';
-import { isNavItemActive } from '@/components/layout/AppSidebar';
+import { isNavItemActive, NavBadge } from '@/components/layout/AppSidebar';
+import { planLabel } from '@/lib/plans';
 import { AuthUser } from '@/lib/schemas';
 import { AccessStatus } from '@/lib/schemas/auth';
 import {
@@ -36,8 +37,7 @@ const TAB_CLS = (active: boolean) =>
     active ? 'bg-brand/10 text-accent-text' : 'text-muted hover:text-text'
   }`;
 
-const ICON_BTN =
-  'flex h-11 w-11 items-center justify-center rounded-full text-text transition-colors hover:bg-text/5';
+const ICON_BTN = 'icon-btn text-text';
 
 /**
  * Phone navigation: a fixed, frosted-glass pill (logo, theme toggle, menu) that
@@ -105,7 +105,7 @@ export function MobileNav({
         />
       )}
 
-      <header className="mobile-nav-pill ios-pill fixed inset-x-3 z-50 flex h-14 items-center justify-between rounded-full pl-4 pr-1.5">
+      <header className="mobile-nav-pill ios-pill fixed inset-x-3 z-50 flex h-14 items-center justify-between rounded-full pl-5 pr-1.5">
         <Link
           href={rootHref}
           className="flex items-center gap-2"
@@ -132,7 +132,7 @@ export function MobileNav({
 
       <nav
         aria-label="Primary"
-        className="mobile-tab-bar ios-pill fixed inset-x-3 z-50 flex items-stretch justify-around rounded-full px-1"
+        className="mobile-tab-bar ios-pill fixed inset-x-3 z-50 flex items-stretch justify-around rounded-full px-1.5 py-1"
       >
         {tabItems.map((item) => {
           const active = isNavItemActive(pathname, item, rootHref);
@@ -143,11 +143,19 @@ export function MobileNav({
               aria-current={active ? 'page' : undefined}
               className={TAB_CLS(active)}
             >
-              <item.icon
-                weight={active ? 'fill' : 'regular'}
-                className="h-5 w-5"
-                aria-hidden
-              />
+              <span className="relative">
+                <item.icon
+                  weight={active ? 'fill' : 'regular'}
+                  className="h-5 w-5"
+                  aria-hidden
+                />
+                {!!item.badge && (
+                  <NavBadge
+                    count={item.badge}
+                    className="absolute -right-3 -top-2"
+                  />
+                )}
+              </span>
               <span>{item.tabLabel ?? item.name}</span>
             </Link>
           );
@@ -190,8 +198,8 @@ export function MobileNav({
                 )}
               </div>
               {access && (
-                <span className="shrink-0 rounded-full bg-brand/10 px-2.5 py-1 text-[11px] font-semibold uppercase text-accent-text">
-                  {access.plan}
+                <span className="shrink-0 rounded-control bg-brand/10 px-2.5 py-1 text-[11px] font-semibold uppercase text-accent-text">
+                  {planLabel(access.plan)}
                 </span>
               )}
             </div>
@@ -227,6 +235,7 @@ export function MobileNav({
                           />
                         </span>
                         <span className="flex-1">{item.name}</span>
+                        {!!item.badge && <NavBadge count={item.badge} />}
                         <CaretRight className="h-4 w-4 text-dark-400" />
                       </Link>
                     </li>

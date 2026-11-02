@@ -9,6 +9,7 @@ import hashlib
 import hmac
 import io
 import time
+from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
 from typing import Protocol
@@ -33,6 +34,12 @@ CONTENT_TYPES: dict[str, str] = {
 THUMB_SUFFIX = ".thumb.jpg"
 THUMB_MAX_PX = 640
 _THUMB_QUALITY = 80
+
+# What customers load on shared pages: far lighter than the original upload,
+# still sharp enough to zoom into.
+VIEW_SUFFIX = ".view.webp"
+VIEW_MAX_PX = 1600
+_VIEW_QUALITY = 82
 
 
 class StorageError(Exception):
@@ -104,7 +111,12 @@ class SupabaseStorage:
         r = httpx.post(
             f"{self._base}/{path}",
             content=data,
-            headers={**self._headers, "Content-Type": content_type},
+            # Overwrite: Supabase answers 400 "Duplicate" for an existing key.
+            headers={
+                **self._headers,
+                "Content-Type": content_type,
+                "x-upsert": "true",
+            },
             timeout=30,
         )
         if r.status_code >= 300:
@@ -145,9 +157,24 @@ def _signature(path: str, exp: int) -> str:
     ).hexdigest()
 
 
+def _media_expiry(now: float) -> int:
+    """Expiry for a new signed URL, held steady within a time window.
+
+    A fresh `now + ttl` would give the same image a different URL on every
+    page load, so browsers and CDNs could never reuse it. Rounding to a window
+    boundary keeps the URL identical for half the TTL while every link still
+    stays valid for at least half the TTL.
+    """
+    ttl = settings.media_url_ttl_seconds
+    window = ttl // 2
+    if window <= 0:
+        return int(now) + ttl
+    return (int(now) // window + 2) * window
+
+
 def signed_media_url(path: str) -> str:
     """Time-limited URL for one stored object; no login needed to fetch it."""
-    exp = int(time.time()) + settings.media_url_ttl_seconds
+    exp = _media_expiry(time.time())
     return (
         f"{settings.api_base_url.rstrip('/')}/api/v1/media/{path}"
         f"?exp={exp}&sig={_signature(path, exp)}"
@@ -170,48 +197,93 @@ def signed_thumb_url(path: str) -> str:
     return signed_media_url(thumb_path(path))
 
 
-def make_thumbnail(data: bytes) -> bytes:
-    """Downscale an image to a JPEG preview that fits THUMB_MAX_PX."""
+def _downscale(
+    data: bytes, max_px: int, fmt: str, quality: int, keep_alpha: bool
+) -> bytes:
+    """Fit an image inside max_px x max_px and re-encode it as `fmt`."""
     with Image.open(io.BytesIO(data)) as img:
         img = ImageOps.exif_transpose(img)
-        # Flatten transparency onto white; JPEG has no alpha channel.
-        if img.mode in ("RGBA", "LA", "P"):
+        has_alpha = img.mode in ("RGBA", "LA", "P")
+        if has_alpha and keep_alpha:
+            img = img.convert("RGBA")
+        elif has_alpha:
+            # Flatten transparency onto white; JPEG has no alpha channel.
             rgba = img.convert("RGBA")
             flat = Image.new("RGB", rgba.size, "white")
             flat.paste(rgba, mask=rgba.getchannel("A"))
             img = flat
         else:
             img = img.convert("RGB")
-        img.thumbnail((THUMB_MAX_PX, THUMB_MAX_PX))
+        img.thumbnail((max_px, max_px))
         out = io.BytesIO()
-        img.save(out, "JPEG", quality=_THUMB_QUALITY, optimize=True)
+        img.save(out, fmt, quality=quality, optimize=True)
         return out.getvalue()
 
 
-def load_or_create_thumbnail(storage: ObjectStorage, path: str) -> bytes:
-    """Return a stored thumbnail, building it from the original on first use.
+def make_thumbnail(data: bytes) -> bytes:
+    """Downscale an image to a JPEG preview that fits THUMB_MAX_PX."""
+    return _downscale(data, THUMB_MAX_PX, "JPEG", _THUMB_QUALITY, False)
 
-    Designs uploaded before thumbnails existed get theirs lazily, so no
-    backfill job is needed.
+
+def make_view_image(data: bytes) -> bytes:
+    """Downscale an image to the WebP shown on shared pages (VIEW_MAX_PX)."""
+    return _downscale(data, VIEW_MAX_PX, "WEBP", _VIEW_QUALITY, True)
+
+
+def view_path(path: str) -> str:
+    """Storage key of an image's shared-page version (`x.png` -> `x.view.webp`)."""
+    return f"{path.rsplit('.', 1)[0]}{VIEW_SUFFIX}"
+
+
+def signed_view_url(path: str) -> str:
+    """Signed URL for the lighter version customers see on shared pages."""
+    return signed_media_url(view_path(path))
+
+
+def _load_or_create_variant(
+    storage: ObjectStorage,
+    path: str,
+    suffix: str,
+    build: Callable[[bytes], bytes],
+    content_type: str,
+) -> bytes:
+    """Return a stored derived image, building it from the original on first use.
+
+    Designs uploaded before a variant existed get it lazily, so no backfill
+    job is needed.
     """
     try:
         return storage.get(path)
     except StorageError:
         pass
-    stem = path.removesuffix(THUMB_SUFFIX)
+    stem = path.removesuffix(suffix)
     for ext in CONTENT_TYPES:
         try:
             original = storage.get(f"{stem}.{ext}")
         except StorageError:
             continue
         try:
-            thumb = make_thumbnail(original)
+            variant = build(original)
         except OSError as exc:
             raise StorageError("Image could not be decoded") from exc
         try:
-            storage.put(path, thumb, CONTENT_TYPES["jpg"])
+            storage.put(path, variant, content_type)
         except StorageError:
-            # Serving the fresh preview still works; it is rebuilt next time.
+            # Serving the fresh image still works; it is rebuilt next time.
             pass
-        return thumb
+        return variant
     raise StorageError("Object not found")
+
+
+def load_or_create_thumbnail(storage: ObjectStorage, path: str) -> bytes:
+    """Return a stored thumbnail, building it from the original on first use."""
+    return _load_or_create_variant(
+        storage, path, THUMB_SUFFIX, make_thumbnail, CONTENT_TYPES["jpg"]
+    )
+
+
+def load_or_create_view(storage: ObjectStorage, path: str) -> bytes:
+    """Return a stored shared-page image, building it on first use."""
+    return _load_or_create_variant(
+        storage, path, VIEW_SUFFIX, make_view_image, CONTENT_TYPES["webp"]
+    )

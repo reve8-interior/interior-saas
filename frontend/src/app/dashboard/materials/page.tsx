@@ -257,14 +257,14 @@ export default function MaterialsPage() {
                 <div className="flex shrink-0 items-center">
                   <button
                     onClick={() => setEditTarget(m)}
-                    className="rounded-full p-3 text-dark-500 hover:bg-primary-50 hover:text-primary-600 dark:text-dark-400 dark:hover:bg-white/10"
+                    className="icon-btn icon-btn-sm"
                     aria-label={`Edit ${m.name}`}
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setDeleteTarget(m)}
-                    className="rounded-full p-3 text-dark-500 hover:bg-red-50 hover:text-red-500 dark:text-dark-400 dark:hover:bg-red-500/10"
+                    className="icon-btn icon-btn-sm icon-btn-danger"
                     aria-label={`Delete ${m.name}`}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -361,14 +361,14 @@ export default function MaterialsPage() {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => setEditTarget(m)}
-                        className="rounded-full p-2 text-dark-500 hover:bg-primary-50 hover:text-primary-600 dark:text-dark-400 dark:hover:bg-white/10 dark:hover:text-primary-400"
+                        className="icon-btn icon-btn-sm"
                         aria-label={`Edit ${m.name}`}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => setDeleteTarget(m)}
-                        className="rounded-full p-2 text-dark-500 hover:bg-red-50 hover:text-red-500 dark:text-dark-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                        className="icon-btn icon-btn-sm icon-btn-danger"
                         aria-label={`Delete ${m.name}`}
                       >
                         <Trash2 className="h-3.5 w-3.5" />

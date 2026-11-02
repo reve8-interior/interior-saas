@@ -56,7 +56,7 @@ export function Modal({
           role="dialog"
           aria-modal="true"
           aria-label={title}
-          className={`relative w-full ${maxWidthClass[maxWidth]} modal-panel max-h-[90vh] overflow-y-auto rounded-3xl border border-line bg-white shadow-[0_30px_80px_-30px_rgb(20_40_110/0.5)] dark:border-line dark:bg-dark-800 dark:shadow-[0_30px_80px_-30px_rgb(0_0_0/0.8)] max-sm:max-h-none max-sm:rounded-none max-sm:border-0`}
+          className={`relative w-full ${maxWidthClass[maxWidth]} modal-panel max-h-[90dvh] overflow-y-auto overscroll-contain rounded-3xl border border-line bg-white shadow-[0_30px_80px_-30px_rgb(20_40_110/0.5)] dark:border-line dark:bg-dark-800 dark:shadow-[0_30px_80px_-30px_rgb(0_0_0/0.8)] max-sm:max-h-none max-sm:rounded-none max-sm:border-0`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -64,7 +64,7 @@ export function Modal({
             <button
               type="button"
               onClick={onClose}
-              className="-my-2 hidden h-11 w-11 shrink-0 items-center justify-center rounded-full text-dark-700 hover:bg-primary-50 dark:text-dark-200 dark:hover:bg-white/10 max-sm:flex"
+              className="icon-btn -my-2 hidden max-sm:inline-flex"
               aria-label="Back"
               title="Back"
             >
@@ -82,7 +82,7 @@ export function Modal({
             </div>
             <button
               onClick={onClose}
-              className="rounded-full p-2 text-dark-500 transition-colors hover:bg-primary-50 dark:text-dark-400 dark:hover:bg-white/10 max-sm:hidden"
+              className="icon-btn icon-btn-sm max-sm:hidden"
               aria-label="Close modal"
               title="Close modal"
             >
@@ -91,7 +91,9 @@ export function Modal({
           </div>
 
           {/* Body */}
-          <div className="p-6 max-sm:p-4">{children}</div>
+          <div className="p-6 max-sm:p-4 max-sm:pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+            {children}
+          </div>
         </div>
       </div>
     </>
@@ -120,7 +122,7 @@ export function ModalFooter({
   type = 'button',
 }: ModalFooterProps) {
   return (
-    <div className="flex justify-end gap-3 border-t border-line pt-4 dark:border-line">
+    <div className="flex flex-wrap justify-end gap-3 border-t border-line pt-4 dark:border-line max-sm:[&>button]:flex-1">
       <button type="button" onClick={onCancel} className="btn-secondary">
         {cancelLabel}
       </button>

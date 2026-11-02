@@ -235,7 +235,7 @@ function RoomTable({
                     <div className="flex items-start gap-2">
                       {meta && Icon ? (
                         <span
-                          className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${meta.chip}`}
+                          className={`badge mt-0.5 shrink-0 gap-1 text-[11px] font-semibold ${meta.chip}`}
                         >
                           <Icon className="h-3 w-3" aria-hidden />
                           {meta.label}
@@ -283,7 +283,7 @@ function Stat({
   const { label, icon: Icon, chip } = STATUS_META[status];
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${count === 0 ? 'bg-primary-100/60 text-dark-500 dark:bg-white/5 dark:text-dark-400' : chip}`}
+      className={`inline-flex items-center gap-1.5 rounded-control px-3 py-1.5 text-sm font-semibold ${count === 0 ? 'bg-primary-100/60 text-dark-500 dark:bg-white/5 dark:text-dark-400' : chip}`}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden />
       {count} {label.toLowerCase()}

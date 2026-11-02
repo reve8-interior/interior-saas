@@ -81,5 +81,5 @@ def test_upload_blocked_over_business_size_cap(api, db):
 def test_effective_max_bytes_never_exceeds_global(db, monkeypatch):
     monkeypatch.setattr(settings, "max_image_bytes", 2 * image_quota.MB)
     biz = make_business(db, max_image_mb=50)
-    assert image_quota.effective_max_bytes(biz) == 2 * image_quota.MB
-    assert image_quota.effective_max_bytes(None) == 2 * image_quota.MB
+    assert image_quota.effective_max_bytes(biz, db) == 2 * image_quota.MB
+    assert image_quota.effective_max_bytes(None, db) == 2 * image_quota.MB

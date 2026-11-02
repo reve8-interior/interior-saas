@@ -3,6 +3,7 @@
 import { Check, Maximize, ZoomIn, ZoomOut } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent } from 'react';
+import { SkeletonImage } from '@/components/ui/SkeletonImage';
 import { hotspotIcon } from '@/lib/hotspotIcons';
 import type { HotspotRegion } from '@/lib/schemas/design';
 
@@ -219,8 +220,8 @@ export function HotspotImage<T extends RenderableHotspot>({
             if (!drawing) onSelect(null);
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <SkeletonImage
+            wrapperClassName="min-h-64"
             src={src}
             alt={alt}
             draggable={false}

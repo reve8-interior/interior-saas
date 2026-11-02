@@ -16,6 +16,7 @@ const make = (over: Partial<Client>): Client => ({
   assigned_designer: null,
   notes: null,
   is_active: true,
+  is_sample: false,
   created_at: '',
   updated_at: '',
   completed_at: null,

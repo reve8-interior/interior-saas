@@ -7,7 +7,6 @@ import {
 import { columnLabel, missingRequiredFields } from '@/lib/lineItemColumns';
 import { Trash2 } from 'lucide-react';
 import { INPUT_CLS } from '@/lib/constants';
-import { fmtUsd } from '@/lib/format';
 import {
   ActionBadge,
   ItemCard,
@@ -58,18 +57,6 @@ export function ExtractReview({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3 rounded-xl bg-primary-50/60 px-4 py-3 text-xs text-dark-500 dark:bg-dark-900/60 dark:text-dark-400">
-        <span>
-          Model: <strong>{extraction.model}</strong>
-        </span>
-        <span>
-          Cost:{' '}
-          <strong>
-            {extraction.cost_usd === null ? '—' : fmtUsd(extraction.cost_usd)}
-          </strong>
-        </span>
-        <span>
-          Speed: <strong>{(extraction.latency_ms / 1000).toFixed(1)}s</strong>
-        </span>
         {extraction.scope.total_items > 0 && (
           <span
             title={
@@ -207,7 +194,7 @@ export function ExtractReview({
                         onClick={() => onRemoveItem(idx)}
                         aria-label={`Remove row ${idx + 1}`}
                         type="button"
-                        className="flex h-11 w-11 items-center justify-center rounded-full text-dark-500 hover:bg-red-50 hover:text-red-500 dark:text-dark-400 dark:hover:bg-red-500/10"
+                        className="icon-btn icon-btn-danger"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, ExternalLink, Eye, EyeOff, Link2 } from 'lucide-react';
+import { ExternalLink, Eye, EyeOff, Link2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { shareStatus } from '@/lib/shareStatus';
@@ -24,6 +24,7 @@ import { errorMessage } from '@/lib/errors';
 import {
   StopSharingButton,
   copyLink,
+  CopyLinkButton,
   defaultExpiry,
 } from '@/components/shared/ShareControls';
 import { Modal } from '@/components/ui/Modal';
@@ -63,7 +64,7 @@ export function ShareModal({
   const [showPrices, setShowPrices] = useState(false);
   const [expires, setExpires] = useState(defaultExpiry);
   const sharesKey = ['quotation-shares', version.id];
-  // Which version is shared (and its reply) shows on the versions list and bell.
+  // Which version is shared (and its reply) shows on the versions list and Inbox.
   const refresh = () => {
     qc.invalidateQueries({ queryKey: sharesKey });
     qc.invalidateQueries({ queryKey: ['quotation-versions'] });
@@ -221,14 +222,7 @@ export function ShareModal({
                 <p className="break-all font-mono text-xs text-dark-700 dark:text-dark-300">
                   {currentLink.url}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => copyLink(currentLink.url)}
-                  className="btn-secondary"
-                >
-                  <Copy className="h-4 w-4" aria-hidden />
-                  Copy link
-                </button>
+                <CopyLinkButton url={currentLink.url} />
               </div>
             )}
           </section>
@@ -299,7 +293,7 @@ export function ShareModal({
                   >
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <span
-                        className={`rounded-full px-2.5 py-0.5 font-medium ${STATUS_BADGE[status]}`}
+                        className={`badge font-medium ${STATUS_BADGE[status]}`}
                       >
                         {STATUS_LABEL[status]}
                       </span>
@@ -328,14 +322,7 @@ export function ShareModal({
                     <div className="flex flex-wrap gap-2">
                       {status === 'active' && (
                         <>
-                          <button
-                            type="button"
-                            onClick={() => copyLink(share.url)}
-                            className="btn-secondary"
-                          >
-                            <Copy className="h-4 w-4" aria-hidden />
-                            Copy link
-                          </button>
+                          <CopyLinkButton url={share.url} />
                           <a
                             href={share.url}
                             target="_blank"

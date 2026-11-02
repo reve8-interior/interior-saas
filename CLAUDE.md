@@ -3,6 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Note:
+
 I use codex to review the code that you write.
 
 ## Response Style

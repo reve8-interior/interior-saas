@@ -1,5 +1,4 @@
 import { api } from '@/lib/api';
-import type { ModelTier } from '@/lib/aiModels';
 
 /** What the client did to the quotation in this meeting. */
 export type ItemAction = 'add' | 'update' | 'remove';
@@ -58,10 +57,6 @@ export interface ExtractionResponse {
   questions: ExtractionQuestion[];
   scope: ExtractionScope;
   model: string;
-  input_tokens: number;
-  output_tokens: number;
-  latency_ms: number;
-  cost_usd: number | null;
 }
 
 export interface ConfirmLineItem extends ExtractedLineItem {
@@ -195,8 +190,6 @@ export interface FromExtractionRequest {
   client_budget?: number | null;
   unmapped_notes?: string[];
   questions?: ExtractionQuestion[];
-  /** The tier the extraction ran on, recorded on the checkpoint. */
-  tier?: ModelTier;
   create_quotation: boolean;
 }
 
@@ -221,12 +214,10 @@ export interface UpdateQuotationItemsResponse {
 
 export async function extractFromFile(
   clientId: string,
-  file: File,
-  tier?: ModelTier
+  file: File
 ): Promise<ExtractionResponse> {
   const fd = new FormData();
   fd.append('file', file);
-  if (tier) fd.append('tier', tier);
   return api.postForm<ExtractionResponse>(
     `/clients/${clientId}/checkpoints/extract`,
     fd
@@ -235,12 +226,10 @@ export async function extractFromFile(
 
 export async function extractFromText(
   clientId: string,
-  text: string,
-  tier?: ModelTier
+  text: string
 ): Promise<ExtractionResponse> {
   const fd = new FormData();
   fd.append('text', text);
-  if (tier) fd.append('tier', tier);
   return api.postForm<ExtractionResponse>(
     `/clients/${clientId}/checkpoints/extract`,
     fd

@@ -1,8 +1,6 @@
 'use client';
 
 import { Modal, ModalFooter } from '@/components/ui/Modal';
-import { ModelTierPicker } from '@/components/shared/ModelTierPicker';
-import { type ModelTier, useModelTier } from '@/lib/aiModels';
 import { api } from '@/lib/api';
 import {
   type DraftRow,
@@ -39,7 +37,6 @@ export function ImportModal({
   const [manualForm, setManualForm] = useState(MANUAL_EMPTY);
   const excelRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
-  const { options: modelOptions, tier, setTier } = useModelTier();
 
   const resetPreview = () => {
     setPreviewRows([]);
@@ -62,15 +59,13 @@ export function ImportModal({
   const uploadFile = async (
     endpoint: string,
     file: File,
-    ref: React.RefObject<HTMLInputElement | null>,
-    aiTier?: ModelTier
+    ref: React.RefObject<HTMLInputElement | null>
   ) => {
     setIsParsing(true);
     resetPreview();
     try {
       const fd = new FormData();
       fd.append('file', file);
-      if (aiTier) fd.append('tier', aiTier);
       const res = await api.postForm<{ rows: ServerRow[]; errors: string[] }>(
         endpoint,
         fd
@@ -228,12 +223,6 @@ export function ImportModal({
               Upload a photo or screenshot of a rate chart — AI will extract the
               materials table. Review and edit before saving.
             </p>
-            <ModelTierPicker
-              tier={tier}
-              onChange={setTier}
-              options={modelOptions}
-              disabled={isParsing}
-            />
             <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-2xl border border-dashed border-line bg-primary-50/60 px-5 py-3 text-sm text-dark-600 hover:bg-primary-50 dark:border-line dark:bg-dark-900/60 dark:text-dark-300 dark:hover:bg-white/[0.06]">
               {isParsing ? 'Extracting…' : 'Choose image'}
               <input
@@ -244,7 +233,7 @@ export function ImportModal({
                 disabled={isParsing}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) uploadFile('/materials/ai-extract', f, imageRef, tier);
+                  if (f) uploadFile('/materials/ai-extract', f, imageRef);
                 }}
               />
             </label>

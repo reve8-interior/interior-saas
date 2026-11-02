@@ -8,9 +8,11 @@ from .checkpoint import Checkpoint
 from .client import Client
 from .client_access import ClientAccess
 from .design import Design, DesignHotspot
+from .feedback import Feedback
 from .final_summary import FinalSummary
 from .margin import MarginConfig
 from .material import MaterialRate
+from .plan import Plan
 from .portfolio_share import PortfolioShare
 from .quotation import Quotation
 from .quotation_line_item import (
@@ -36,6 +38,7 @@ __all__ = [
     "Design",
     "DesignHotspot",
     "ShareLink",
+    "Plan",
     "PortfolioShare",
     "MaterialRate",
     "MarginConfig",
@@ -48,6 +51,7 @@ __all__ = [
     "QuotationMessage",
     "AttentionRead",
     "AuditLog",
+    "Feedback",
     "AgentAuditLog",
     "AppSetting",
 ]

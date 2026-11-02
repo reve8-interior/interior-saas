@@ -18,7 +18,7 @@ export function SeatMeter({ used, max }: { used: number; max: number | null }) {
       {max !== null && (
         <div className="h-2 overflow-hidden rounded-full bg-dark-100 dark:bg-white/10">
           <div
-            className={`h-full rounded-full ${full ? 'bg-amber-500' : 'bg-primary-500'}`}
+            className={`h-full rounded-control ${full ? 'bg-amber-500' : 'bg-brand'}`}
             style={{ width: `${pct}%` }}
           />
         </div>

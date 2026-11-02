@@ -40,6 +40,7 @@ class ClientRead(BaseModel):
     current_phase: str
     notes: str | None
     is_active: bool
+    is_sample: bool = False
     created_at: datetime
     updated_at: datetime
     completed_at: datetime | None = None

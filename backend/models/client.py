@@ -51,6 +51,10 @@ class Client(Base, TimestampMixin):
     completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, default=None
     )
+    # Demo client offered to new users; the only kind that can be deleted.
+    is_sample: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
 
     assigned_designer: Mapped["User"] = relationship(  # type: ignore[name-defined]
         "User",

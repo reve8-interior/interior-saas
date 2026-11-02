@@ -1,15 +1,15 @@
-"""Free businesses get a monthly extraction allowance; hand entry is untouched."""
+"""Plans carry a monthly AI credit allowance; hand entry is untouched."""
 
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
 from backend.models.user import UserRole
 from backend.services.ai_access import (
-    FREE_PLAN_MONTHLY_EXTRACTIONS,
     OP_CHECKPOINT_EXTRACT,
     ai_status,
     log_ai_usage,
 )
+from backend.services.plan_catalog import DEFAULTS_BY_SLUG
 from backend.services.secret_box import encrypt_secret
 
 from .conftest import (
@@ -22,6 +22,7 @@ from .conftest import (
 
 AGENT = "backend.services.checkpoint_extraction.run_checkpoint_extraction"
 KEY = "sk-" + "q" * 30
+FREE_CREDITS = DEFAULTS_BY_SLUG["free"].ai_credits_monthly
 
 
 def business(db, **kw):
@@ -46,11 +47,25 @@ def test_no_business_or_no_key_is_off(db):
     assert ai_status(db, make_business(db)).enabled is False
 
 
-def test_pro_has_no_cap(db):
-    status = ai_status(db, business(db, plan="pro"))
+def test_paid_plan_has_its_own_credit_allowance(db):
+    status = ai_status(db, business(db, plan="studio"))
     assert status.enabled is True
-    assert status.monthly_limit is None
-    assert status.remaining is None
+    assert (
+        status.monthly_limit == DEFAULTS_BY_SLUG["studio"].ai_credits_monthly
+    )
+    assert status.remaining == status.monthly_limit
+
+
+def test_legacy_pro_slug_maps_to_studio(db):
+    status = ai_status(db, business(db, plan="pro"))
+    assert (
+        status.monthly_limit == DEFAULTS_BY_SLUG["studio"].ai_credits_monthly
+    )
+
+
+def test_bonus_credits_add_to_the_plan(db):
+    status = ai_status(db, business(db, plan="free", ai_credit_bonus=5))
+    assert status.monthly_limit == FREE_CREDITS + 5
 
 
 def test_free_counts_only_this_months_successes(db):
@@ -69,8 +84,8 @@ def test_free_counts_only_this_months_successes(db):
     )
     db.flush()
     status = ai_status(db, biz)
-    assert status.monthly_limit == FREE_PLAN_MONTHLY_EXTRACTIONS
-    assert status.remaining == FREE_PLAN_MONTHLY_EXTRACTIONS - 2
+    assert status.monthly_limit == FREE_CREDITS
+    assert status.remaining == FREE_CREDITS - 2
 
 
 def test_extract_refused_at_the_limit_without_calling_the_agent(api, db):
@@ -78,7 +93,7 @@ def test_extract_refused_at_the_limit_without_calling_the_agent(api, db):
     user = make_user(db, role=UserRole.admin, business=biz)
     as_business(db, biz.id)
     client = make_client_row(db, "C")
-    log_extractions(db, FREE_PLAN_MONTHLY_EXTRACTIONS)
+    log_extractions(db, FREE_CREDITS)
     agent = AsyncMock()
     with patch(AGENT, agent):
         r = api.post(
@@ -99,6 +114,6 @@ def test_me_reports_ai_status(api, db):
     body = api.get("/api/v1/auth/me", headers=auth(user)).json()
     assert body["ai"] == {
         "enabled": True,
-        "monthly_limit": FREE_PLAN_MONTHLY_EXTRACTIONS,
-        "remaining": FREE_PLAN_MONTHLY_EXTRACTIONS - 1,
+        "monthly_limit": FREE_CREDITS,
+        "remaining": FREE_CREDITS - 1,
     }

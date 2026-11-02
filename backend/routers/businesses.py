@@ -1,3 +1,4 @@
+import secrets
 import uuid
 from datetime import datetime, timezone
 
@@ -18,6 +19,11 @@ from ..schemas.business import (
 )
 from ..services import audit
 from ..services.image_quota import uploaded_image_count
+from ..services.plan_limits import (
+    effective_limits,
+    ensure_plan_exists,
+    usage_summary,
+)
 from ..services.secret_box import encrypt_secret
 from ..services.subscription import access_status
 from ..services.team import seats_used
@@ -40,6 +46,9 @@ def _to_read(business: Business, db: Session) -> BusinessRead:
     read.user_count = _user_count(business.id, db)
     read.seats_used = seats_used(business.id, db)
     read.image_count = uploaded_image_count(business.id, db)
+    read.limits = effective_limits(db, business)
+    read.plan_name = read.limits.plan_name
+    read.usage = usage_summary(db, business)
     status = access_status(business)
     read.days_left = status.days_left
     read.access_expired = status.expired
@@ -105,13 +114,9 @@ def create_business(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_superadmin),
 ):
-    if bool(body.admin_email) != bool(body.admin_password):
-        raise HTTPException(
-            status_code=422,
-            detail="admin_email and admin_password must be provided together",
-        )
     name = body.name.strip()
     _ensure_name_free(name, db)
+    ensure_plan_exists(db, body.plan)
     admin_email = body.admin_email.lower() if body.admin_email else None
     if admin_email and db.scalar(
         select(User.id).where(func.lower(User.email) == admin_email)
@@ -119,31 +124,38 @@ def create_business(
         raise HTTPException(
             status_code=409, detail="Admin email already in use"
         )
+    # The admin signs in with a system-generated password unless one is given;
+    # it is returned once so the superadmin can hand it over.
+    temporary_password = (
+        (body.admin_password or secrets.token_urlsafe(12))
+        if admin_email
+        else None
+    )
 
     business = Business(
         name=name,
-        contact_email=body.contact_email,
+        # One email for the business: the admin's unless a separate contact is given.
+        contact_email=body.contact_email or admin_email,
         contact_phone=body.contact_phone,
         plan=body.plan,
         access_expires_at=body.access_expires_at,
         warning_days=body.warning_days,
+        ai_credit_bonus=body.ai_credit_bonus,
         max_users=body.max_users,
         max_images=body.max_images,
         max_image_mb=body.max_image_mb,
+        max_clients=body.max_clients,
+        max_quotation_versions=body.max_quotation_versions,
+        max_portfolio_designs=body.max_portfolio_designs,
     )
     db.add(business)
     db.flush()
-    # An explicit None ("unlimited") is swallowed by the column default on
-    # INSERT, so write the limits again.
-    business.max_users = body.max_users
-    business.max_images = body.max_images
-    business.max_image_mb = body.max_image_mb
-    if admin_email and body.admin_password:
+    if admin_email and temporary_password:
         db.add(
             User(
                 email=admin_email,
                 full_name=body.admin_name,
-                password_hash=get_password_hash(body.admin_password),
+                password_hash=get_password_hash(temporary_password),
                 role=UserRole.admin,
                 business_id=business.id,
                 must_change_password=True,
@@ -159,7 +171,6 @@ def create_business(
         payload={
             "name": name,
             "plan": body.plan,
-            "max_users": body.max_users,
             "admin_email": admin_email,
         },
     )
@@ -170,7 +181,10 @@ def create_business(
         business_id=str(business.id),
         by=str(current_user.id),
     )
-    return _to_read(business, db)
+    read = _to_read(business, db)
+    if not body.admin_password:
+        read.temporary_password = temporary_password
+    return read
 
 
 @router.patch("/{business_id}", response_model=BusinessRead)
@@ -187,11 +201,13 @@ def update_business(
             raise HTTPException(status_code=422, detail="name cannot be null")
         changes["name"] = changes["name"].strip()
         _ensure_name_free(changes["name"], db, exclude_id=business.id)
-    for non_null in ("warning_days", "plan"):
+    for non_null in ("warning_days", "plan", "ai_credit_bonus"):
         if non_null in changes and changes[non_null] is None:
             raise HTTPException(
                 status_code=422, detail=f"{non_null} cannot be null"
             )
+    if "plan" in changes:
+        ensure_plan_exists(db, changes["plan"])
     diff = {
         field: {"from": _plain(getattr(business, field)), "to": _plain(value)}
         for field, value in changes.items()
@@ -267,12 +283,8 @@ def set_openai_settings(
         business.openai_api_key_enc = encrypt_secret(body.api_key)
         business.openai_key_last4 = body.api_key[-4:]
         business.openai_key_updated_at = datetime.now(timezone.utc)
-    if body.economy_model is not None:
-        business.openai_model_economy = body.economy_model or None
-    if body.balanced_model is not None:
-        business.openai_model_balanced = body.balanced_model or None
-    if body.premium_model is not None:
-        business.openai_model_premium = body.premium_model or None
+    if body.chat_model is not None:
+        business.openai_chat_model = body.chat_model or None
     if body.whisper_model is not None:
         business.openai_whisper_model = body.whisper_model or None
     db.commit()
@@ -282,9 +294,7 @@ def set_openai_settings(
         "business_openai_settings_set",
         business_id=str(business.id),
         key_changed=body.api_key is not None,
-        model_economy=business.openai_model_economy,
-        model_balanced=business.openai_model_balanced,
-        model_premium=business.openai_model_premium,
+        chat_model=business.openai_chat_model,
         whisper_model=business.openai_whisper_model,
         by=str(current_user.id),
     )

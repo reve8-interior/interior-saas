@@ -10,11 +10,8 @@ const setup = (over: Partial<Parameters<typeof NoItemsPanel>[0]> = {}) => {
       hasRun={false}
       ranAt={null}
       unmappedNotes={[]}
-      tier="balanced"
-      modelOptions={[]}
       isExtracting={false}
       extractChars={100}
-      onTierChange={vi.fn()}
       onAddManual={onAddManual}
       onRunExtract={onRunExtract}
       {...over}

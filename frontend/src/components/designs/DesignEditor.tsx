@@ -336,7 +336,7 @@ export function DesignEditor({
                   type="button"
                   onClick={cancelEdit}
                   aria-label="Back to hotspots"
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-text/5 hover:text-text"
+                  className="icon-btn"
                 >
                   <ArrowLeft className="h-5 w-5" aria-hidden />
                 </button>
@@ -432,7 +432,7 @@ export function DesignEditor({
 
               {/* Optional, so it stays folded until there is something in it. */}
               <details
-                key={selectedId ?? 'new'}
+                key={`details-${selectedId ?? 'new'}`}
                 open={Boolean(form.dimensions || form.labour_cost)}
                 className="surface group"
               >
@@ -489,7 +489,7 @@ export function DesignEditor({
 
               {selectedHotspot ? (
                 <AddToQuotationPanel
-                  key={selectedHotspot.id}
+                  key={`quotation-${selectedHotspot.id}`}
                   clientId={clientId}
                   designId={design.id}
                   hotspot={selectedHotspot}
@@ -509,7 +509,7 @@ export function DesignEditor({
                     onClick={() => remove.mutate(selectedId)}
                     disabled={remove.isPending}
                     aria-label="Delete hotspot"
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+                    className="icon-btn icon-btn-danger"
                   >
                     <Trash2 className="h-4 w-4" aria-hidden />
                   </button>

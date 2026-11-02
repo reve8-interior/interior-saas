@@ -21,6 +21,7 @@ from ..schemas.auth import (
 )
 from ..services import audit
 from ..services.ai_access import ai_status
+from ..services.plan_limits import effective_limits, usage_summary
 from ..services.subscription import access_status
 from .deps import get_current_user, get_user_allow_expired
 
@@ -94,6 +95,7 @@ def me(
 
 
 def _me(db: Session, user: User) -> UserMe:
+    business = user.business
     return UserMe(
         id=str(user.id),
         email=user.email,
@@ -102,7 +104,9 @@ def _me(db: Session, user: User) -> UserMe:
         must_change_password=user.must_change_password,
         business_name=user.business.name if user.business else None,
         access=access_status(user.business),
-        ai=ai_status(db, user.business),
+        ai=ai_status(db, business),
+        limits=effective_limits(db, business) if business else None,
+        usage=usage_summary(db, business) if business else [],
     )
 
 

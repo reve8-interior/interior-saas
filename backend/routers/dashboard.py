@@ -7,6 +7,7 @@ from ..schemas.dashboard import (
     AttentionItem,
     AttentionMarkRead,
     DashboardStats,
+    InboxMessage,
 )
 from ..services.attention_service import get_attention_items, mark_read
 from ..services.dashboard_service import (
@@ -17,6 +18,7 @@ from ..services.dashboard_service import (
     get_margin_metrics,
     get_revenue_metrics,
 )
+from ..services.inbox_service import list_inbox
 from .deps import get_current_user
 
 router = APIRouter()
@@ -31,9 +33,8 @@ def get_dashboard_stats(
         get_client_metrics(db)
     )
     approved_rev, pending_rev, revenue_by_phase = get_revenue_metrics(db)
-    ai_total_calls, ai_input, ai_output, ai_latency, ai_by_op, ai_cost = (
-        get_ai_usage_and_cost(db)
-    )
+    # Tokens, latency and cost are for the platform admin only.
+    ai_total_calls, _, _, _, ai_by_op, _ = get_ai_usage_and_cost(db)
     global_margin, margins_by_category = get_margin_metrics(db)
     recent_checkpoints, quotations_pending = get_activity_metrics(db)
     avg_project_days = get_avg_project_days(db)
@@ -47,10 +48,6 @@ def get_dashboard_stats(
         total_revenue_pending=pending_rev,
         revenue_by_phase=revenue_by_phase,
         ai_total_calls=ai_total_calls,
-        ai_total_input_tokens=ai_input,
-        ai_total_output_tokens=ai_output,
-        ai_avg_latency_ms=ai_latency,
-        ai_total_cost_usd=ai_cost,
         ai_calls_by_operation=ai_by_op,
         global_margin_percent=global_margin,
         margins_by_category=margins_by_category,
@@ -66,6 +63,15 @@ def get_dashboard_attention(
     current_user: User = Depends(get_current_user),
 ):
     return get_attention_items(db, current_user)
+
+
+@router.get("/inbox", response_model=list[InboxMessage])
+def get_dashboard_inbox(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Customer messages across every client the caller may see."""
+    return list_inbox(db, current_user)
 
 
 @router.post("/attention/read", status_code=204)

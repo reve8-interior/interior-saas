@@ -50,7 +50,7 @@ export function StepPlayer({
                 type="button"
                 onClick={() => setStep(i)}
                 aria-current={active ? 'step' : undefined}
-                className={`flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold transition-colors ${
+                className={`flex items-center gap-2 rounded-control border px-3.5 py-2 text-sm font-semibold transition-colors ${
                   active
                     ? 'border-brand bg-brand text-white'
                     : 'border-line text-dark-500 hover:bg-surface-2 dark:text-dark-400'

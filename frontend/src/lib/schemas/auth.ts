@@ -13,7 +13,38 @@ export interface AuthUser {
   roles: string[];
 }
 
-export type Plan = 'free' | 'pro';
+/** A plan slug, e.g. 'free', 'solo', 'studio', 'studio_pro'. */
+export type Plan = string;
+
+/** One limit with how much of it is used; a null limit is unlimited. */
+export interface UsageMeter {
+  key: string;
+  label: string;
+  used: number;
+  limit: number | null;
+}
+
+/** A business's effective limits: its overrides over its plan. */
+export interface PlanLimits {
+  plan: Plan;
+  plan_name: string;
+  max_users: number | null;
+  max_clients: number | null;
+  max_quotation_versions: number | null;
+  max_images: number | null;
+  max_image_mb: number | null;
+  max_portfolio_designs: number | null;
+  ai_credits_monthly: number | null;
+  clean_export: boolean;
+  branded_export: boolean;
+  bulk_materials_import: boolean;
+  priority_support: boolean;
+  website_enabled: boolean;
+  website_templates: number;
+  website_max_pages: number;
+  website_custom_domain: boolean;
+  website_remove_badge: boolean;
+}
 
 export interface AccessStatus {
   plan: Plan;
@@ -39,4 +70,6 @@ export interface UserMe {
   business_name: string | null;
   access: AccessStatus;
   ai: AiStatus;
+  limits: PlanLimits | null;
+  usage: UsageMeter[];
 }

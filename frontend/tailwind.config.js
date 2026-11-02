@@ -218,10 +218,18 @@ module.exports = {
         extrabold: '600',
         black: '600',
       },
-      // Controls (buttons, inputs, tabs) and cards each have one radius.
+      // Crisp corners: controls (buttons, inputs, tabs) and cards each have one radius, and the stock scale is
+      // tightened so every `rounded-lg` ... `rounded-3xl` across the app sharpens together. `full` stays for pills/dots.
       borderRadius: {
-        control: '0.625rem',
-        card: '1.25rem',
+        control: '0.375rem',
+        card: '0.5rem',
+        sm: '0.125rem',
+        DEFAULT: '0.25rem',
+        md: '0.25rem',
+        lg: '0.375rem',
+        xl: '0.375rem',
+        '2xl': '0.5rem',
+        '3xl': '0.5rem',
       },
       // Motion: one easing for everything that arrives or settles; durations by distance.
       transitionTimingFunction: {

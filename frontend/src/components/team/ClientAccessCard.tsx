@@ -147,7 +147,7 @@ export function ClientAccessCard({ clientId }: { clientId: string }) {
             {withAccess.map((d) => (
               <li
                 key={d.id}
-                className="flex max-w-full items-center gap-2 rounded-full border border-line py-1 pl-1 pr-3 text-sm"
+                className="flex max-w-full items-center gap-2 rounded-control border border-line py-1 pl-1 pr-3 text-sm"
               >
                 <Avatar member={d} />
                 <span className="truncate">{nameOf(d)}</span>

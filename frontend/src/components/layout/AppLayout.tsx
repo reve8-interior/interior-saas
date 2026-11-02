@@ -16,7 +16,7 @@ interface AppLayoutProps {
   businessLoading?: boolean;
   access?: AccessStatus;
   rootHref: string;
-  pageTitle: string;
+  pageTitle: ReactNode;
   bgClass: string;
   /** Shown in the desktop header, before the page actions. */
   headerExtra?: ReactNode;
@@ -91,7 +91,10 @@ export function AppLayout({
       >
         {/* Solid bar with a bottom rule, level with the sidebar's logo row so the two borders form one line */}
         <header className="sticky top-0 z-30 hidden h-16 items-center justify-between gap-3 border-b border-side-line bg-side px-8 lg:flex">
-          <h1 className="min-w-0 flex-1 truncate font-heading text-lg font-semibold text-dark-900 dark:text-white">
+          {/* A node title (client switcher) opens a popover, so it must not clip. */}
+          <h1
+            className={`min-w-0 flex-1 font-heading text-lg font-semibold text-dark-900 dark:text-white ${typeof pageTitle === 'string' ? 'truncate' : ''}`}
+          >
             {pageTitle}
           </h1>
           {headerExtra}

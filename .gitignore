@@ -41,3 +41,4 @@ demo/pipeline/audio/.narration_hash
 
 # Snapshot sync settings
 tools/snapshot.env
+brag-output**

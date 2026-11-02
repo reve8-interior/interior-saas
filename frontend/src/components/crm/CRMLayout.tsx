@@ -8,13 +8,24 @@ import {
 } from '@/components/layout/CommandPalette';
 import { AccessGate } from '@/components/crm/AccessGate';
 import { PasswordGate } from '@/components/crm/PasswordGate';
-import { NotificationBell } from '@/components/layout/NotificationBell';
+import { ClientSwitcher } from '@/components/crm/ClientSwitcher';
+import { WelcomePrompt } from '@/components/crm/WelcomePrompt';
+import { FeedbackPopup } from '@/components/feedback/FeedbackPopup';
 import { getSession, signOut } from '@/lib/auth';
+import { MARKETING_URL } from '@/lib/constants';
+import {
+  INBOX_KEY,
+  INBOX_POLL_MS,
+  getInbox,
+  openInboxCount,
+  type InboxMessage,
+} from '@/lib/inbox';
 import { useReplyToasts } from '@/lib/useReplyToasts';
 import { api } from '@/lib/api';
 import { getMe } from '@/lib/profile';
 import { AuthUser } from '@/lib/schemas';
 import type { Client } from '@/lib/schemas/client';
+import { usageMeters } from '@/lib/usage';
 import { useQuery } from '@tanstack/react-query';
 import {
   BookOpen,
@@ -22,6 +33,7 @@ import {
   Images,
   LinkSimple,
   SquaresFour,
+  Tray,
   UserGear,
   Users,
   Wrench,
@@ -34,6 +46,7 @@ const navigationSections: NavSection[] = [
     title: 'Portal',
     items: [
       { name: 'Dashboard', href: '/dashboard', icon: SquaresFour },
+      { name: 'Inbox', href: '/dashboard/inbox', icon: Tray },
       {
         name: 'Clients',
         href: '/dashboard/board',
@@ -82,11 +95,11 @@ function clientIdFromPath(pathname: string): string | null {
   return id && id !== 'new' ? id : null;
 }
 
-function getPageTitle(pathname: string, clientName?: string): string {
+function getPageTitle(pathname: string): string {
   if (pathname === '/dashboard') return 'Dashboard';
   if (pathname === '/dashboard/board') return 'Board';
+  if (pathname === '/dashboard/inbox') return 'Inbox';
   if (pathname.startsWith('/dashboard/clients/new')) return 'New Client';
-  if (clientIdFromPath(pathname)) return clientName ?? 'Client';
   if (pathname.startsWith('/dashboard/clients')) return 'Clients';
   if (pathname.startsWith('/dashboard/materials')) return 'Material Library';
   if (pathname === '/dashboard/portfolio') return 'Portfolio';
@@ -121,18 +134,30 @@ export default function CRMLayout({ children }: { children: ReactNode }) {
     queryFn: getMe,
   });
 
+  // Customer questions still unanswered; the Inbox link shows the count.
+  const { data: inbox = [] } = useQuery<InboxMessage[]>({
+    queryKey: INBOX_KEY,
+    queryFn: getInbox,
+    refetchInterval: INBOX_POLL_MS,
+    refetchOnWindowFocus: true,
+  });
+  const inboxOpen = openInboxCount(inbox);
+
   // Only business admins manage the team.
-  const sections = useMemo<NavSection[]>(
-    () =>
-      user?.roles.includes('admin')
-        ? navigationSections.map((section) =>
-            section.title === 'Manage'
-              ? { ...section, items: [TEAM_ITEM, ...section.items] }
-              : section
-          )
-        : navigationSections,
-    [user]
-  );
+  const sections = useMemo<NavSection[]>(() => {
+    const isAdmin = user?.roles.includes('admin');
+    return navigationSections.map((section) => ({
+      ...section,
+      items: [
+        ...(isAdmin && section.title === 'Manage' ? [TEAM_ITEM] : []),
+        ...section.items.map((item) =>
+          item.href === '/dashboard/inbox'
+            ? { ...item, badge: inboxOpen }
+            : item
+        ),
+      ],
+    }));
+  }, [user, inboxOpen]);
 
   const pages = useMemo(
     () => sections.flatMap((section) => section.items),
@@ -155,25 +180,44 @@ export default function CRMLayout({ children }: { children: ReactNode }) {
       access={me?.access}
       label="Studio"
       rootHref="/dashboard"
-      pageTitle={getPageTitle(pathname, client?.name)}
-      bgClass="bg-transparent"
-      headerExtra={
-        <>
-          <CommandPaletteButton />
-          <NotificationBell />
-        </>
+      pageTitle={
+        clientId ? (
+          <ClientSwitcher
+            clientId={clientId}
+            name={client?.name}
+            pathname={pathname}
+          />
+        ) : (
+          getPageTitle(pathname)
+        )
       }
-      mobileExtra={<NotificationBell />}
+      bgClass="bg-transparent"
+      headerExtra={<CommandPaletteButton />}
       user={user}
       onLogout={() => {
         signOut();
-        router.push('/login');
+        window.location.assign(MARKETING_URL);
       }}
     >
       <CommandPalette pages={pages} />
       <PasswordGate required={me?.must_change_password}>
-        <AccessGate access={me?.access}>{children}</AccessGate>
+        <AccessGate
+          access={me?.access}
+          meters={usageMeters(me?.usage ?? [], me?.ai)}
+        >
+          {children}
+        </AccessGate>
       </PasswordGate>
+      {/* Viewers are read-only, so they can neither answer nor load a sample. */}
+      {user &&
+        me &&
+        !me.must_change_password &&
+        !user.roles.includes('viewer') && (
+          <>
+            <WelcomePrompt userId={user.id} />
+            <FeedbackPopup userId={user.id} />
+          </>
+        )}
     </AppLayout>
   );
 }

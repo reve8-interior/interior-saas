@@ -3,6 +3,7 @@
 from passlib.context import CryptContext
 
 from ..models.user import User, UserRole
+from ..services.plan_limits import seed_plans
 from .config import settings
 from .database import SessionLocal
 
@@ -37,5 +38,14 @@ def bootstrap_admin() -> None:
         )
         db.add(admin)
         db.commit()
+    finally:
+        db.close()
+
+
+def seed_default_plans() -> None:
+    """Insert the built-in plans that don't exist yet."""
+    db = SessionLocal()
+    try:
+        seed_plans(db)
     finally:
         db.close()

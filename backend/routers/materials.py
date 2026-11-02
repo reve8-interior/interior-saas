@@ -3,7 +3,7 @@ import io
 import time
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -25,7 +25,6 @@ from ..services.ai_access import (
     log_ai_usage,
     resolve_openai_access,
 )
-from ..services.ai_models import ModelTier
 from .deps import get_current_user, require_admin
 
 router = APIRouter()
@@ -177,12 +176,11 @@ def bulk_confirm(
 @router.post("/materials/ai-extract", response_model=MaterialBulkPreview)
 async def ai_extract(
     file: UploadFile = File(...),
-    tier: ModelTier | None = Form(default=None),
     db: Session = Depends(get_db),
     _admin: User = Depends(require_admin),
 ):
-    """Extract a materials table from an image with the chosen tier's model."""
-    access = resolve_openai_access(_admin, tier)
+    """Extract a materials table from an image with the business's model."""
+    access = resolve_openai_access(_admin)
     api_key = access.api_key
 
     content = await file.read()

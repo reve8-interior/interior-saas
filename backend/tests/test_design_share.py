@@ -644,3 +644,14 @@ def test_hotspot_icon_is_saved_shared_and_validated(api, studio):
     token = _share(api, admin, client).json()["url"].rsplit("/", 1)[-1]
     shown = api.get(f"/api/v1/share/{token}").json()["designs"][0]["hotspots"]
     assert "armchair" in [x["icon"] for x in shown]
+
+
+def test_shared_views_serve_the_light_view_image(api, studio):
+    admin, client, design = _shared_setup(api, studio)
+    token = _share(api, admin, client).json()["url"].rsplit("/", 1)[-1]
+    shared = api.get(f"/api/v1/share/{token}").json()["designs"][0]
+    path = urlparse(shared["image_url"]).path
+    assert path.endswith(storage.VIEW_SUFFIX)
+    assert urlparse(shared["thumb_url"]).path.endswith(storage.THUMB_SUFFIX)
+    # The editor still gets the original upload.
+    assert not urlparse(design["image_url"]).path.endswith(storage.VIEW_SUFFIX)

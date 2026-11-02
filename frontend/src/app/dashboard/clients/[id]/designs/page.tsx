@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { GridSkeleton } from '@/components/ui';
+import { GridSkeleton, SkeletonImage } from '@/components/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Eye, MapPin, Share2, Star, Trash2 } from 'lucide-react';
 import { useParams } from 'next/navigation';
@@ -197,6 +197,10 @@ export default function DesignsPage() {
   const toggleAllPicked = () =>
     setPicked(allPicked ? new Set() : new Set(designs.map((d) => d.id)));
 
+  const pickedDesigns = designs.filter((d) => picked.has(d.id));
+  const canAddToPortfolio = pickedDesigns.some((d) => !d.in_portfolio);
+  const canRemoveFromPortfolio = pickedDesigns.some((d) => d.in_portfolio);
+
   const bulkPortfolio = useMutation({
     mutationFn: (add: boolean) =>
       Promise.all(
@@ -279,7 +283,8 @@ export default function DesignsPage() {
           <button
             type="button"
             onClick={() => bulkPortfolio.mutate(true)}
-            disabled={bulkPortfolio.isPending}
+            disabled={bulkPortfolio.isPending || !canAddToPortfolio}
+            title={canAddToPortfolio ? undefined : 'Already in your portfolio'}
             className="btn-secondary"
           >
             Add to portfolio
@@ -287,7 +292,8 @@ export default function DesignsPage() {
           <button
             type="button"
             onClick={() => bulkPortfolio.mutate(false)}
-            disabled={bulkPortfolio.isPending}
+            disabled={bulkPortfolio.isPending || !canRemoveFromPortfolio}
+            title={canRemoveFromPortfolio ? undefined : 'Not in your portfolio'}
             className="btn-secondary"
           >
             Remove from portfolio
@@ -455,20 +461,18 @@ export default function DesignsPage() {
                       aria-label={`Edit hotspots on ${design.title || 'design'}`}
                       className="block w-full"
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <SkeletonImage
                         loading="lazy"
-                        decoding="async"
                         src={design.thumb_url ?? design.image_url}
                         alt={design.title || 'Design'}
                         className="h-40 w-full object-cover"
                       />
-                      <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">
+                      <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-control bg-black/60 px-2 py-0.5 text-xs text-white">
                         <MapPin className="h-3 w-3" />
                         {design.hotspots.length}
                       </span>
                     </button>
-                    <label className="absolute left-2 top-2 flex min-h-control cursor-pointer items-center gap-1.5 rounded-full bg-black/60 px-2.5 text-xs font-medium text-white">
+                    <label className="absolute left-2 top-2 flex min-h-control cursor-pointer items-center gap-1.5 rounded-control bg-black/60 px-2.5 text-xs font-medium text-white">
                       <input
                         type="checkbox"
                         checked={picked.has(design.id)}
@@ -488,7 +492,7 @@ export default function DesignsPage() {
                     </span>
                   </div>
                   {design.is_selected && (
-                    <span className="rounded-full bg-brand px-2.5 py-0.5 text-xs font-semibold text-white">
+                    <span className="rounded-control bg-brand px-2.5 py-0.5 text-xs font-semibold text-white">
                       Client&apos;s favourite
                     </span>
                   )}
@@ -507,7 +511,7 @@ export default function DesignsPage() {
                   {design.rooms.map((room) => (
                     <span
                       key={room}
-                      className="rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-600/20 dark:text-primary-300"
+                      className="rounded-control bg-primary-50 px-2.5 py-0.5 text-xs font-medium text-primary-700 dark:bg-primary-600/20 dark:text-primary-300"
                     >
                       {room}
                     </span>

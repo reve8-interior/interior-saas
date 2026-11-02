@@ -33,7 +33,7 @@ export function AddFromNotes({
         <Sparkles className="h-4 w-4" aria-hidden />
         Add from notes
         {lockMessage && me?.access.plan === 'free' && !me.ai.enabled && (
-          <span className="rounded-full bg-primary-100 px-2 py-0.5 text-xs font-semibold text-primary-700 dark:bg-primary-500/20 dark:text-primary-200">
+          <span className="rounded-control bg-primary-100 px-2 py-0.5 text-xs font-semibold text-primary-700 dark:bg-primary-500/20 dark:text-primary-200">
             Pro
           </span>
         )}

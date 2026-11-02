@@ -189,6 +189,27 @@ class TestSignedUrls:
         assert exp < time.time()
         assert not verify_media_signature("biz/x.png", exp, sig)
 
+    def test_url_is_stable_within_a_window_so_it_can_be_cached(
+        self, monkeypatch
+    ):
+        monkeypatch.setattr(settings, "media_url_ttl_seconds", 6 * 3600)
+        window = 3 * 3600
+        start = 1_000_000 * window
+        monkeypatch.setattr(time, "time", lambda: start + 10)
+        first = signed_media_url("biz/x.png")
+        monkeypatch.setattr(time, "time", lambda: start + window - 10)
+        assert signed_media_url("biz/x.png") == first
+        monkeypatch.setattr(time, "time", lambda: start + window + 10)
+        assert signed_media_url("biz/x.png") != first
+
+    def test_link_always_lives_at_least_half_the_ttl(self, monkeypatch):
+        monkeypatch.setattr(settings, "media_url_ttl_seconds", 6 * 3600)
+        for offset in (0, 1, 3 * 3600 - 1, 3 * 3600, 5 * 3600):
+            now = 2_000_000_000 + offset
+            monkeypatch.setattr(time, "time", lambda now=now: now)
+            exp, _ = self._parts(signed_media_url("biz/x.png"))
+            assert exp - now >= 3 * 3600
+
     def test_signature_depends_on_secret(self, monkeypatch):
         exp, sig = self._parts(signed_media_url("biz/x.png"))
         monkeypatch.setattr(settings, "jwt_secret", "a-different-secret")

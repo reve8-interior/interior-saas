@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..core import get_db
@@ -20,6 +20,14 @@ from ..schemas.client import (
 )
 from ..services import client_access as access
 from ..services.client_access import get_client_or_404, restrict_to_accessible
+from ..services.plan_limits import ensure_can_add_client
+from ..services.sample_client import (
+    SampleImageError,
+    create_sample_client,
+    delete_stored_images,
+    find_sample_client,
+    image_paths,
+)
 from .deps import get_current_user, require_business_admin
 
 router = APIRouter()
@@ -58,6 +66,7 @@ def create_client(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    ensure_can_add_client(current_user.business, db)
     # Designers only see clients they lead, so theirs always start with them.
     if current_user.role == UserRole.designer:
         lead_id = current_user.id
@@ -75,6 +84,29 @@ def create_client(
     db.refresh(client)
     logger.info(
         "client_created", client_id=str(client.id), by=str(current_user.id)
+    )
+    return client
+
+
+@router.post("/sample", response_model=ClientRead, status_code=201)
+def add_sample_client(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Add the demo client for the first-run tour; one at a time."""
+    if find_sample_client(db):
+        raise HTTPException(
+            status_code=409, detail="A sample client already exists"
+        )
+    try:
+        client = create_sample_client(db, current_user)
+    except SampleImageError as exc:
+        logger.exception("sample_client_images_failed")
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    logger.info(
+        "sample_client_created",
+        client_id=str(client.id),
+        by=str(current_user.id),
     )
     return client
 
@@ -175,6 +207,38 @@ def update_phase(
         by=str(current_user.id),
     )
     return client
+
+
+@router.delete("/{client_id}", status_code=204)
+def delete_sample_client(
+    client_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Remove the demo client. Real clients are deactivated, never deleted."""
+    client = get_client_or_404(client_id, db, current_user)
+    if not client.is_sample:
+        raise HTTPException(
+            status_code=403, detail="Only the sample client can be deleted"
+        )
+    paths = image_paths(db, client.id)
+    # Core delete: the database cascades to the client's own rows.
+    db.execute(delete(Client).where(Client.id == client.id))
+    db.add(
+        AuditLog(
+            user_id=current_user.id,
+            action="sample_client_deleted",
+            entity_type="client",
+            entity_id=str(client.id),
+            payload={},
+            timestamp=datetime.utcnow(),
+        )
+    )
+    db.commit()
+    delete_stored_images(paths)
+    logger.info(
+        "sample_client_deleted", client_id=client_id, by=str(current_user.id)
+    )
 
 
 @router.patch("/{client_id}/deactivate", response_model=ClientRead)

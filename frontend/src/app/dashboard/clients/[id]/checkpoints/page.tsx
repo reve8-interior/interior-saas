@@ -172,7 +172,7 @@ export default function CheckpointsPage() {
                 aria-hidden
                 className={`absolute -left-[7px] top-5 hidden h-3 w-3 rounded-full border-2 md:block ${
                   cp.added_to_quotation
-                    ? 'border-primary-500 bg-primary-500'
+                    ? 'border-brand bg-brand'
                     : 'border-line bg-white dark:border-line dark:bg-dark-900/60'
                 }`}
               />

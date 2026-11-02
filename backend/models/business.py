@@ -21,9 +21,9 @@ class Business(Base, TimestampMixin):
         Boolean, nullable=False, default=True
     )
 
-    # Commercial tier shown to the tenant: free | pro.
+    # Slug of the commercial plan (see models.plan.Plan).
     plan: Mapped[str] = mapped_column(
-        String(10), nullable=False, default="free", server_default="free"
+        String(32), nullable=False, default="free", server_default="free"
     )
     # Payment countdown: access ends here (null = no limit).
     access_expires_at: Mapped[datetime | None] = mapped_column(
@@ -34,19 +34,23 @@ class Business(Base, TimestampMixin):
         Integer, nullable=False, default=7, server_default="7"
     )
 
-    # Team-seat allowance set by the platform admin; null = no limit.
-    # Only active users use a seat.
-    max_users: Mapped[int | None] = mapped_column(
-        Integer, nullable=True, default=5, server_default="5"
+    # Per-business overrides set by the platform admin. Null follows the
+    # business's plan (services.plan_limits.effective_limits). Only active
+    # users use a team seat; the per-image size is also capped globally by
+    # MAX_IMAGE_BYTES.
+    max_users: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_images: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_image_mb: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_clients: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_quotation_versions: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
     )
-
-    # Uploaded-image allowance set by the platform admin; null = no limit
-    # (the per-image size is still capped by the global MAX_IMAGE_BYTES).
-    max_images: Mapped[int | None] = mapped_column(
-        Integer, nullable=True, default=50, server_default="50"
+    max_portfolio_designs: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
     )
-    max_image_mb: Mapped[int | None] = mapped_column(
-        Integer, nullable=True, default=5, server_default="5"
+    # Goodwill AI credits on top of the plan's monthly allowance.
+    ai_credit_bonus: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
     )
 
     # Encrypted with services.secret_box; never serialized to clients.
@@ -56,11 +60,9 @@ class Business(Base, TimestampMixin):
         DateTime(timezone=True)
     )
 
-    # Chat model per price tier (see services.ai_models); null = the
-    # platform default for that tier.
-    openai_model_economy: Mapped[str | None] = mapped_column(String(100))
-    openai_model_balanced: Mapped[str | None] = mapped_column(String(100))
-    openai_model_premium: Mapped[str | None] = mapped_column(String(100))
+    # Chat model chosen by the platform admin (see services.ai_models);
+    # null = the platform default.
+    openai_chat_model: Mapped[str | None] = mapped_column(String(100))
     # Voice transcription model; null = platform default.
     openai_whisper_model: Mapped[str | None] = mapped_column(String(100))
 

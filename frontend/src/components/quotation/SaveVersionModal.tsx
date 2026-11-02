@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -12,6 +12,13 @@ import { Modal } from '@/components/ui/Modal';
 import { INPUT_CLS } from '@/lib/constants';
 import { errorMessage } from '@/lib/errors';
 import { ATTENTION_KEY } from '@/lib/attention';
+import { INBOX_KEY } from '@/lib/inbox';
+import {
+  isOpenQuestion,
+  listQuotationMessages,
+  quotationMessagesKey,
+  resolveQuotationMessage,
+} from '@/lib/quotationMessages';
 import { moveShareLink, saveQuotationVersion } from '@/lib/quotationVersions';
 import type { Quotation } from '@/lib/schemas/quotation';
 import type { QuotationVersionSummary } from '@/lib/schemas/quotationVersion';
@@ -40,6 +47,13 @@ export function SaveVersionModal({
   const { data: designs = [] } = useClientDesigns(clientId);
   const shared = useSharedVersion(clientId);
   const [onLink, setOnLink] = useState(false);
+  const { data: messages = [] } = useQuery({
+    queryKey: quotationMessagesKey(clientId),
+    queryFn: () => listQuotationMessages(clientId),
+  });
+  const openQuestions = messages.filter(isOpenQuestion);
+  // Saving usually is the answer to a question, so offer to close it.
+  const [resolveOpen, setResolveOpen] = useState(true);
 
   const rooms = quotation.rooms.map((r) => r.room);
   const value = chosen ?? designsByRoomTag(rooms, designs);
@@ -66,11 +80,21 @@ export function SaveVersionModal({
       if (shared && onLink && !moved) {
         toast.error('Saved, but the customer link was not updated. Try Share.');
       }
+      if (resolveOpen && openQuestions.length > 0) {
+        const results = await Promise.allSettled(
+          openQuestions.map((m) => resolveQuotationMessage(m.id, true))
+        );
+        if (results.some((r) => r.status === 'rejected')) {
+          toast.error('Saved, but some questions were not marked resolved.');
+        }
+      }
       return { version, moved };
     },
     onSuccess: ({ version, moved }, goShare) => {
       qc.invalidateQueries({ queryKey: ['quotation-versions', clientId] });
       qc.invalidateQueries({ queryKey: ATTENTION_KEY });
+      qc.invalidateQueries({ queryKey: quotationMessagesKey(clientId) });
+      qc.invalidateQueries({ queryKey: INBOX_KEY });
       onClose();
       if (goShare) {
         router.push(versionPath(version, 'share'));
@@ -140,6 +164,18 @@ export function SaveVersionModal({
             checked={onLink}
             onChange={setOnLink}
           />
+        )}
+
+        {openQuestions.length > 0 && (
+          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm text-dark-900 dark:text-white">
+            <input
+              type="checkbox"
+              checked={resolveOpen}
+              onChange={(e) => setResolveOpen(e.target.checked)}
+            />
+            Mark {openQuestions.length} open customer{' '}
+            {openQuestions.length === 1 ? 'question' : 'questions'} as resolved
+          </label>
         )}
 
         <div className="flex flex-wrap justify-end gap-2">

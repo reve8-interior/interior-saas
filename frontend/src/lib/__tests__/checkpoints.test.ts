@@ -55,16 +55,15 @@ describe('checkpointNumbers', () => {
 });
 
 describe('extractFromText', () => {
-  it('posts text and tier as multipart form to the extract endpoint', async () => {
+  it('posts text as multipart form to the extract endpoint', async () => {
     vi.mocked(api.postForm).mockResolvedValue({});
-    await extractFromText('c1', 'hello', 'premium');
+    await extractFromText('c1', 'hello');
     const [endpoint, fd] = vi.mocked(api.postForm).mock.calls[0];
     expect(endpoint).toBe('/clients/c1/checkpoints/extract');
     expect((fd as FormData).get('text')).toBe('hello');
-    expect((fd as FormData).get('tier')).toBe('premium');
   });
 
-  it('omits tier when not provided', async () => {
+  it('never sends a model choice', async () => {
     await extractFromText('c1', 'hello');
     const fd = vi.mocked(api.postForm).mock.calls.at(-1)![1] as FormData;
     expect(fd.has('tier')).toBe(false);

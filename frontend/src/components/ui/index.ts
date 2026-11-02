@@ -12,6 +12,7 @@ export {
   TableSkeleton,
   CardSkeleton,
 } from './Skeleton';
+export { SkeletonImage } from './SkeletonImage';
 export { ConfirmDeleteModal } from './ConfirmDeleteModal';
 export { Badge } from './Badge';
 export type { BadgeTone } from './Badge';

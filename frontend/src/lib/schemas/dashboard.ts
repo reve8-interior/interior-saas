@@ -12,10 +12,6 @@ export interface DashboardStats {
 
   //AI Usage
   ai_total_calls: number;
-  ai_total_input_tokens: number;
-  ai_total_output_tokens: number;
-  ai_avg_latency_ms: number;
-  ai_total_cost_usd: number;
   ai_calls_by_operation: Record<string, number>;
 
   //Margins

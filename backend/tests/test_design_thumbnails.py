@@ -8,9 +8,13 @@ from PIL import Image
 from backend.core.config import settings
 from backend.services.storage import (
     THUMB_MAX_PX,
+    VIEW_MAX_PX,
     get_storage,
     make_thumbnail,
+    make_view_image,
+    signed_view_url,
     thumb_path,
+    view_path,
 )
 
 from .conftest import (
@@ -73,6 +77,41 @@ def test_transparent_png_is_flattened():
     assert thumb.mode == "RGB"
 
 
+def test_view_image_fits_bound_and_is_webp():
+    view = Image.open(io.BytesIO(make_view_image(_png(4000, 3000))))
+    assert view.format == "WEBP"
+    assert max(view.size) == VIEW_MAX_PX
+
+
+def test_view_image_keeps_transparency_and_small_sizes():
+    out = io.BytesIO()
+    Image.new("RGBA", (50, 40), (255, 0, 0, 90)).save(out, "PNG")
+    view = Image.open(io.BytesIO(make_view_image(out.getvalue())))
+    assert view.size == (50, 40)
+    assert "A" in view.getbands()
+
+
+def test_upload_stores_a_lighter_view_image(api, db):
+    user, client = _setup(db)
+    body = _upload(api, user, client, _png(2400, 1600)).json()
+    path = f"designs/{client.id}/{body['id']}.png"
+    assert (
+        Image.open(io.BytesIO(get_storage().get(view_path(path)))).format
+        == "WEBP"
+    )
+
+
+def test_view_image_is_built_lazily_for_older_designs(api, db):
+    user, client = _setup(db)
+    body = _upload(api, user, client, _png(1200, 900)).json()
+    path = f"designs/{client.id}/{body['id']}.png"
+    get_storage().delete(view_path(path))
+    r = _fetch(api, signed_view_url(path))
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/webp"
+    assert get_storage().get(view_path(path))
+
+
 def test_upload_returns_a_smaller_thumb_url(api, db):
     user, client = _setup(db)
     r = _upload(api, user, client, _png(2400, 1600))
@@ -122,6 +161,8 @@ def test_delete_removes_the_thumbnail(api, db):
     assert r.status_code == 204
     with pytest.raises(Exception):
         get_storage().get(thumb_path(path))
+    with pytest.raises(Exception):
+        get_storage().get(view_path(path))
 
 
 def test_design_count_matches_uploads(api, db):

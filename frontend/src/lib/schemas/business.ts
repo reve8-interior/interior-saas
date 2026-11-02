@@ -1,4 +1,4 @@
-import { Plan } from '@/lib/schemas/auth';
+import type { Plan, PlanLimits, UsageMeter } from '@/lib/schemas/auth';
 
 export interface Business {
   id: string;
@@ -9,21 +9,30 @@ export interface Business {
   created_at: string;
   user_count: number;
   plan: Plan;
+  plan_name: string;
+  ai_credit_bonus: number;
   access_expires_at: string | null;
   warning_days: number;
+  /** Overrides set on this business; null follows the plan. */
   max_users: number | null;
-  seats_used: number;
   max_images: number | null;
   max_image_mb: number | null;
+  max_clients: number | null;
+  max_quotation_versions: number | null;
+  max_portfolio_designs: number | null;
+  /** What actually applies: overrides over the plan. */
+  limits: PlanLimits | null;
+  usage: UsageMeter[];
+  seats_used: number;
   image_count: number;
   days_left: number | null;
   access_expired: boolean;
   has_openai_key: boolean;
+  /** Only on the create response: the generated admin password, shown once. */
+  temporary_password?: string | null;
   openai_key_last4: string | null;
   openai_key_updated_at: string | null;
-  openai_model_economy: string | null;
-  openai_model_balanced: string | null;
-  openai_model_premium: string | null;
+  openai_chat_model: string | null;
   openai_whisper_model: string | null;
 }
 
@@ -34,9 +43,13 @@ export interface BusinessCreate {
   plan?: Plan;
   access_expires_at?: string | null;
   warning_days?: number;
+  ai_credit_bonus?: number;
   max_users?: number | null;
   max_images?: number | null;
   max_image_mb?: number | null;
+  max_clients?: number | null;
+  max_quotation_versions?: number | null;
+  max_portfolio_designs?: number | null;
   admin_email?: string | null;
   admin_password?: string | null;
   admin_name?: string | null;
@@ -53,6 +66,10 @@ export type BusinessUpdate = Pick<
   | 'max_users'
   | 'max_images'
   | 'max_image_mb'
+  | 'max_clients'
+  | 'max_quotation_versions'
+  | 'max_portfolio_designs'
+  | 'ai_credit_bonus'
 >;
 
 export type TeamRole = 'admin' | 'designer' | 'viewer';

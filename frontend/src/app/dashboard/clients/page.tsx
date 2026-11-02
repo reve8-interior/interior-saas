@@ -260,7 +260,7 @@ export default function ClientsPage() {
 
       <div className="flex flex-wrap items-center gap-3">
         {/* Tabs */}
-        <div className="inline-flex gap-1 rounded-full border border-line bg-surface p-1 dark:border-line dark:bg-white/5">
+        <div className="inline-flex gap-1 rounded-control border border-line bg-surface p-1 dark:border-line dark:bg-white/5">
           {(
             [
               ['active', 'Active Clients'],
@@ -271,7 +271,7 @@ export default function ClientsPage() {
               key={t}
               onClick={() => switchTab(t)}
               aria-pressed={tab === t}
-              className={`rounded-full px-5 py-1.5 text-sm font-semibold transition-colors ${
+              className={`rounded-control px-5 py-1.5 text-sm font-semibold transition-colors ${
                 tab === t
                   ? 'bg-brand text-white'
                   : 'text-dark-500 hover:text-dark-700 dark:text-dark-400 dark:hover:text-dark-200'

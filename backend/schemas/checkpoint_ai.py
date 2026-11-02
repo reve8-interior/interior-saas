@@ -4,10 +4,6 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator
 
-from ..services.ai_models import (
-    ModelTier,
-)
-
 
 class ExtractedLineItemOut(BaseModel):
     # What the client did to the quotation: add new work, change an
@@ -68,10 +64,6 @@ class ExtractionResponse(BaseModel):
     questions: list[ExtractedQuestionOut] = Field(default_factory=list)
     scope: ExtractionScopeOut
     model: str
-    input_tokens: int
-    output_tokens: int
-    latency_ms: int
-    cost_usd: float | None
 
 
 class ConfirmLineItem(BaseModel):
@@ -117,8 +109,6 @@ class FromExtractionRequest(BaseModel):
     client_budget: float | None = None
     unmapped_notes: list[str] = Field(default_factory=list)
     questions: list[ExtractedQuestionOut] = Field(default_factory=list)
-    # The tier the extraction ran on, for the provenance stamp.
-    tier: ModelTier | None = None
     # kept for API compat; ignored — we always upsert
     create_quotation: bool = True
 

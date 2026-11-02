@@ -16,6 +16,7 @@ const mk = (over: Partial<Client>): Client => ({
   assigned_designer: null,
   notes: null,
   is_active: true,
+  is_sample: false,
   created_at: '2026-01-01',
   updated_at: '2026-01-01',
   completed_at: null,

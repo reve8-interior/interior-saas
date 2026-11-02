@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useScrollTabs } from '@/lib/useScrollTabs';
 
 /**
  * Second-level navigation under the Quotation tab. Meeting notes appear only
@@ -18,6 +21,7 @@ export function QuotationSections({
   /** Saved versions; undefined while still loading. */
   versionsCount?: number;
 }) {
+  const navRef = useScrollTabs<HTMLElement>(pathname);
   const sections = [
     { href: `${base}/quotation`, label: 'Items' },
     ...(showNotes
@@ -28,8 +32,9 @@ export function QuotationSections({
 
   return (
     <nav
+      ref={navRef}
       aria-label="Quotation sections"
-      className="mb-6 flex gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="scroll-tabs mb-6 flex gap-1"
     >
       {sections.map(({ href, label }) => {
         const active = pathname === href;

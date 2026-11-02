@@ -1,14 +1,18 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Copy, ExternalLink } from 'lucide-react';
+import { CalendarPlus, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Badge, type BadgeTone } from '@/components/ui/Badge';
-import { copyLink, StopSharingButton } from '@/components/shared/ShareControls';
+import {
+  CopyLinkButton,
+  StopSharingButton,
+} from '@/components/shared/ShareControls';
 import { timeAgo } from '@/lib/dates';
 import { errorMessage } from '@/lib/errors';
 import { fmtDateLong } from '@/lib/format';
+import { CUSTOMER_MESSAGES_ID } from '@/lib/quotationMessages';
 import {
   SHARED_LINKS_KEY,
   canExtend,
@@ -80,81 +84,69 @@ export function SharedLinkCard({
   const status = STATUS_TONE[linkStatus(link)];
   const active = linkStatus(link) === 'active';
   return (
-    <li
-      className={`surface space-y-3 p-4 ${compact ? 'flex h-full flex-col' : ''}`}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge tone="neutral">{KIND_LABEL[link.kind]}</Badge>
-        <Link
-          href={homeOf(link)}
-          className="text-sm font-semibold text-dark-900 hover:underline dark:text-white"
-        >
-          {link.title}
-        </Link>
-        {showClient && link.client_name && (
-          <span className="text-sm text-dark-600 dark:text-dark-300">
-            for {link.client_name}
+    <li className="surface flex flex-col gap-3 p-4 md:flex-row md:items-center md:gap-6">
+      <div className="min-w-0 flex-1 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="neutral">{KIND_LABEL[link.kind]}</Badge>
+          <span className="flex items-center gap-2">
+            {link.response_kind === 'approved' && (
+              <Badge tone="success">Approved</Badge>
+            )}
+            {link.response_kind && link.response_kind !== 'approved' && (
+              <Link
+                href={`/dashboard/clients/${link.client_id}#${CUSTOMER_MESSAGES_ID}`}
+                onClick={(e) => {
+                  // Already on the client page: a same-hash link is a no-op, so scroll ourselves.
+                  const target = document.getElementById(CUSTOMER_MESSAGES_ID);
+                  if (compact && target) {
+                    e.preventDefault();
+                    target.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+                className="badge bg-amber-100 font-medium text-amber-700 underline-offset-2 hover:underline dark:bg-amber-500/15 dark:text-amber-300"
+              >
+                View reply
+              </Link>
+            )}
+            <Badge tone={status.tone}>{status.label}</Badge>
           </span>
-        )}
-        <span className="ml-auto">
-          <Badge tone={status.tone}>{status.label}</Badge>
-        </span>
+          <Link
+            href={homeOf(link)}
+            className="text-sm font-semibold text-dark-900 hover:underline dark:text-white"
+          >
+            {link.title}
+          </Link>
+          {showClient && link.client_name && (
+            <span className="text-sm text-dark-600 dark:text-dark-300">
+              for {link.client_name}
+            </span>
+          )}
+        </div>
+
+        <p className="text-xs text-dark-500 dark:text-dark-400">
+          {link.expires_at
+            ? `Till ${fmtDateLong(link.expires_at)}`
+            : 'No end date'}
+          {link.show_prices !== null &&
+            ` · Prices ${link.show_prices ? 'shown' : 'hidden'}`}
+          {activity(link) && ` · ${activity(link)}`}
+          {` · Made ${timeAgo(link.created_at)}`}
+        </p>
       </div>
 
-      <p className="text-xs text-dark-500 dark:text-dark-400">
-        {link.expires_at
-          ? `Till ${fmtDateLong(link.expires_at)}`
-          : 'No end date'}
-        {link.show_prices !== null &&
-          ` · Prices ${link.show_prices ? 'shown' : 'hidden'}`}
-        {activity(link) && ` · ${activity(link)}`}
-        {` · Made ${timeAgo(link.created_at)}`}
-      </p>
-
-      {link.response_kind && (
-        <p
-          role="status"
-          className={`rounded-lg px-3 py-2 text-sm ${
-            link.response_kind === 'approved'
-              ? 'bg-green-50 text-green-800 dark:bg-green-500/10 dark:text-green-300'
-              : 'bg-amber-50 text-amber-900 dark:bg-amber-500/10 dark:text-amber-200'
-          }`}
-        >
-          {link.response_kind === 'approved'
-            ? 'Customer approved this quotation'
-            : 'Customer asked a question'}
-          {compact && link.response_kind !== 'approved' && (
-            <>
-              {' · '}
-              <a href="#customer-messages" className="font-medium underline">
-                Read
-              </a>
-            </>
-          )}
-        </p>
-      )}
-
-      <div
-        className={`flex flex-wrap items-center gap-2 ${compact ? 'mt-auto' : ''}`}
-      >
+      <div className="flex flex-wrap items-center gap-2 md:max-w-[22rem] md:shrink-0 md:justify-end">
         {active && (
           <>
-            <button
-              type="button"
-              onClick={() => copyLink(link.url)}
-              className="btn-secondary"
-            >
-              <Copy className="h-4 w-4" aria-hidden />
-              Copy link
-            </button>
+            <CopyLinkButton url={link.url} iconOnly />
             <a
               href={link.url}
               target="_blank"
               rel="noreferrer"
-              className="btn-secondary"
+              aria-label="Open link"
+              title="Open link"
+              className="icon-btn icon-btn-sm"
             >
               <ExternalLink className="h-4 w-4" aria-hidden />
-              Open
             </a>
           </>
         )}
@@ -163,14 +155,17 @@ export function SharedLinkCard({
             type="button"
             onClick={() => extend.mutate(link)}
             disabled={extend.isPending}
-            className="btn-secondary"
+            aria-label={active ? 'Extend 30 days' : 'Renew 30 days'}
+            title={active ? 'Extend 30 days' : 'Renew 30 days'}
+            className="icon-btn icon-btn-sm"
           >
-            {active ? 'Extend 30 days' : 'Renew 30 days'}
+            <CalendarPlus className="h-4 w-4" aria-hidden />
           </button>
         )}
         <StopSharingButton
           onConfirm={() => stop.mutate(link)}
           disabled={stop.isPending}
+          iconOnly
         />
       </div>
     </li>

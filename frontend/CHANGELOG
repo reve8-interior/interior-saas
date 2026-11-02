@@ -1,3 +1,37 @@
+0.22.0
+ - date: 02-11-2026
+ - changes:
+   - feat: admin Plans page to edit prices, limits, feature flags and highlights; the add/edit business form picks a plan and can override each limit
+   - feat: landing page pricing table reads the public plans
+   - feat: Settings shows usage meters per limit, with an upgrade nudge at 80% or more
+   - feat: the dashboard AI card shows monthly credits; users no longer pick a model tier, and AI cost, tokens and speed are hidden
+   - feat: the sidebar and account menu show the plan name
+   - fix: duplicate React keys on pricing feature lines
+
+0.21.0
+ - date: 01-11-2026
+ - changes:
+   - feat: a designer with no clients sees a one-time welcome prompt offering the sample client
+   - feat: load a fully filled-in sample client from Settings or the dashboard's Get started card, and delete it from Settings or its banner
+   - feat: sidebar inbox of customer messages replaces the notification bell; compact email-style rows with the sender beside the client name, and bulk select with a top toolbar to resolve or reopen questions
+   - feat: client switcher in the title bar; shared link cards use a row layout with small icon actions, silent copy with a tick and inline status badges
+   - feat: the add-business form takes one admin email and shows a generated, copyable temporary password
+   - feat: designer logout lands on the landing page; admin logout stays on admin login
+   - feat: skeleton loading for design and portfolio images
+   - feat: board cards can be dragged from anywhere and tilt while held; the "..." menu on a card moves it to another phase
+   - perf: customers get a resized WebP on shared pages; image URLs are stable and cacheable
+   - style: sharper corners on buttons, cards, tables and modals; shared icon-btn and badge classes; one brand colour for active toggles; login form uses standard control sizes and a narrower card
+   - fix: mobile horizontal drift, clipped popups and menus, scrollable tab UX
+   - fix: the row menu renders on the page body so columns and tables cannot clip it
+   - fix: bulk add/remove portfolio buttons disable when the action would change nothing
+   - fix: the project phase card on Details matches the width of the shared link cards
+
+0.20.0
+ - date: 31-10-2026
+ - changes:
+   - feat: an occasional feedback popup asks about one random feature with stars and an optional multiple-choice follow-up; shown after a random pause, at most once every 3 days, never to viewers
+   - feat: the admin overview shows user feedback: average rating and choice counts per feature, and the latest answers
+
 0.19.1
  - date: 31-10-2026
  - changes:

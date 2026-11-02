@@ -12,8 +12,9 @@ from ..models.agent_audit_log import AgentAuditLog
 from ..models.business import Business
 from ..models.user import User
 from ..schemas.auth import AiStatus
-from .ai_models import DEFAULT_TIER, ModelTier, tier_model
+from .ai_models import chat_model
 from .ai_pricing import call_cost
+from .plan_limits import effective_limits
 from .secret_box import decrypt_secret
 
 # Used when a business hasn't picked a model on the admin page.
@@ -23,9 +24,6 @@ OP_CHECKPOINT_EXTRACT = "checkpoint_extract"
 OP_AUDIO_TRANSCRIBE = "audio_transcribe"
 OP_MATERIALS_EXTRACT = "materials_extract"
 
-# Successful meeting-note extractions a free business gets per calendar month.
-FREE_PLAN_MONTHLY_EXTRACTIONS = 10
-
 
 @dataclass(frozen=True)
 class OpenAIAccess:
@@ -34,9 +32,9 @@ class OpenAIAccess:
     whisper_model: str
 
 
-def resolve_chat_model(user: User, tier: ModelTier | None = None) -> str:
-    """The model behind the requested tier (default tier when omitted)."""
-    return tier_model(user.business, tier or DEFAULT_TIER)
+def resolve_chat_model(user: User) -> str:
+    """The business's chat model, or the platform default."""
+    return chat_model(user.business)
 
 
 def resolve_whisper_model(user: User) -> str:
@@ -47,10 +45,8 @@ def resolve_whisper_model(user: User) -> str:
     ) or DEFAULT_WHISPER_MODEL
 
 
-def resolve_openai_access(
-    user: User, tier: ModelTier | None = None
-) -> OpenAIAccess:
-    """The user's business OpenAI key and the model for the chosen tier.
+def resolve_openai_access(user: User) -> OpenAIAccess:
+    """The user's business OpenAI key and its chat and transcription models.
 
     Raises 503 when the business has no key (or none that can be decrypted).
     """
@@ -60,7 +56,7 @@ def resolve_openai_access(
         if key:
             return OpenAIAccess(
                 api_key=key,
-                model=resolve_chat_model(user, tier),
+                model=resolve_chat_model(user),
                 whisper_model=resolve_whisper_model(user),
             )
         raise HTTPException(
@@ -92,30 +88,33 @@ def _extractions_this_month(db: Session, business: Business) -> int:
 
 
 def ai_status(db: Session, business: Business | None) -> AiStatus:
-    """What the UI may offer: off without a key, capped on the free plan."""
+    """What the UI may offer: off without a key, capped by plan credits.
+
+    One credit is one successful meeting-note extraction.
+    """
     if business is None or not business.openai_api_key_enc:
         return AiStatus()
-    if business.plan != "free":
+    limit = effective_limits(db, business).ai_credits_monthly
+    if limit is None:
         return AiStatus(enabled=True)
     used = _extractions_this_month(db, business)
     return AiStatus(
         enabled=True,
-        monthly_limit=FREE_PLAN_MONTHLY_EXTRACTIONS,
-        remaining=max(FREE_PLAN_MONTHLY_EXTRACTIONS - used, 0),
+        monthly_limit=limit,
+        remaining=max(limit - used, 0),
     )
 
 
 def enforce_extraction_quota(db: Session, user: User) -> None:
-    """Raises 403 once a free business has used this month's extractions."""
+    """Raises 403 once a business has used this month's AI credits."""
     status = ai_status(db, user.business)
     if status.remaining == 0:
         raise HTTPException(
             status_code=403,
             detail=(
                 f"You've used this month's {status.monthly_limit} "
-                "meeting-note extractions. You can still add items by hand, "
-                "or upgrade to "
-                "Pro for more."
+                "AI credits. You can still add items by hand, "
+                "or upgrade your plan for more."
             ),
         )
 

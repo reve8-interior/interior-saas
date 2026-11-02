@@ -2,12 +2,16 @@
 
 import { useTheme } from '@/components/providers/ThemeProvider';
 import { CARD_CLS, INPUT_CLS } from '@/lib/constants';
+import { UsageMeters } from '@/components/settings/UsageMeters';
+import { isPaidPlan, planLabel } from '@/lib/plans';
+import { usageMeters } from '@/lib/usage';
 import { changePassword, getMe, updateProfile } from '@/lib/profile';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Clock, Moon, Sun } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/lib/errors';
+import { SampleClientCard } from '@/components/settings/SampleClientCard';
 
 const LABEL_CLS = 'label-text';
 const BTN_CLS = 'btn-primary';
@@ -281,12 +285,12 @@ function PlanCard() {
           <p className="field-label !mb-1.5">Current plan</p>
           <span
             className={`badge !px-3 !py-1 !text-sm uppercase ${
-              plan === 'pro'
+              isPaidPlan(plan)
                 ? 'bg-primary-600/10 text-primary-700 dark:bg-primary-400/15 dark:text-primary-300'
                 : 'bg-dark-100 text-dark-700 dark:bg-white/10 dark:text-dark-300'
             }`}
           >
-            {plan}
+            {planLabel(plan)}
           </span>
         </div>
         {days_left != null && (
@@ -317,6 +321,10 @@ function PlanCard() {
           </div>
         )}
       </div>
+      <div className="space-y-3 border-t border-line pt-4">
+        <p className="field-label !mb-0">Usage</p>
+        <UsageMeters meters={usageMeters(me.usage, me.ai)} />
+      </div>
     </div>
   );
 }
@@ -329,6 +337,7 @@ export default function AccountSettings() {
       <PlanCard />
       <PasswordCard />
       <AppearanceCard />
+      <SampleClientCard />
     </div>
   );
 }

@@ -1,7 +1,8 @@
 """Team management shared by the superadmin and business-admin routers.
 
 Rules enforced here (not in the routers) so both entry points behave alike:
-- active users consume seats; `Business.max_users` caps them (null = no cap)
+- active users consume seats; the plan's `max_users` (or the business's
+  override) caps them (null = no cap)
 - a business always keeps at least one active admin
 - every change is written to the audit trail
 """
@@ -27,6 +28,7 @@ from ..schemas.business_user import (
     TeamOverview,
 )
 from . import audit
+from .plan_limits import effective_limits
 
 
 def business_or_404(business_id: uuid.UUID, db: Session) -> Business:
@@ -85,7 +87,7 @@ def overview(business: Business, db: Session) -> TeamOverview:
         .order_by(User.created_at)
     ).all()
     used = sum(1 for m in members if m.is_active)
-    cap = business.max_users
+    cap = effective_limits(db, business).max_users
     counts = _designer_client_counts(
         [m.id for m in members if m.role == UserRole.designer], db
     )
@@ -113,15 +115,13 @@ def _lock_business(business_id: uuid.UUID, db: Session) -> Business:
 
 
 def ensure_seat_free(business: Business, db: Session) -> None:
-    if (
-        business.max_users is not None
-        and seats_used(business.id, db) >= business.max_users
-    ):
+    cap = effective_limits(db, business).max_users
+    if cap is not None and seats_used(business.id, db) >= cap:
         raise HTTPException(
             status_code=409,
-            detail=f"Team limit reached ({business.max_users} active "
-            "members). Disable a member or ask your platform "
-            "administrator for more seats.",
+            detail=f"Team limit reached ({cap} active "
+            "members). Disable a member or upgrade your plan "
+            "for more seats.",
         )
 
 

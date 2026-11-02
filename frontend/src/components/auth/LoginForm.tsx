@@ -26,7 +26,7 @@ export interface LoginFormProps {
   footer?: ReactNode;
 }
 
-const FIELD_CLS = 'field py-3 pl-11 text-base';
+const FIELD_CLS = 'field pl-11';
 
 export function LoginForm({
   icon,
@@ -65,7 +65,7 @@ export function LoginForm({
       <div className="fixed right-4 top-4">
         <ThemeButton />
       </div>
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="mb-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2.5">
@@ -178,7 +178,7 @@ export function LoginForm({
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary btn-lg w-full"
+              className="btn-primary w-full"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>

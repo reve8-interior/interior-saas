@@ -6,6 +6,8 @@ import { MetricCard } from '@/components/dashboard/MetricCard';
 
 import { api } from '@/lib/api';
 import { getDashboardStats } from '@/lib/dashboard';
+import { getMe } from '@/lib/profile';
+import { usageMeters } from '@/lib/usage';
 import { PHASE_LABELS } from '@/lib/constants';
 import { filterSortClients } from '@/lib/clientsList';
 import type { Client } from '@/lib/schemas/client';
@@ -78,6 +80,8 @@ export default function DashboardPage() {
     queryKey: ['dashboard-stats'],
     queryFn: getDashboardStats,
   });
+
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: getMe });
 
   // Same key as the clients list, so opening it afterwards is instant.
   const { data: clientList = [] } = useQuery<Client[]>({
@@ -209,9 +213,7 @@ export default function DashboardPage() {
         />
         <AiUsageChart
           data={stats.ai_calls_by_operation}
-          totalCalls={stats.ai_total_calls}
-          totalCostUsd={stats.ai_total_cost_usd}
-          avgLatencyMs={stats.ai_avg_latency_ms}
+          credits={usageMeters([], me?.ai).find((m) => m.key === 'ai_credits')}
         />
         <MarginsCard
           globalMargin={stats.global_margin_percent}

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Modal } from '@/components/ui/Modal';
+import { SkeletonImage } from '@/components/ui/SkeletonImage';
 import { api } from '@/lib/api';
 import { listDesigns, setDesignInPortfolio } from '@/lib/designs';
 import { errorMessage } from '@/lib/errors';
@@ -79,10 +80,8 @@ export function AddToPortfolioModal({ onClose }: { onClose: () => void }) {
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {addable.map((d) => (
                 <li key={d.id} className="surface space-y-2 p-2">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <SkeletonImage
                     loading="lazy"
-                    decoding="async"
                     src={(d.thumb_url ?? d.image_url) as string}
                     alt={d.title || 'Design'}
                     className="h-24 w-full rounded object-cover"

@@ -18,7 +18,10 @@ _is_dev = os.getenv("ENV", "development") == "development"
 configure_structlog(json_logs=not _is_dev)
 
 from .core import init_db  # noqa: E402
-from .core.bootstrap import bootstrap_admin  # noqa: E402
+from .core.bootstrap import (  # noqa: E402
+    bootstrap_admin,
+    seed_default_plans,
+)
 from .core.config import settings  # noqa: E402
 from .routers import (  # noqa: E402
     admin_monitor,
@@ -30,9 +33,11 @@ from .routers import (  # noqa: E402
     clients,
     dashboard,
     designs,
+    feedback,
     materials,
     media,
     n8n,
+    plans,
     quotation_versions,
     quotations,
     share,
@@ -58,6 +63,7 @@ async def lifespan(app: FastAPI):
     logger.info("api_starting", service="interior-designer-portal")
     init_db()
     bootstrap_admin()
+    seed_default_plans()
     try:
         from sqlalchemy import text as _sa_text
 
@@ -191,6 +197,10 @@ def health_check():
 # ---------------------------------------------------------------------------
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
+app.include_router(plans.public_router, prefix="/api/v1/plans", tags=["Plans"])
+app.include_router(
+    plans.admin_router, prefix="/api/v1/admin/plans", tags=["Admin Plans"]
+)
 app.include_router(
     admin_monitor.router, prefix="/api/v1/admin", tags=["Admin Monitor"]
 )
@@ -207,6 +217,9 @@ app.include_router(
     checkpoint_ai.router, prefix="/api/v1", tags=["Checkpoint AI"]
 )
 app.include_router(designs.router, prefix="/api/v1", tags=["Designs"])
+app.include_router(
+    feedback.router, prefix="/api/v1/feedback", tags=["Feedback"]
+)
 app.include_router(share.router, prefix="/api/v1", tags=["Share Links"])
 app.include_router(
     share.public_router, prefix="/api/v1", tags=["Public Share"]

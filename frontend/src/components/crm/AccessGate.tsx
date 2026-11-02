@@ -2,19 +2,24 @@
 
 import { Button } from '@/components/ui/Button';
 import { signOut } from '@/lib/auth';
-import { AccessStatus } from '@/lib/schemas/auth';
+import { MARKETING_URL } from '@/lib/constants';
+import { AccessStatus, UsageMeter } from '@/lib/schemas/auth';
+import { meterState, meterWarnings } from '@/lib/usage';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Lock } from 'lucide-react';
+import Link from 'next/link';
 import { ReactNode } from 'react';
 
 interface Props {
   access: AccessStatus | undefined;
+  /** Metered limits; any at or near their cap show an upgrade nudge. */
+  meters?: UsageMeter[];
   children: ReactNode;
 }
 
 /** Shows the payment countdown banner, or blocks the portal once expired. */
-export function AccessGate({ access, children }: Props) {
+export function AccessGate({ access, meters = [], children }: Props) {
   const qc = useQueryClient();
   const router = useRouter();
   if (access?.expired) {
@@ -42,7 +47,7 @@ export function AccessGate({ access, children }: Props) {
             size="sm"
             onClick={() => {
               signOut();
-              router.push('/login');
+              window.location.assign(MARKETING_URL);
             }}
           >
             Sign out
@@ -54,6 +59,7 @@ export function AccessGate({ access, children }: Props) {
 
   const showBanner =
     access?.days_left != null && access.days_left <= access.warning_days;
+  const warnings = meterWarnings(meters);
 
   return (
     <>
@@ -65,6 +71,28 @@ export function AccessGate({ access, children }: Props) {
               ? 'Last day of access — payment is due today.'
               : `${access.days_left} day${access.days_left === 1 ? '' : 's'} left to make your payment.`}{' '}
             After that, the portal will be locked.
+          </span>
+        </div>
+      )}
+      {warnings.length > 0 && (
+        <div className="mb-4 flex items-start gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            {warnings
+              .map(
+                (m) =>
+                  `${m.label}: ${m.used} of ${m.limit}${
+                    meterState(m.used, m.limit) === 'full' ? ' (full)' : ''
+                  }`
+              )
+              .join(' · ')}
+            .{' '}
+            <Link
+              href="/dashboard/settings"
+              className="font-semibold underline"
+            >
+              See plan and usage
+            </Link>
           </span>
         </div>
       )}

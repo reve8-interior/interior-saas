@@ -41,13 +41,26 @@ describe('ReplyBanner', () => {
       'href',
       'https://wa.me/919876543210'
     );
+    expect(screen.queryByRole('link', { name: /Email/ })).toBeNull();
+    expect(
+      screen.getByRole('link', { name: /Edit quotation/ })
+    ).toHaveAttribute('href', '/dashboard/clients/c1/quotation');
+  });
+
+  it('falls back to email when the client has no phone', () => {
+    render(
+      <ReplyBanner
+        summary={version({})}
+        clientId="c1"
+        contact={{ email: 'rao@x.test' }}
+        onAgree={() => {}}
+      />
+    );
+    expect(screen.queryByRole('link', { name: /WhatsApp/ })).toBeNull();
     expect(screen.getByRole('link', { name: /Email/ })).toHaveAttribute(
       'href',
       'mailto:rao@x.test'
     );
-    expect(
-      screen.getByRole('link', { name: /Edit quotation/ })
-    ).toHaveAttribute('href', '/dashboard/clients/c1/quotation');
   });
 
   it('offers Mark as agreed for an approval', () => {

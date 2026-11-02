@@ -2,6 +2,7 @@
 
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { AccessBadge, accessTone } from '@/components/admin/AccessBadge';
+import { FeedbackCard } from '@/components/admin/FeedbackCard';
 import { getAdminOverview } from '@/lib/adminMonitor';
 import { listBusinesses } from '@/lib/businesses';
 import { CARD_CLS } from '@/lib/constants';
@@ -191,6 +192,8 @@ export default function AdminOverviewPage() {
           </ul>
         </div>
       )}
+
+      <FeedbackCard />
     </div>
   );
 }

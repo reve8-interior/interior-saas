@@ -31,6 +31,7 @@ services:
       - NODE_ENV=development
       - WATCHPACK_POLLING=true
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - API_INTERNAL_URL=http://portal-api-dev:8000/api/v1
     depends_on:
       portal-api-dev:
         condition: service_healthy
@@ -62,6 +63,9 @@ services:
       - DATABASE_URL=postgresql+psycopg://designer:designer@dev-db:5432/designer_portal
     volumes:
       - ../backend:/opt/backend
+      # Design images survive container recreation; data/ feeds upload_sample_images.
+      - uploads:/opt/uploads
+      - ../data:/opt/data:ro
     depends_on:
       dev-db:
         condition: service_healthy
@@ -82,6 +86,8 @@ services:
       - designer-network
 
 volumes:
+  uploads:
+    name: designer_uploads
   # One DB volume per git branch so migrations on one branch don't break another.
   # Set GIT_BRANCH (slashes not allowed in volume names), e.g.:
   #   GIT_BRANCH=$(git branch --show-current | tr '/' '-') docker compose -f .compose/dev.yml up

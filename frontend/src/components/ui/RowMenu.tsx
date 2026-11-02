@@ -2,6 +2,7 @@
 
 import { MoreHorizontal } from 'lucide-react';
 import { ReactNode, useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface RowMenuItem {
   label: string;
@@ -29,6 +30,7 @@ export function RowMenu({
     top?: number;
     bottom?: number;
     right: number;
+    maxHeight: number;
   } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -43,12 +45,19 @@ export function RowMenu({
           'button:not(:disabled)'
         ) ?? []
       );
-    buttons()[0]?.focus();
-    const close = () => setOpen(false);
+    // preventScroll: focusing must not fire a scroll event, which would close the menu at once.
+    buttons()[0]?.focus({ preventScroll: true });
+    const close = (e?: Event) => {
+      if (e?.target instanceof Node && menuRef.current?.contains(e.target))
+        return;
+      setOpen(false);
+    };
     window.addEventListener('scroll', close, true);
     window.addEventListener('resize', close);
     const onPointer = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (!rootRef.current?.contains(t) && !menuRef.current?.contains(t))
+        setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -77,12 +86,22 @@ export function RowMenu({
   const toggle = () => {
     if (!open && triggerRef.current) {
       const r = triggerRef.current.getBoundingClientRect();
-      const right = window.innerWidth - r.right;
+      // Keep the 12rem menu inside the viewport horizontally (8px margin) even when the trigger hugs the left edge.
+      const right = Math.min(
+        Math.max(window.innerWidth - r.right, 8),
+        Math.max(window.innerWidth - 192 - 8, 8)
+      );
       const needed = items.length * 44 + 20;
+      const below = window.innerHeight - r.bottom - 8;
+      // Open upward when there is more room above; the menu scrolls if neither side fits it.
       setPos(
-        window.innerHeight - r.bottom < needed && r.top > needed
-          ? { bottom: window.innerHeight - r.top + 4, right }
-          : { top: r.bottom + 4, right }
+        below < needed && r.top > below
+          ? {
+              bottom: window.innerHeight - r.top + 4,
+              right,
+              maxHeight: r.top - 12,
+            }
+          : { top: r.bottom + 4, right, maxHeight: Math.max(below, 120) }
       );
     }
     setOpen((o) => !o);
@@ -98,40 +117,41 @@ export function RowMenu({
         aria-expanded={open}
         aria-controls={id}
         onClick={toggle}
-        className={`inline-flex items-center justify-center rounded-full text-dark-700 hover:bg-primary-50/70 dark:text-dark-300 dark:hover:bg-white/[0.06] ${
-          compact ? 'h-9 w-9' : 'h-11 w-11 border border-line'
-        }`}
+        className={`icon-btn ${compact ? 'icon-btn-sm' : 'border border-line'}`}
       >
         <MoreHorizontal className="h-4 w-4" aria-hidden />
       </button>
-      {open && pos && (
-        <div
-          id={id}
-          style={pos}
-          ref={menuRef}
-          role="menu"
-          className="fixed z-40 w-48 overflow-hidden rounded-2xl border border-line bg-surface p-1.5 shadow-glass"
-        >
-          {items.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              role="menuitem"
-              disabled={item.disabled}
-              onClick={() => {
-                setOpen(false);
-                item.onSelect();
-              }}
-              className={`flex min-h-11 w-full items-center gap-2.5 rounded-control px-3 text-left text-sm font-medium hover:bg-text/5 disabled:opacity-50 ${
-                item.danger ? 'text-red-600 dark:text-red-400' : 'text-text'
-              }`}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            id={id}
+            style={pos}
+            ref={menuRef}
+            role="menu"
+            className="fixed z-40 w-48 overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface p-1.5 shadow-glass"
+          >
+            {items.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                role="menuitem"
+                disabled={item.disabled}
+                onClick={() => {
+                  setOpen(false);
+                  item.onSelect();
+                }}
+                className={`flex min-h-11 w-full items-center gap-2.5 rounded-control px-3 text-left text-sm font-medium hover:bg-text/5 disabled:opacity-50 ${
+                  item.danger ? 'text-red-600 dark:text-red-400' : 'text-text'
+                }`}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

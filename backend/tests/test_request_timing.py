@@ -23,7 +23,7 @@ def test_header_is_present_on_error_responses():
 
 
 def test_header_is_present_on_unauthenticated_requests(api):
-    r = api.get("/api/v1/ai/models")
+    r = api.get("/api/v1/auth/me")
     assert r.status_code == 401
     assert "Server-Timing" in r.headers
 

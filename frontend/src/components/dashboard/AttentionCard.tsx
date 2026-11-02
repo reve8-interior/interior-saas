@@ -61,7 +61,7 @@ export function AttentionCard() {
         className="mb-3 font-heading text-base font-extrabold tracking-tight"
       >
         Needs your attention
-        <span className="ml-2 rounded-full bg-primary-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-primary-700 dark:bg-primary-500/20 dark:text-primary-200">
+        <span className="ml-2 rounded-control bg-primary-100 px-2 py-0.5 text-xs font-semibold tabular-nums text-primary-700 dark:bg-primary-500/20 dark:text-primary-200">
           {items.length}
         </span>
       </h2>
@@ -69,7 +69,7 @@ export function AttentionCard() {
         {items.map((item) => {
           const Icon = KIND_ICON[item.kind];
           return (
-            <li key={`${item.kind}-${item.path}`}>
+            <li key={item.key}>
               <Link
                 href={item.path}
                 className="flex min-h-12 items-start gap-3 py-3 hover:text-primary-600 dark:hover:text-primary-400"

@@ -98,7 +98,7 @@ export function PreviewTable({
                     type="button"
                     onClick={() => onChange(rows.filter((_, idx) => idx !== i))}
                     aria-label={`Remove row ${n}`}
-                    className="flex h-11 w-11 items-center justify-center rounded-full text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10"
+                    className="icon-btn icon-btn-danger"
                   >
                     <X className="h-4 w-4" />
                   </button>

@@ -21,7 +21,7 @@ export function AccessBadge({ b }: { b: Business }) {
   return (
     <span className="inline-flex items-center gap-1.5">
       <span className="text-xs font-semibold uppercase text-dark-500 dark:text-dark-400">
-        {b.plan}
+        {b.plan_name}
       </span>
       {tone === 'none' ? (
         <span className="text-xs text-dark-500 dark:text-dark-400">

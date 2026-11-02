@@ -1,8 +1,6 @@
 'use client';
 
-import type { ModelOption, ModelTier } from '@/lib/aiModels';
 import { ExtractionProgress } from '@/components/shared/ExtractionProgress';
-import { ModelTierPicker } from '@/components/shared/ModelTierPicker';
 import { NotePanel } from './ItemEditor';
 
 interface NoItemsPanelProps {
@@ -10,11 +8,8 @@ interface NoItemsPanelProps {
   hasRun: boolean;
   ranAt: string | null;
   unmappedNotes: string[];
-  tier: ModelTier;
-  modelOptions: ModelOption[];
   isExtracting: boolean;
   extractChars: number;
-  onTierChange: (tier: ModelTier) => void;
   onAddManual: () => void;
   onRunExtract: () => void;
 }
@@ -24,11 +19,8 @@ export function NoItemsPanel({
   hasRun,
   ranAt,
   unmappedNotes,
-  tier,
-  modelOptions,
   isExtracting,
   extractChars,
-  onTierChange,
   onAddManual,
   onRunExtract,
 }: NoItemsPanelProps) {
@@ -53,14 +45,6 @@ export function NoItemsPanel({
               />
             </div>
           )}
-          <div className="w-full text-left">
-            <ModelTierPicker
-              tier={tier}
-              onChange={onTierChange}
-              options={modelOptions}
-              disabled={isExtracting}
-            />
-          </div>
           {isExtracting && (
             <div className="w-full text-left">
               <ExtractionProgress chars={extractChars} />
@@ -84,14 +68,6 @@ export function NoItemsPanel({
           <p className="text-sm text-dark-500 dark:text-dark-400">
             No AI extraction yet for this meeting.
           </p>
-          <div className="w-full text-left">
-            <ModelTierPicker
-              tier={tier}
-              onChange={onTierChange}
-              options={modelOptions}
-              disabled={isExtracting}
-            />
-          </div>
           {isExtracting && (
             <div className="w-full text-left">
               <ExtractionProgress chars={extractChars} />

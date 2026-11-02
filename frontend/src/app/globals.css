@@ -207,11 +207,11 @@
 
   /* Status / tag pill */
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-line-strong px-3 py-1 text-xs font-semibold text-muted;
+    @apply inline-flex items-center gap-1.5 rounded-control border border-line-strong px-3 py-1 text-xs font-semibold text-muted;
   }
 
   /* Content surfaces: one surface, a hairline, one radius and a soft low shadow so they lift off the canvas.
-     A surface's own `rounded-xl` / `rounded-full` still wins, for small tiles and chips. */
+     A surface's own `rounded-xl` / `rounded-control` still wins, for small tiles and chips. */
   .surface,
   .card,
   .client-card {
@@ -256,7 +256,19 @@
 
   /* Status / action badge (same shape everywhere; colour comes from the tone classes) */
   .badge {
-    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold;
+    @apply inline-flex items-center gap-1 whitespace-nowrap rounded-control px-2.5 py-0.5 text-xs font-semibold;
+  }
+
+  /* Icon-only button (edit, delete, close, theme). 44px touch target; -sm for dense table rows. The danger variant
+     only changes the hover tone. Add `border border-line-strong` for the outlined look. */
+  .icon-btn {
+    @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control text-muted transition-colors hover:bg-text/5 hover:text-text disabled:cursor-not-allowed disabled:opacity-45;
+  }
+  .icon-btn-sm {
+    @apply h-9 w-9;
+  }
+  .icon-btn-danger {
+    @apply hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-400;
   }
 
   /* Inline text action ("Add row", "Verify all") with a real touch target */
@@ -273,10 +285,10 @@
 
   /* Segmented control (tabs): a tinted track, the chosen option a solid brand pill */
   .seg {
-    @apply inline-flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-line bg-canvas/60 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
+    @apply inline-flex min-h-control max-w-full items-stretch gap-1 overflow-x-auto overscroll-x-contain rounded-2xl border border-line bg-canvas/60 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
   }
   .seg-btn {
-    @apply inline-flex min-h-[calc(var(--control-h)-0.5rem-2px)] shrink-0 items-center whitespace-nowrap rounded-xl px-4 text-sm font-semibold text-muted transition-colors hover:text-text disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex shrink-0 items-center whitespace-nowrap rounded-xl px-4 text-sm font-semibold text-muted transition-colors hover:text-text disabled:cursor-not-allowed disabled:opacity-50;
   }
   .seg-btn[aria-selected='true'] {
     @apply bg-brand text-white hover:text-white;
@@ -284,7 +296,7 @@
 
   /* Filter chip (.filter-chip): a pill that toggles a filter; aria-pressed marks the chosen one */
   .filter-chip {
-    @apply inline-flex min-h-control items-center gap-1.5 whitespace-nowrap rounded-full border border-line px-4 text-sm font-semibold text-muted transition-colors hover:bg-text/5 hover:text-text disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-control items-center gap-1.5 whitespace-nowrap rounded-control border border-line px-4 text-sm font-semibold text-muted transition-colors hover:bg-text/5 hover:text-text disabled:cursor-not-allowed disabled:opacity-50;
   }
   .filter-chip[aria-pressed='true'] {
     @apply border-brand bg-brand/10 text-accent-text;
@@ -415,6 +427,47 @@
   }
 }
 
+/* Scrolling tab strip (see useScrollTabs): momentum scroll, no sideways chaining to the page, and a fade on each
+   edge that still has hidden tabs. `relative` makes the strip the offsetParent the hook measures against. */
+.scroll-tabs {
+  position: relative;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll-tabs::-webkit-scrollbar {
+  display: none;
+}
+.scroll-tabs[data-more-start] {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 2rem);
+  mask-image: linear-gradient(90deg, transparent, #000 2rem);
+}
+.scroll-tabs[data-more-end] {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 calc(100% - 2rem),
+    transparent
+  );
+  mask-image: linear-gradient(90deg, #000 calc(100% - 2rem), transparent);
+}
+.scroll-tabs[data-more-start][data-more-end] {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 2rem,
+    #000 calc(100% - 2rem),
+    transparent
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 2rem,
+    #000 calc(100% - 2rem),
+    transparent
+  );
+}
+
 /* Thin, quiet scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
@@ -437,8 +490,21 @@
 html,
 body {
   max-width: 100%;
+  /* iOS < 16 ignores `clip`, so `hidden` comes first as the fallback. */
+  overflow-x: hidden;
   overflow-x: clip;
   overscroll-behavior-x: none;
+}
+body {
+  position: relative;
+  width: 100%;
+}
+/* Media and embeds can never be wider than their column. */
+img,
+video,
+svg,
+canvas {
+  max-width: 100%;
 }
 html {
   -webkit-text-size-adjust: 100%;
@@ -633,5 +699,46 @@ select {
   .pin-pulse {
     animation: none;
     display: none;
+  }
+}
+
+/* Toasts: slide in from / out to the right instead of rising from below */
+[data-sonner-toast] {
+  translate: 0 0;
+  transition:
+    translate 0.4s cubic-bezier(0.21, 1.02, 0.73, 1),
+    transform 0.4s,
+    opacity 0.4s,
+    height 0.4s,
+    box-shadow 0.2s;
+}
+[data-sonner-toast][data-mounted='false'] {
+  --y: translateY(0);
+  translate: calc(100% + 32px) 0;
+}
+[data-sonner-toast][data-removed='true'] {
+  translate: calc(100% + 32px) 0;
+}
+[data-sonner-toast][data-removed='true'][data-front='true'][data-swipe-out='false'],
+[data-sonner-toast][data-removed='true'][data-front='false'][data-swipe-out='false'][data-expanded='false'] {
+  --y: translateY(0);
+}
+
+@keyframes slide-up-panel {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-slide-up-panel {
+  animation: slide-up-panel 0.18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-up-panel {
+    animation: none;
   }
 }

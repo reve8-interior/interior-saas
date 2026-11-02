@@ -94,12 +94,12 @@ export function RoomSection({
                 {activeItems.length} items
               </span>
               {agreedCount > 0 && (
-                <span className="hidden rounded-full bg-green-100 px-2 py-0.5 font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400 sm:inline-block">
+                <span className="hidden rounded-control bg-green-100 px-2 py-0.5 font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400 sm:inline-block">
                   {agreedCount} agreed
                 </span>
               )}
               {group.pending_clarity_count > 0 && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                <span className="rounded-control bg-amber-100 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                   {group.pending_clarity_count} unclear
                 </span>
               )}
@@ -173,7 +173,7 @@ export function RoomSection({
                     <button
                       onClick={() => onEdit(item)}
                       aria-label={`Edit ${item.description}`}
-                      className="flex h-11 w-11 items-center justify-center rounded-full text-dark-500 hover:bg-primary-50 hover:text-primary-600 dark:text-dark-400 dark:hover:bg-white/10"
+                      className="icon-btn"
                     >
                       <Pencil className="h-[18px] w-[18px]" />
                     </button>
@@ -181,7 +181,7 @@ export function RoomSection({
                       onClick={() => onDelete(item)}
                       disabled={deletePending}
                       aria-label={`Delete ${item.description}`}
-                      className="flex h-11 w-11 items-center justify-center rounded-full text-dark-500 hover:bg-red-50 hover:text-red-500 dark:text-dark-400 dark:hover:bg-red-500/10"
+                      className="icon-btn icon-btn-danger"
                     >
                       <Trash2 className="h-[18px] w-[18px]" />
                     </button>
@@ -408,7 +408,7 @@ export function RoomSection({
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => onEdit(item)}
-                          className="flex h-11 w-11 items-center justify-center rounded-full text-dark-500 hover:bg-primary-50 hover:text-primary-600 dark:text-dark-400 dark:hover:bg-white/10 dark:hover:text-primary-400"
+                          className="icon-btn"
                           aria-label={`Edit ${item.description}`}
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -416,7 +416,7 @@ export function RoomSection({
                         <button
                           onClick={() => onDelete(item)}
                           disabled={deletePending}
-                          className="flex h-11 w-11 items-center justify-center rounded-full text-dark-500 hover:bg-red-50 hover:text-red-500 dark:text-dark-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                          className="icon-btn icon-btn-danger"
                           aria-label={`Delete ${item.description}`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />

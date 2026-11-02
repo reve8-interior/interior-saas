@@ -7,7 +7,7 @@ from backend.routers.deps import get_user_allow_expired
 
 from .conftest import as_owner, auth, make_business, make_user
 
-URL = "/api/v1/ai/models"
+URL = "/api/v1/auth/me"
 
 
 def test_business_is_eager_loaded_with_the_user(api, db):

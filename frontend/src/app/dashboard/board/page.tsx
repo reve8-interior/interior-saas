@@ -20,7 +20,6 @@ import {
   DragOverlay,
   DragStartEvent,
   type Announcements,
-  KeyboardSensor,
   MouseSensor,
   TouchSensor,
   pointerWithin,
@@ -30,7 +29,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { GripVertical, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -53,7 +52,9 @@ function ClientCardBody({
   return (
     <div
       className={`client-card flex min-h-[68px] items-center gap-3 !p-3 ${
-        dragging ? 'rotate-1 !border-primary-400' : ''
+        dragging
+          ? 'rotate-3 scale-105 cursor-grabbing !border-primary-400 shadow-2xl'
+          : ''
       }`}
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold uppercase text-white">
@@ -68,7 +69,7 @@ function ClientCardBody({
           {client.contact_info?.phone ? ` · ${client.contact_info.phone}` : ''}
         </p>
       </div>
-      <span className="shrink-0 pr-[4.75rem] text-xs tabular-nums text-dark-500 dark:text-dark-400">
+      <span className="shrink-0 pr-10 text-xs tabular-nums text-dark-500 dark:text-dark-400">
         {formatAge(daysSince(client.updated_at))}
       </span>
     </div>
@@ -82,12 +83,17 @@ function DraggableClient({
   client: Client;
   onMove: (client: Client, phase: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+  const { listeners, setNodeRef, isDragging } = useDraggable({
     id: client.id,
   });
 
+  // The whole card is the grab target; the "Move to" menu is the keyboard / non-drag alternative.
   return (
-    <div className={`relative ${isDragging ? 'opacity-40' : ''}`}>
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      className={`relative cursor-grab ${isDragging ? 'opacity-40' : ''}`}
+    >
       <Link
         href={`/dashboard/clients/${client.id}`}
         draggable={false}
@@ -95,8 +101,7 @@ function DraggableClient({
       >
         <ClientCardBody client={client} />
       </Link>
-      {/* Non-drag way to change phase: works with keyboard, screen readers and long scrolls. */}
-      <div className="absolute right-11 top-[34px] -translate-y-1/2">
+      <div className="absolute right-1 top-[34px] -translate-y-1/2">
         <RowMenu
           compact
           label={`Move ${client.name} to another phase`}
@@ -106,17 +111,6 @@ function DraggableClient({
           }))}
         />
       </div>
-      {/* Dedicated handle: the card stays a plain link; keyboard and touch users get a labelled drag target. */}
-      <button
-        type="button"
-        ref={setNodeRef}
-        aria-label={`Drag ${client.name}. Press space to pick up, arrow keys to move, space to drop.`}
-        className="absolute right-1 top-[34px] flex h-9 w-9 -translate-y-1/2 touch-none items-center justify-center rounded-xl text-dark-400 hover:text-dark-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-dark-500"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical aria-hidden className="h-4 w-4" />
-      </button>
     </div>
   );
 }
@@ -146,11 +140,11 @@ function PhaseColumn({
     >
       <div className="flex items-center justify-between border-b border-line px-4 py-3 dark:border-line">
         <span
-          className={`rounded-full px-3 py-1 text-sm font-semibold ${PHASE_COLORS[phase]}`}
+          className={`rounded-control px-3 py-1 text-sm font-semibold ${PHASE_COLORS[phase]}`}
         >
           {PHASE_LABELS[phase]}
         </span>
-        <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold tabular-nums text-dark-700 ring-1 ring-inset ring-line dark:bg-dark-800 dark:text-dark-200 dark:ring-dark-700">
+        <span className="rounded-control bg-white px-2.5 py-0.5 text-xs font-bold tabular-nums text-dark-700 ring-1 ring-inset ring-line dark:bg-dark-800 dark:text-dark-200 dark:ring-dark-700">
           {clients.length}
         </span>
       </div>
@@ -244,8 +238,7 @@ export default function BoardPage() {
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 220, tolerance: 8 },
-    }),
-    useSensor(KeyboardSensor)
+    })
   );
 
   const onDragStart = ({ active }: DragStartEvent) => {
@@ -351,10 +344,10 @@ export default function BoardPage() {
           : `${clients.length} total clients`}{' '}
         ·{' '}
         <span className="lg:hidden">
-          use the handle on a card, or “Move to”
+          press and hold a card, or use “Move to”
         </span>
         <span className="hidden lg:inline">
-          drag a card by its handle, or use “Move to” under it
+          drag a card anywhere, or use its “…” menu
         </span>
       </p>
 

@@ -11,16 +11,16 @@ export function ClientsViewSwitch({ active }: { active: 'list' | 'board' }) {
   return (
     <nav
       aria-label="Client view"
-      className="inline-flex gap-1 rounded-full border border-line bg-surface p-1 dark:border-line dark:bg-white/5"
+      className="inline-flex min-h-control items-stretch gap-1 rounded-control border border-line bg-surface p-1 dark:border-line dark:bg-white/5"
     >
       {VIEWS.map(({ key, label, href, icon: Icon }) => (
         <Link
           key={key}
           href={href}
           aria-current={key === active ? 'page' : undefined}
-          className={`inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-semibold transition-colors ${
+          className={`inline-flex items-center gap-1.5 rounded-control px-3 text-sm font-semibold transition-colors ${
             key === active
-              ? 'bg-primary-600 text-white'
+              ? 'bg-brand text-white'
               : 'text-dark-600 hover:text-dark-900 dark:text-dark-300 dark:hover:text-white'
           }`}
         >

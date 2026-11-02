@@ -47,7 +47,7 @@ function SaveStatus({
       <button
         type="button"
         onClick={onRetry}
-        className="flex items-center gap-1.5 rounded-full border border-red-300 bg-red-50 px-3.5 py-1.5 text-sm font-semibold text-red-700 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300"
+        className="flex items-center gap-1.5 rounded-control border border-red-300 bg-red-50 px-3.5 py-1.5 text-sm font-semibold text-red-700 dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300"
       >
         <AlertCircle className="h-4 w-4" /> Not saved · Retry
       </button>
@@ -268,7 +268,7 @@ export default function ColumnSetupPage() {
                   <button
                     type="button"
                     onClick={() => remove(idx)}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-dark-500 hover:bg-red-50 hover:text-red-500 dark:text-dark-400 dark:hover:bg-red-500/10"
+                    className="icon-btn icon-btn-danger"
                     aria-label={`Remove ${col.label}`}
                   >
                     <Trash2 className="h-[18px] w-[18px]" />
@@ -287,7 +287,7 @@ export default function ColumnSetupPage() {
                       update(idx, { type: e.target.value as 'text' | 'number' })
                     }
                     aria-label="Column type"
-                    className="rounded-full border border-line bg-surface px-3 py-1 text-xs dark:border-line dark:bg-dark-900/60"
+                    className="rounded-control border border-line bg-surface px-3 py-1 text-xs dark:border-line dark:bg-dark-900/60"
                   >
                     <option value="text">text</option>
                     <option value="number">number</option>
@@ -408,7 +408,7 @@ export default function ColumnSetupPage() {
                       <button
                         type="button"
                         onClick={() => remove(idx)}
-                        className="rounded-full p-2 text-dark-500 hover:bg-red-50 hover:text-red-500 dark:text-dark-400 dark:hover:bg-red-500/10"
+                        className="icon-btn icon-btn-sm icon-btn-danger"
                         aria-label={`Remove ${col.label}`}
                       >
                         <Trash2 className="h-4 w-4" />

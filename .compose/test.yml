@@ -19,7 +19,6 @@ name: reve8-test
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
-
   # ── Postgres — same major version as Supabase (16) ──────────────────────
   test-db:
     image: postgres:16-alpine
@@ -29,7 +28,7 @@ services:
       POSTGRES_PASSWORD: reve8
       POSTGRES_DB: reve8
     ports:
-      - "5433:5432"   # host port 5433 avoids clashing with any local Postgres
+      - "5433:5432" # host port 5433 avoids clashing with any local Postgres
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U reve8 -d reve8"]
       interval: 5s
@@ -44,7 +43,7 @@ services:
     image: redis:7-alpine
     container_name: reve8-test-redis
     ports:
-      - "6380:6379"   # host port 6380 avoids clashing with dev-redis
+      - "6380:6379" # host port 6380 avoids clashing with dev-redis
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

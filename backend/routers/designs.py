@@ -44,15 +44,19 @@ from ..services.image_quota import (
     effective_max_bytes,
     ensure_can_upload,
 )
+from ..services.plan_limits import ensure_can_add_to_portfolio
 from ..services.storage import (
     CONTENT_TYPES,
     StorageError,
     get_storage,
     make_thumbnail,
+    make_view_image,
     signed_media_url,
     signed_thumb_url,
+    signed_view_url,
     sniff_image_ext,
     thumb_path,
+    view_path,
 )
 from .deps import get_current_user
 
@@ -73,6 +77,13 @@ def design_image_url(design: Design) -> str | None:
     """Signed URL for an uploaded image, else the legacy external URL."""
     if design.storage_path:
         return signed_media_url(design.storage_path)
+    return design.image_url
+
+
+def design_view_url(design: Design) -> str | None:
+    """Signed URL for the lighter image customers load on shared pages."""
+    if design.storage_path:
+        return signed_view_url(design.storage_path)
     return design.image_url
 
 
@@ -122,14 +133,17 @@ def _check_material(db: Session, material_id: uuid.UUID | None) -> None:
         raise HTTPException(status_code=404, detail="Material not found")
 
 
-def _store_thumbnail(path: str, data: bytes) -> None:
-    """Best effort: a missing thumbnail is rebuilt on first request."""
-    try:
-        get_storage().put(
-            thumb_path(path), make_thumbnail(data), CONTENT_TYPES["jpg"]
-        )
-    except (StorageError, OSError):
-        logger.warning("design_thumbnail_failed", path=path)
+def _store_derived_images(path: str, data: bytes) -> None:
+    """Best effort: a missing thumbnail or view image is rebuilt on first request."""
+    storage = get_storage()
+    for derived_path, build, content_type in (
+        (thumb_path(path), make_thumbnail, CONTENT_TYPES["jpg"]),
+        (view_path(path), make_view_image, CONTENT_TYPES["webp"]),
+    ):
+        try:
+            storage.put(derived_path, build(data), content_type)
+        except (StorageError, OSError):
+            logger.warning("design_derived_image_failed", path=derived_path)
 
 
 @router.put("/portfolio-designs/order", status_code=204)
@@ -264,7 +278,7 @@ def upload_design_image(
     )
     ensure_can_upload(business, db)
 
-    limit = effective_max_bytes(business)
+    limit = effective_max_bytes(business, db)
     data = file.file.read(limit + 1)
     if len(data) > limit:
         raise HTTPException(
@@ -281,7 +295,7 @@ def upload_design_image(
     path = f"designs/{client_id}/{design_id}.{ext}"
     try:
         get_storage().put(path, data, CONTENT_TYPES[ext])
-        _store_thumbnail(path, data)
+        _store_derived_images(path, data)
     except StorageError:
         logger.exception("design_image_store_failed", client_id=client_id)
         raise HTTPException(status_code=502, detail="Could not store image")
@@ -317,6 +331,7 @@ def delete_design(
         try:
             get_storage().delete(path)
             get_storage().delete(thumb_path(path))
+            get_storage().delete(view_path(path))
         except StorageError:
             # The row is gone; an orphaned object is only wasted space.
             logger.warning("design_image_delete_failed", path=path)
@@ -379,6 +394,8 @@ def set_design_portfolio(
     """Opt a design in or out of the business's public portfolio."""
     get_client_or_404(client_id, db, current_user)
     design = _design_or_404(client_id, design_id, db)
+    if body.in_portfolio and not design.in_portfolio:
+        ensure_can_add_to_portfolio(current_user.business, db)
     design.in_portfolio = body.in_portfolio
     db.commit()
     db.refresh(design)

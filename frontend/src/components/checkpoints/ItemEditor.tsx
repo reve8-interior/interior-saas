@@ -291,7 +291,7 @@ export function ItemCard({
             onClick={onRemove}
             aria-label={`Remove row ${index + 1}`}
             title={`Remove row ${index + 1}`}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-dark-500 hover:bg-red-50 hover:text-red-500 dark:text-dark-400 dark:hover:bg-red-500/10"
+            className="icon-btn icon-btn-danger"
           >
             <Trash2 className="h-[18px] w-[18px]" />
           </button>

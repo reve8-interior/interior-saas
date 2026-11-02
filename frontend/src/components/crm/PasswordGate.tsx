@@ -2,6 +2,7 @@
 
 import { PasswordCard } from '@/components/settings/AccountSettings';
 import { signOut } from '@/lib/auth';
+import { MARKETING_URL } from '@/lib/constants';
 import { KeyRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ReactNode } from 'react';
@@ -33,7 +34,7 @@ export function PasswordGate({ required, children }: Props) {
           type="button"
           onClick={() => {
             signOut();
-            router.push('/login');
+            window.location.assign(MARKETING_URL);
           }}
           className="font-semibold text-primary-600 hover:underline dark:text-primary-400"
         >

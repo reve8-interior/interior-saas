@@ -9,9 +9,7 @@ import {
   updateItemAt,
 } from '@/lib/checkpointItems';
 import { ExtractReview } from './ExtractReview';
-import { useModelTier } from '@/lib/aiModels';
 import { ExtractionProgress } from '@/components/shared/ExtractionProgress';
-import { ModelTierPicker } from '@/components/shared/ModelTierPicker';
 import {
   type ConfirmLineItem,
   type ExtractionResponse,
@@ -58,7 +56,6 @@ export function AiExtractModal({
   const fileRef = useRef<HTMLInputElement>(null);
   const { columns } = useLineItemColumns();
   const enabledCols = columns.filter((c) => c.enabled);
-  const { options: modelOptions, tier, setTier } = useModelTier();
 
   // Esc closes the dialog.
   useEffect(() => {
@@ -78,13 +75,13 @@ export function AiExtractModal({
           toast.error('Paste some text first');
           return;
         }
-        result = await extractFromText(clientId, pastedText, tier);
+        result = await extractFromText(clientId, pastedText);
       } else {
         if (!file) {
           toast.error('Select a file first');
           return;
         }
-        result = await extractFromFile(clientId, file, tier);
+        result = await extractFromFile(clientId, file);
       }
       const items = result.line_items.map((li) => ({
         ...li,
@@ -168,7 +165,6 @@ export function AiExtractModal({
         client_budget: budgetValue ? parseFloat(budgetValue) : null,
         unmapped_notes: source.unmapped_notes,
         questions: source.questions,
-        tier,
         create_quotation: false,
       });
       setPastedText('');
@@ -219,7 +215,7 @@ export function AiExtractModal({
             onClick={onClose}
             aria-label="Close"
             title="Close"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-dark-500 hover:bg-primary-50 dark:text-dark-400 dark:hover:bg-white/10"
+            className="icon-btn"
           >
             <X className="h-5 w-5" />
           </button>
@@ -251,13 +247,6 @@ export function AiExtractModal({
                     </span>
                   </button>
                 </div>
-                <ModelTierPicker
-                  compact
-                  tier={tier}
-                  onChange={setTier}
-                  options={modelOptions}
-                  disabled={isExtracting}
-                />
               </div>
               {inputTab === 'paste' && (
                 <textarea

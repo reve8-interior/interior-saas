@@ -269,8 +269,6 @@ def revert_to_checkpoint(
 ) -> RevertResponse:
     """Step 1 — run the PydanticAI agent on uploaded text/audio or pasted text.
 
-    `tier` picks the price tier (economy/balanced/premium); the model
-    behind it is the business's, set by the platform admin.
     Returns extracted meeting minutes, line items, and material rate hints.
     Every call is recorded in agent_audit_log.
     """

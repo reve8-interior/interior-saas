@@ -21,10 +21,6 @@ export function Badge({
   children: ReactNode;
 }) {
   return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-xs font-medium ${TONE_CLS[tone]}`}
-    >
-      {children}
-    </span>
+    <span className={`badge font-medium ${TONE_CLS[tone]}`}>{children}</span>
   );
 }

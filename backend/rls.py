@@ -53,6 +53,8 @@ _POLICIES: dict[str, str] = {
     "businesses": f"id = {BUSINESS_ID_DEFAULT}",
     "app_settings": "true",
     "audit_log": "true",
+    # Any user writes their own answers; only the superadmin console reads.
+    "feedback": "true",
     "margin_config": "true",
     "quotation_line_items": (
         "EXISTS (SELECT 1 FROM quotations q WHERE q.id = quotation_id)"

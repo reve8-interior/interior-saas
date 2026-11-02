@@ -15,6 +15,8 @@ def new_member(email: str = "new@x.com", role: str = "designer") -> dict:
 
 
 def setup_biz(db, **kw):
+    # Studio Pro has unlimited seats; tests that cap seats pass an override.
+    kw.setdefault("plan", "studio_pro")
     biz = make_business(db, **kw)
     admin = make_user(db, role=UserRole.admin, business=biz)
     return biz, admin

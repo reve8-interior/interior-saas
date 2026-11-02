@@ -1,6 +1,11 @@
 'use client';
 
-import { LoadingRegion, PageHeaderSkeleton, Skeleton } from '@/components/ui';
+import {
+  LoadingRegion,
+  PageHeaderSkeleton,
+  Skeleton,
+  SkeletonImage,
+} from '@/components/ui';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { SharedLinkError } from '@/components/shared/SharedLinkError';
@@ -98,10 +103,8 @@ export default function SharedDesignPage() {
                   }`}
                 >
                   {d.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <SkeletonImage
                       loading="lazy"
-                      decoding="async"
                       src={d.thumb_url ?? d.image_url}
                       alt=""
                       onError={onImageError}

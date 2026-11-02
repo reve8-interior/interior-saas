@@ -1,11 +1,11 @@
 import {
   ArrowRight,
-  Bell,
   CheckCircle2,
   Download,
   Eye,
   GitCompare,
   Images,
+  Inbox,
   Link2,
   MessageCircle,
   PenLine,
@@ -96,7 +96,7 @@ function Btn({
   children: ReactNode;
 }) {
   const cls = {
-    primary: 'bg-primary-600 text-white',
+    primary: 'bg-brand text-white',
     blue: 'bg-blue-600 text-white',
     green: 'bg-green-600 text-white',
     ghost: 'border border-line text-dark-700 dark:text-dark-300',
@@ -253,7 +253,7 @@ function Navigation() {
             key={m}
             className={`rounded-lg px-2 py-1 ${
               i === 1
-                ? 'bg-primary-600 text-white'
+                ? 'bg-brand text-white'
                 : 'text-dark-700 dark:text-dark-300'
             }`}
           >
@@ -272,17 +272,17 @@ function Navigation() {
         </div>
         <div className="px-2 py-1">Sharma · Designs</div>
       </Tile>
-      <Tile title="Bell" line="Customer replies wait here.">
+      <Tile title="Inbox" line="Customer messages wait here.">
         <div className="flex items-center gap-2">
           <span className="relative">
-            <Bell className="h-5 w-5 text-dark-700 dark:text-dark-300" />
+            <Inbox className="h-5 w-5 text-dark-700 dark:text-dark-300" />
             <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white">
               2
             </span>
           </span>
           <span>Sharma asked a question</span>
         </div>
-        <Btn tone="ghost">Mark all as read</Btn>
+        <Btn tone="ghost">Mark resolved</Btn>
       </Tile>
     </div>
   );
@@ -522,7 +522,7 @@ function SharingBlocks() {
       </Tile>
       <Tile
         n={4}
-        title="You get a bell"
+        title="It lands in your Inbox"
         line="Reply sits on top of that version."
       >
         <Row tone="blue" badge="Question" label="Version 2" />
@@ -653,7 +653,7 @@ export default function GuidePage() {
         </section>
 
         <section id="navigate" className="scroll-mt-32">
-          <SectionTitle title="Menu, search, bell" sub="Get around fast." />
+          <SectionTitle title="Menu, search, inbox" sub="Get around fast." />
           <Navigation />
         </section>
 

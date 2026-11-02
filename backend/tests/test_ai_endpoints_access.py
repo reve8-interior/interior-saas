@@ -80,8 +80,7 @@ def test_materials_ai_extract_logs_cost_with_business_model(api, db):
     biz = make_business(
         db,
         openai_api_key_enc=encrypt_secret("sk-" + "q" * 30),
-        openai_model_balanced="gpt-4o",
-        openai_model_premium="gpt-5",
+        openai_chat_model="gpt-4o",
     )
     user = make_user(db, role=UserRole.admin, business=biz)
     fake_response = SimpleNamespace(
@@ -115,33 +114,6 @@ def test_materials_ai_extract_logs_cost_with_business_model(api, db):
     assert float(log.cost_usd) == pytest.approx(2.50)  # 1M input tokens
 
 
-def test_materials_ai_extract_uses_the_requested_tier(api, db):
-    biz = make_business(
-        db,
-        openai_api_key_enc=encrypt_secret("sk-" + "q" * 30),
-        openai_model_balanced="gpt-4o",
-        openai_model_premium="gpt-5",
-    )
-    user = make_user(db, role=UserRole.admin, business=biz)
-    fake_client = MagicMock()
-    fake_client.chat.completions.create.return_value = SimpleNamespace(
-        usage=None,
-        choices=[SimpleNamespace(message=SimpleNamespace(content="[]"))],
-    )
-    with patch("openai.OpenAI", return_value=fake_client):
-        r = api.post(
-            "/api/v1/materials/ai-extract",
-            headers=auth(user),
-            files={"file": ("rates.png", io.BytesIO(b"png"), "image/png")},
-            data={"tier": "premium"},
-        )
-    assert r.status_code == 200, r.text
-    assert (
-        fake_client.chat.completions.create.call_args.kwargs["model"]
-        == "gpt-5"
-    )
-
-
 def test_model_catalog_is_superadmin_only(api, db):
     biz = make_business(db)
     admin = make_user(db, role=UserRole.admin, business=biz)
@@ -154,21 +126,7 @@ def test_model_catalog_is_superadmin_only(api, db):
     assert r.status_code == 200
     body = r.json()
     assert body["chat"] and body["transcription"]
-    assert set(body["tier_defaults"]) == {"economy", "balanced", "premium"}
-
-
-def test_unknown_tier_is_rejected(api, db):
-    biz = make_business(
-        db, openai_api_key_enc=encrypt_secret("sk-" + "q" * 30)
-    )
-    user = make_user(db, role=UserRole.admin, business=biz)
-    r = api.post(
-        "/api/v1/materials/ai-extract",
-        headers=auth(user),
-        files={"file": ("rates.png", io.BytesIO(b"png"), "image/png")},
-        data={"tier": "platinum"},
-    )
-    assert r.status_code == 422
+    assert body["default_chat_model"]
 
 
 # ── transcription wrapper ──────────────────────────────────────────────────

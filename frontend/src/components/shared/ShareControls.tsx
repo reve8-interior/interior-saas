@@ -1,17 +1,52 @@
 'use client';
 
-import { Check, Copy, Mail, MessageCircle, Share2 } from 'lucide-react';
+import { Ban, Check, Copy, Mail, MessageCircle, Share2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { INPUT_CLS } from '@/lib/constants';
 
-export async function copyLink(url: string): Promise<void> {
+/** Copies the link; `silent` skips the success toast for callers that show their own feedback. */
+export async function copyLink(url: string, silent = false): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(url);
-    toast.success('Link copied');
+    if (!silent) toast.success('Link copied');
+    return true;
   } catch {
     toast.error('Copy failed — select the link and copy it manually');
+    return false;
   }
+}
+
+/** Copy button whose icon turns into a tick for a moment; no toast. */
+export function CopyLinkButton({
+  url,
+  iconOnly = false,
+}: {
+  url: string;
+  /** Square icon button (label kept for screen readers). */
+  iconOnly?: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  const Icon = copied ? Check : Copy;
+  return (
+    <button
+      type="button"
+      aria-label={iconOnly ? 'Copy link' : undefined}
+      onClick={async () => {
+        if (!(await copyLink(url, true))) return;
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      }}
+      title={iconOnly ? 'Copy link' : undefined}
+      className={iconOnly ? 'icon-btn icon-btn-sm' : 'btn-secondary'}
+    >
+      <Icon
+        className={`h-4 w-4 transition-colors ${copied ? 'text-green-600 dark:text-green-400' : ''}`}
+        aria-hidden
+      />
+      {!iconOnly && (copied ? 'Copied' : 'Copy link')}
+    </button>
+  );
 }
 
 const PRESETS: { label: string; days: number | null }[] = [
@@ -143,7 +178,7 @@ export function SendLinkPanel({
         <button
           type="button"
           onClick={() => {
-            copyLink(url);
+            copyLink(url, true);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
           }}
@@ -165,14 +200,28 @@ export function SendLinkPanel({
 export function StopSharingButton({
   onConfirm,
   disabled,
+  iconOnly = false,
 }: {
   onConfirm: () => void;
   disabled?: boolean;
+  /** Small icon button instead of the text one. */
+  iconOnly?: boolean;
 }) {
   const [asking, setAsking] = useState(false);
 
   if (!asking) {
-    return (
+    return iconOnly ? (
+      <button
+        type="button"
+        onClick={() => setAsking(true)}
+        disabled={disabled}
+        aria-label="Stop sharing"
+        title="Stop sharing"
+        className="icon-btn icon-btn-sm icon-btn-danger"
+      >
+        <Ban className="h-4 w-4" aria-hidden />
+      </button>
+    ) : (
       <button
         type="button"
         onClick={() => setAsking(true)}
@@ -199,7 +248,7 @@ export function StopSharingButton({
           onConfirm();
         }}
         disabled={disabled}
-        className="min-h-control rounded-full bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+        className="min-h-control rounded-control bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50"
       >
         Stop
       </button>

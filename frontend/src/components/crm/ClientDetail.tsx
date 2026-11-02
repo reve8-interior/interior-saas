@@ -247,9 +247,7 @@ export function ClientDetail({ clientId, aside }: ClientDetailProps) {
   const links = allLinks.filter((l) => l.client_id === clientId);
 
   if (isLoading) {
-    return (
-      <ListSkeleton rows={2} rowClassName="h-24" className="space-y-3 p-4" />
-    );
+    return <ListSkeleton rows={2} rowClassName="h-24" className="space-y-3" />;
   }
 
   if (!client) {
@@ -276,88 +274,87 @@ export function ClientDetail({ clientId, aside }: ClientDetailProps) {
   };
 
   return (
-    <div className="space-y-3 p-4">
+    <div className="space-y-3">
       <NextStepCard clientId={clientId} />
-
-      {/* Phase tracker: a segmented bar; the current phase named above it, every segment a tap target */}
-      <div className={CARD_CLS}>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <p className={sectionLabel}>Project phase</p>
-            <span
-              className={`badge ${PHASE_COLORS[client.current_phase] ?? ''}`}
-            >
-              {PHASE_LABELS[client.current_phase] ?? client.current_phase}
-            </span>
-            <span className="text-xs tabular-nums text-dark-500 dark:text-dark-400">
-              {phaseIdx + 1} of {PHASE_ORDER.length}
-            </span>
-          </div>
-          {nextPhase && (
-            <button
-              type="button"
-              disabled={phaseMutation.isPending}
-              onClick={() =>
-                phaseMutation.mutate({
-                  phase: nextPhase,
-                  previous: client.current_phase,
-                })
-              }
-              className="btn-secondary btn-sm"
-            >
-              Move to {PHASE_LABELS[nextPhase] ?? nextPhase} →
-            </button>
-          )}
-        </div>
-        <ol className="flex gap-1.5">
-          {PHASE_ORDER.map((phase, i) => {
-            const isActive = i === phaseIdx;
-            const reached = i <= phaseIdx;
-            return (
-              <li key={phase} className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  aria-label={`Set phase to ${PHASE_LABELS[phase] ?? phase}`}
-                  aria-current={isActive ? 'step' : undefined}
-                  disabled={phaseMutation.isPending}
-                  onClick={() =>
-                    !isActive &&
-                    phaseMutation.mutate({
-                      phase,
-                      previous: client.current_phase,
-                    })
-                  }
-                  className="group flex min-h-11 w-full flex-col justify-center gap-1.5 text-left"
-                >
-                  <span
-                    className={`h-2 rounded-full transition-colors ${
-                      reached
-                        ? PHASE_DOT[phase]
-                        : 'bg-line-strong group-hover:bg-dark-300'
-                    } ${isActive ? 'ring-2 ring-brand/40 ring-offset-2 ring-offset-surface' : ''}`}
-                  />
-                  <span
-                    className={`hidden truncate text-xs sm:block ${
-                      isActive
-                        ? 'font-semibold text-dark-900 dark:text-white'
-                        : 'text-dark-500 dark:text-dark-400'
-                    }`}
-                  >
-                    {PHASE_LABELS[phase] ?? phase}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
 
       <div className="grid items-start gap-3 lg:grid-cols-3">
         {/* Main column: what needs doing. Source order is the mobile order. */}
         <div className="space-y-3 lg:col-span-2">
-          <CustomerMessages clientId={clientId} />
-          <section aria-labelledby="client-links-heading" className="space-y-3">
-            <h2 id="client-links-heading" className={sectionLabel}>
+          {/* Phase tracker: a segmented bar; the current phase named above it, every segment a tap target */}
+          <div className={CARD_CLS}>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <p className={sectionLabel}>Project phase</p>
+                <span
+                  className={`badge ${PHASE_COLORS[client.current_phase] ?? ''}`}
+                >
+                  {PHASE_LABELS[client.current_phase] ?? client.current_phase}
+                </span>
+                <span className="text-xs tabular-nums text-dark-500 dark:text-dark-400">
+                  {phaseIdx + 1} of {PHASE_ORDER.length}
+                </span>
+              </div>
+              {nextPhase && (
+                <button
+                  type="button"
+                  disabled={phaseMutation.isPending}
+                  onClick={() =>
+                    phaseMutation.mutate({
+                      phase: nextPhase,
+                      previous: client.current_phase,
+                    })
+                  }
+                  className="btn-secondary btn-sm"
+                >
+                  Move to {PHASE_LABELS[nextPhase] ?? nextPhase} →
+                </button>
+              )}
+            </div>
+            <ol className="flex gap-1.5">
+              {PHASE_ORDER.map((phase, i) => {
+                const isActive = i === phaseIdx;
+                const reached = i <= phaseIdx;
+                return (
+                  <li key={phase} className="min-w-0 flex-1">
+                    <button
+                      type="button"
+                      aria-label={`Set phase to ${PHASE_LABELS[phase] ?? phase}`}
+                      aria-current={isActive ? 'step' : undefined}
+                      disabled={phaseMutation.isPending}
+                      onClick={() =>
+                        !isActive &&
+                        phaseMutation.mutate({
+                          phase,
+                          previous: client.current_phase,
+                        })
+                      }
+                      className="group flex min-h-11 w-full flex-col justify-center gap-1.5 text-left"
+                    >
+                      <span
+                        className={`h-2 rounded-full transition-colors ${
+                          reached
+                            ? PHASE_DOT[phase]
+                            : 'bg-line-strong group-hover:bg-dark-300'
+                        } ${isActive ? 'ring-2 ring-brand/40 ring-offset-2 ring-offset-surface' : ''}`}
+                      />
+                      <span
+                        className={`hidden truncate text-xs sm:block ${
+                          isActive
+                            ? 'font-semibold text-dark-900 dark:text-white'
+                            : 'text-dark-500 dark:text-dark-400'
+                        }`}
+                      >
+                        {PHASE_LABELS[phase] ?? phase}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+
+          <section aria-labelledby="client-links-heading">
+            <h2 id="client-links-heading" className="sr-only">
               Shared links
             </h2>
             {links.length === 0 ? (
@@ -366,7 +363,7 @@ export function ClientDetail({ clientId, aside }: ClientDetailProps) {
                 Designs tab or a quotation version from Quotation.
               </p>
             ) : (
-              <ul className="grid gap-3 sm:grid-cols-2">
+              <ul className="space-y-3">
                 {links.map((link) => (
                   <SharedLinkCard
                     key={`${link.kind}-${link.id}`}
@@ -378,6 +375,8 @@ export function ClientDetail({ clientId, aside }: ClientDetailProps) {
               </ul>
             )}
           </section>
+          {/* Last: the thread grows, so it must not push the links down. */}
+          <CustomerMessages clientId={clientId} />
         </div>
 
         {/* Side column: reference details */}
@@ -388,7 +387,7 @@ export function ClientDetail({ clientId, aside }: ClientDetailProps) {
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs text-dark-500 hover:bg-primary-50 hover:text-primary-600 dark:text-dark-400 dark:hover:bg-white/[0.06] dark:hover:text-primary-400"
+                className="-my-3 -mr-3 flex min-h-11 items-center gap-1 rounded-lg px-3 text-xs text-dark-500 hover:bg-primary-50 hover:text-primary-600 dark:text-dark-400 dark:hover:bg-white/[0.06] dark:hover:text-primary-400"
               >
                 <Pencil className="h-3 w-3" />
                 Edit

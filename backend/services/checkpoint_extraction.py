@@ -27,7 +27,6 @@ from .ai_access import (
     log_ai_usage,
     resolve_openai_access,
 )
-from .ai_models import ModelTier
 from .checkpoint_ai_support import (
     item_summary,
     material_hints,
@@ -60,7 +59,6 @@ async def extract_checkpoint_from_input(
     *,
     current_user: User,
     client_id: str,
-    tier: ModelTier | None,
     upload: Upload | None,
     text: str | None,
 ) -> ExtractionResponse:
@@ -69,7 +67,7 @@ async def extract_checkpoint_from_input(
     Every attempt is recorded in the AI usage log; provider errors are
     reported as a generic 502 and never forwarded to the client.
     """
-    access = resolve_openai_access(current_user, tier)
+    access = resolve_openai_access(current_user)
     enforce_extraction_quota(db, current_user)
     api_key = access.api_key
 
@@ -240,8 +238,4 @@ async def extract_checkpoint_from_input(
             matched_rooms=scope.matched_rooms,
         ),
         model=model_name,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        latency_ms=latency_ms,
-        cost_usd=float(log.cost_usd) if log.cost_usd is not None else None,
     )

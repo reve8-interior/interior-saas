@@ -13,6 +13,8 @@ export interface Client {
   assigned_designer: Designer | null;
   notes: string | null;
   is_active: boolean;
+  /** Demo client offered to new users; the only kind that can be deleted. */
+  is_sample: boolean;
   created_at: string;
   updated_at: string;
   completed_at: string | null;

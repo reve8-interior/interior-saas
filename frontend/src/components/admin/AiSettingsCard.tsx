@@ -1,10 +1,8 @@
 'use client';
 
-import { TAG_STYLES } from '@/components/shared/ModelTierPicker';
 import {
   type CatalogChatModel,
   type ModelCatalog,
-  type ModelTier,
   formatUsd,
   getModelCatalog,
 } from '@/lib/aiModels';
@@ -27,14 +25,6 @@ import { FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { fmtDate } from '@/lib/format';
 import { errorMessage } from '@/lib/errors';
-
-const TIERS: { key: ModelTier; label: string; hint: string }[] = [
-  { key: 'economy', label: 'Economy', hint: 'Lowest cost' },
-  { key: 'balanced', label: 'Balanced', hint: "Users' default" },
-  { key: 'premium', label: 'Premium', hint: 'Highest accuracy' },
-];
-
-const tierField = (key: ModelTier) => `openai_model_${key}` as const;
 
 /** A select whose options carry their price; an unlisted saved model stays. */
 function ModelSelect({
@@ -84,7 +74,7 @@ function priceLine(model: CatalogChatModel | undefined): string {
 function KeyStatus({ business }: { business: Business | undefined }) {
   if (business?.has_openai_key) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-500/15 dark:text-green-300">
+      <span className="inline-flex items-center gap-1.5 rounded-control bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-500/15 dark:text-green-300">
         <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
         Key set · ends in {business.openai_key_last4}
         {business.openai_key_updated_at &&
@@ -93,14 +83,14 @@ function KeyStatus({ business }: { business: Business | undefined }) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+    <span className="inline-flex items-center gap-1.5 rounded-control bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
       <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
       No key · AI is off for this business
     </span>
   );
 }
 
-/** Platform admin: a business's OpenAI key, tier models and voice model. */
+/** Platform admin: a business's OpenAI key, chat model and voice model. */
 export function AiSettingsCard({ businessId }: { businessId: string }) {
   const queryClient = useQueryClient();
   const { data: businesses = [] } = useQuery({
@@ -116,19 +106,15 @@ export function AiSettingsCard({ businessId }: { businessId: string }) {
 
   const [keyInput, setKeyInput] = useState('');
   const [showKey, setShowKey] = useState(false);
-  // An absent entry means "untouched": the select shows the saved value.
-  const [tierEdits, setTierEdits] = useState<
-    Partial<Record<ModelTier, string>>
-  >({});
+  // null means "untouched": the select shows the saved value.
+  const [chatEdit, setChatEdit] = useState<string | null>(null);
   const [whisperEdit, setWhisperEdit] = useState<string | null>(null);
 
   const chat = catalog?.chat ?? [];
-  const defaults = catalog?.tier_defaults;
-  const defaultFor = (key: ModelTier) => defaults?.[key] ?? '';
-  const saved = (key: ModelTier) =>
-    business?.[tierField(key)] || defaultFor(key);
-  const current = (key: ModelTier) => tierEdits[key] ?? saved(key);
-  const changed = TIERS.filter((t) => current(t.key) !== saved(t.key));
+  const defaultModel = catalog?.default_chat_model ?? '';
+  const savedChat = business?.openai_chat_model || defaultModel;
+  const chatModel = chatEdit ?? savedChat;
+  const chatChanged = chatModel !== savedChat;
 
   const savedWhisper = business?.openai_whisper_model || 'whisper-1';
   const whisper = whisperEdit ?? savedWhisper;
@@ -136,23 +122,12 @@ export function AiSettingsCard({ businessId }: { businessId: string }) {
   const voiceModels = catalog?.transcription ?? [];
 
   const priceOf = (model: string) => chat.find((m) => m.model === model);
-  // Users see Economy → Premium as cheap → costly; flag a mismatch.
-  const costs = TIERS.map((t) =>
-    Number(priceOf(current(t.key))?.est_cost_per_extraction_usd ?? NaN)
-  );
-  const outOfOrder = costs.some(
-    (c, i) =>
-      i > 0 &&
-      !Number.isNaN(c) &&
-      !Number.isNaN(costs[i - 1]) &&
-      c < costs[i - 1]
-  );
 
-  const dirty = !!keyInput.trim() || changed.length > 0 || whisperChanged;
+  const dirty = !!keyInput.trim() || chatChanged || whisperChanged;
 
   const discard = () => {
     setKeyInput('');
-    setTierEdits({});
+    setChatEdit(null);
     setWhisperEdit(null);
   };
   const afterSave = () => {
@@ -164,9 +139,7 @@ export function AiSettingsCard({ businessId }: { businessId: string }) {
     mutationFn: () =>
       setBusinessOpenAI(businessId, {
         ...(keyInput.trim() ? { api_key: keyInput.trim() } : {}),
-        ...Object.fromEntries(
-          changed.map((t) => [`${t.key}_model`, current(t.key)])
-        ),
+        ...(chatChanged ? { chat_model: chatModel } : {}),
         ...(whisperChanged ? { whisper_model: whisper } : {}),
       }),
     onSuccess: () => {
@@ -243,7 +216,7 @@ export function AiSettingsCard({ businessId }: { businessId: string }) {
               onClick={() => setShowKey((v) => !v)}
               aria-label={showKey ? 'Hide API key' : 'Show API key'}
               aria-pressed={showKey}
-              className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-dark-500 hover:bg-primary-50 dark:text-dark-400 dark:hover:bg-white/10"
+              className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-control text-dark-500 hover:bg-primary-50 dark:text-dark-400 dark:hover:bg-white/10"
             >
               {showKey ? (
                 <EyeOff className="h-4 w-4" aria-hidden="true" />
@@ -261,66 +234,26 @@ export function AiSettingsCard({ businessId }: { businessId: string }) {
           </p>
         </div>
 
-        <fieldset className="space-y-3">
-          <legend className="text-sm font-semibold">
-            Models users can choose
-          </legend>
-          <p className="text-xs text-dark-500 dark:text-dark-400">
-            Users pick one tier per request and see its cost. Put a cheaper
-            model on Economy and a stronger one on Premium.
+        <div>
+          <label className="field-label" htmlFor="ai-chat">
+            Chat model
+          </label>
+          <ModelSelect
+            id="ai-chat"
+            value={chatModel}
+            describedBy="ai-chat-price"
+            models={chat}
+            defaultModel={defaultModel}
+            onChange={setChatEdit}
+          />
+          <p
+            id="ai-chat-price"
+            className="mt-1 text-xs text-dark-500 dark:text-dark-400"
+          >
+            {priceLine(priceOf(chatModel))} Users never see the model or its
+            cost; they only see their AI credits.
           </p>
-          <div className="divide-y divide-line rounded-xl bg-surface-2 dark:divide-line dark:border-line">
-            {TIERS.map((t) => (
-              <div
-                key={t.key}
-                className="grid gap-2 p-3 sm:grid-cols-[9rem_1fr] sm:gap-4"
-              >
-                <div className="flex items-center gap-2 sm:flex-col sm:items-start sm:gap-1">
-                  <label
-                    htmlFor={`tier-${t.key}`}
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${TAG_STYLES[t.key]}`}
-                  >
-                    {t.label}
-                  </label>
-                  <span className="text-xs text-dark-500 dark:text-dark-400">
-                    {t.hint}
-                  </span>
-                </div>
-                <div>
-                  <ModelSelect
-                    id={`tier-${t.key}`}
-                    value={current(t.key)}
-                    describedBy={`tier-${t.key}-price`}
-                    models={chat}
-                    defaultModel={defaultFor(t.key)}
-                    onChange={(m) =>
-                      setTierEdits((prev) => ({ ...prev, [t.key]: m }))
-                    }
-                  />
-                  <p
-                    id={`tier-${t.key}-price`}
-                    className="mt-1 text-xs text-dark-500 dark:text-dark-400"
-                  >
-                    {priceLine(priceOf(current(t.key)))}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-          {outOfOrder && (
-            <p
-              role="status"
-              className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300"
-            >
-              <AlertTriangle
-                className="mt-0.5 h-3.5 w-3.5 shrink-0"
-                aria-hidden="true"
-              />
-              A higher tier costs less than a lower one. Users expect Premium to
-              cost the most.
-            </p>
-          )}
-        </fieldset>
+        </div>
 
         <div>
           <label className="field-label" htmlFor="ai-voice">

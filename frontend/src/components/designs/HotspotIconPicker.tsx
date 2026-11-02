@@ -97,7 +97,7 @@ export function HotspotIconPicker({
           id={panelId}
           role="dialog"
           aria-label="Choose a pin icon"
-          className="absolute left-0 top-full z-30 mt-2 w-72 space-y-2 rounded-2xl border border-line bg-surface p-3 shadow-glass"
+          className="absolute left-0 top-full z-30 mt-2 max-h-[60dvh] w-72 space-y-2 overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface p-3 shadow-glass max-sm:fixed max-sm:inset-x-4 max-sm:w-auto"
         >
           <input
             type="search"

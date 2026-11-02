@@ -83,8 +83,15 @@ def test_pasted_text_returns_normalized_rows_and_logs_usage(api, db):
     assert body["line_items"][0]["room"] == "Master Bedroom"
     assert body["client_budget"] == 500000
     assert body["unmapped_notes"] == ["Likes teak"]
-    assert (body["input_tokens"], body["output_tokens"]) == (120, 30)
+    # Usage and cost are recorded for the admin, never sent to the user.
+    assert not {
+        "input_tokens",
+        "output_tokens",
+        "latency_ms",
+        "cost_usd",
+    } & set(body)
     [log] = logs(db)
+    assert (log.input_tokens, log.output_tokens) == (120, 30)
     assert log.status == "success"
     assert str(log.id) == body["audit_log_id"]
 

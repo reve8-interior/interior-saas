@@ -1,9 +1,9 @@
 'use client';
 
-import { CheckCircle2, Mail, MessageCircle, Pencil } from 'lucide-react';
-import Link from 'next/link';
+import { CheckCircle2 } from 'lucide-react';
 import { timeAgo } from '@/lib/dates';
 import type { QuotationVersionSummary } from '@/lib/schemas/quotationVersion';
+import { ReplyActions } from './ReplyActions';
 
 /**
  * The customer's answer, at the top of the version it came from, with what to
@@ -23,8 +23,6 @@ export function ReplyBanner({
   if (!summary.is_shared || !summary.reply_kind) return null;
   const asked = summary.reply_kind === 'question';
   const who = summary.reply_name || 'Your customer';
-  const phone = (contact?.phone ?? '').replace(/\D/g, '');
-  const email = contact?.email ?? '';
   return (
     <section
       aria-label="Customer reply"
@@ -57,37 +55,24 @@ export function ReplyBanner({
       </p>
       <div className="flex flex-wrap gap-2">
         {!asked && !summary.is_agreed && (
-          <button type="button" onClick={onAgree} className="btn-primary">
+          <button
+            type="button"
+            onClick={onAgree}
+            className="btn-primary btn-sm"
+          >
             <CheckCircle2 className="h-4 w-4" aria-hidden />
             Mark as agreed
           </button>
         )}
-        {phone && (
-          <a
-            href={`https://wa.me/${phone}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={asked ? 'btn-primary' : 'btn-secondary'}
-          >
-            <MessageCircle className="h-4 w-4" aria-hidden />
-            WhatsApp
-          </a>
-        )}
-        {email && (
-          <a href={`mailto:${email}`} className="btn-secondary">
-            <Mail className="h-4 w-4" aria-hidden />
-            Email
-          </a>
-        )}
-        {asked && (
-          <Link
-            href={`/dashboard/clients/${clientId}/quotation`}
-            className="btn-secondary"
-          >
-            <Pencil className="h-4 w-4" aria-hidden />
-            Edit quotation
-          </Link>
-        )}
+        <ReplyActions
+          clientId={clientId}
+          versionId={null}
+          versionNumber={0}
+          contact={contact}
+          canEdit={asked}
+          showVersionLink={false}
+          emphasis={asked}
+        />
       </div>
     </section>
   );

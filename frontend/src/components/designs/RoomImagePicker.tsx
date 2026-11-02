@@ -3,6 +3,7 @@
 import { Check, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
+import { SkeletonImage } from '@/components/ui/SkeletonImage';
 import type { Design } from '@/lib/schemas/design';
 
 interface RoomImagePickerProps {
@@ -108,10 +109,8 @@ export function RoomImagePicker({
                         key={id}
                         className="relative w-28 overflow-hidden rounded-xl bg-surface-2"
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <SkeletonImage
                           loading="lazy"
-                          decoding="async"
                           src={design.thumb_url ?? design.image_url ?? ''}
                           alt=""
                           className="h-20 w-full object-cover"
@@ -128,7 +127,7 @@ export function RoomImagePicker({
                               attached.filter((d) => d !== id)
                             )
                           }
-                          className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+                          className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-control bg-black/60 text-white hover:bg-black/80"
                         >
                           <X className="h-4 w-4" aria-hidden />
                         </button>
@@ -161,10 +160,8 @@ export function RoomImagePicker({
                     on ? 'border-brand' : 'border-line hover:border-brand/50'
                   }`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <SkeletonImage
                     loading="lazy"
-                    decoding="async"
                     src={design.thumb_url ?? design.image_url ?? ''}
                     alt=""
                     className="h-28 w-full object-cover"

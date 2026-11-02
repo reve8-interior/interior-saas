@@ -62,7 +62,7 @@ function RoomSection({
           )}
           <span className="flex-1">{room.room}</span>
           {room.designs.length > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-accent-text">
+            <span className="inline-flex items-center gap-1 rounded-control bg-brand/10 px-2 py-0.5 text-xs font-medium text-accent-text">
               <ImageIcon className="h-3 w-3" aria-hidden />
               {room.designs.length}{' '}
               {room.designs.length === 1 ? 'image' : 'images'}

@@ -52,7 +52,7 @@ export function GuideNav({ sections }: { sections: GuideSection[] }) {
     >
       <div
         ref={stripRef}
-        className="snap-strip ios-pill !gap-1 rounded-full p-1"
+        className="snap-strip ios-pill !gap-1 rounded-control p-1"
       >
         {sections.map((s) => (
           <a
@@ -60,7 +60,7 @@ export function GuideNav({ sections }: { sections: GuideSection[] }) {
             href={`#${s.id}`}
             data-id={s.id}
             aria-current={active === s.id ? 'true' : undefined}
-            className={`flex h-10 items-center whitespace-nowrap rounded-full px-4 text-sm font-semibold transition-colors ${
+            className={`flex h-10 items-center whitespace-nowrap rounded-control px-4 text-sm font-semibold transition-colors ${
               active === s.id
                 ? 'bg-brand text-white'
                 : 'text-dark-700 hover:bg-text/5 dark:text-dark-200 dark:hover:bg-white/10'

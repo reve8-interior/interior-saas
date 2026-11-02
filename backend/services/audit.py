@@ -19,7 +19,7 @@ def record(
     db: Session,
     *,
     actor: User | None,
-    business_id: uuid.UUID,
+    business_id: uuid.UUID | None,
     action: str,
     entity_type: str,
     entity_id: object | None = None,
@@ -27,7 +27,8 @@ def record(
 ) -> None:
     """Queue an audit row on the caller's transaction (no commit).
 
-    Never put secrets in payload: it is shown to business admins.
+    Never put secrets in payload: it is shown to business admins. Platform-level
+    actions (e.g. editing a plan) pass business_id=None.
     """
     db.add(
         AuditLog(

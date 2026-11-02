@@ -31,8 +31,8 @@ from ..services.client_access import get_client_or_404, restrict_to_accessible
 from .deps import get_current_user
 from .designs import (
     PORTFOLIO_ORDER,
-    design_image_url,
     design_thumb_url,
+    design_view_url,
 )
 
 router = APIRouter()
@@ -236,7 +236,7 @@ def _portfolio_view(
                 id=d.id,
                 title=d.title,
                 description=d.description,
-                image_url=design_image_url(d),
+                image_url=design_view_url(d),
                 thumb_url=design_thumb_url(d),
                 hotspots=[_shared_hotspot(h, False) for h in d.hotspots],
             )
@@ -399,7 +399,7 @@ def view_shared(token: str, db: Session = Depends(get_db)):
                 id=d.id,
                 title=d.title,
                 description=d.description,
-                image_url=design_image_url(d),
+                image_url=design_view_url(d),
                 thumb_url=design_thumb_url(d),
                 hotspots=[
                     _shared_hotspot(h, link.show_prices) for h in d.hotspots

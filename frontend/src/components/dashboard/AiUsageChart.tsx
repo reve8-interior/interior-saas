@@ -1,31 +1,16 @@
+import { UsageMeters } from '@/components/settings/UsageMeters';
 import { OPERATION_LABELS } from '@/lib/constants';
-import { fmtSpeed, fmtUsd } from '@/lib/format';
+import type { UsageMeter } from '@/lib/schemas/auth';
 import { ChartCard, EmptyChart } from './ChartCard';
 
 interface Props {
   data: Record<string, number>;
-  totalCalls: number;
-  totalCostUsd: number;
-  avgLatencyMs: number;
+  /** This month's AI credits, when the plan caps them. */
+  credits?: UsageMeter;
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface px-3 py-2.5 dark:border-line dark:bg-dark-900/50">
-      <p className="text-xs text-dark-500 dark:text-dark-400">{label}</p>
-      <p className="text-lg font-bold tabular-nums text-dark-900 dark:text-white">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-export function AiUsageChart({
-  data,
-  totalCalls,
-  totalCostUsd,
-  avgLatencyMs,
-}: Props) {
+/** What the assistant was used for, and how many credits are left. */
+export function AiUsageChart({ data, credits }: Props) {
   const rows = Object.entries(data)
     .map(([operation, count]) => ({
       name: OPERATION_LABELS[operation] ?? operation,
@@ -39,15 +24,11 @@ export function AiUsageChart({
       title="AI usage"
       description="What the assistant has been used for"
     >
-      {rows.length === 0 ? (
-        <EmptyChart message="No AI usage yet" />
-      ) : (
-        <div className="space-y-5">
-          <div className="grid grid-cols-3 gap-3">
-            <Stat label="Calls" value={totalCalls.toLocaleString()} />
-            <Stat label="Cost" value={fmtUsd(totalCostUsd)} />
-            <Stat label="Avg speed" value={fmtSpeed(avgLatencyMs)} />
-          </div>
+      <div className="space-y-5">
+        {credits && <UsageMeters meters={[credits]} />}
+        {rows.length === 0 ? (
+          <EmptyChart message="No AI usage yet" />
+        ) : (
           <ul className="space-y-3">
             {rows.map((r) => (
               <li key={r.name}>
@@ -68,8 +49,8 @@ export function AiUsageChart({
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        )}
+      </div>
     </ChartCard>
   );
 }

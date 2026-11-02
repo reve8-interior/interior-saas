@@ -11,7 +11,8 @@ from ..schemas.admin_monitor import (
     BusinessAIUsage,
     BusinessClientRow,
 )
-from ..services import admin_monitor_service
+from ..schemas.feedback import AdminFeedback
+from ..services import admin_monitor_service, feedback_service
 from .deps import require_superadmin
 
 router = APIRouter()
@@ -57,3 +58,11 @@ def business_ai_usage(
     if not db.get(Business, business_id):
         raise HTTPException(status_code=404, detail="Business not found")
     return admin_monitor_service.get_business_ai_usage(db, business_id, days)
+
+
+@router.get("/feedback", response_model=AdminFeedback)
+def feedback_overview(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superadmin),
+):
+    return feedback_service.get_admin_feedback(db)

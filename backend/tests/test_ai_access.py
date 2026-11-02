@@ -7,11 +7,7 @@ from sqlalchemy import select
 
 from backend.models.agent_audit_log import AgentAuditLog
 from backend.models.user import UserRole
-from backend.services.ai_models import (
-    DEFAULT_TIER,
-    DEFAULT_TIER_MODELS,
-    ModelTier,
-)
+from backend.services.ai_models import DEFAULT_CHAT_MODEL
 from backend.services.ai_access import (
     DEFAULT_WHISPER_MODEL,
     OP_AUDIO_TRANSCRIBE,
@@ -63,14 +59,14 @@ def test_access_uses_business_key_and_default_models(db):
     user = make_user(db, business=business_with_key(db))
     access = resolve_openai_access(user)
     assert access.api_key == KEY
-    assert access.model == DEFAULT_TIER_MODELS[DEFAULT_TIER]
+    assert access.model == DEFAULT_CHAT_MODEL
     assert access.whisper_model == DEFAULT_WHISPER_MODEL
 
 
 def test_access_uses_business_models_when_set(db):
     biz = business_with_key(
         db,
-        openai_model_balanced="gpt-4o",
+        openai_chat_model="gpt-4o",
         openai_whisper_model="gpt-4o-transcribe",
     )
     access = resolve_openai_access(make_user(db, business=biz))
@@ -78,33 +74,15 @@ def test_access_uses_business_models_when_set(db):
     assert access.whisper_model == "gpt-4o-transcribe"
 
 
-def test_access_resolves_the_requested_tier(db):
-    biz = business_with_key(
-        db,
-        openai_model_economy="gpt-4o-mini",
-        openai_model_premium="gpt-5",
-    )
-    user = make_user(db, business=biz)
-    assert resolve_openai_access(user, ModelTier.economy).model == (
-        "gpt-4o-mini"
-    )
-    assert resolve_openai_access(user, ModelTier.premium).model == "gpt-5"
-    # A tier the admin left unset falls back to its platform default.
-    assert (
-        resolve_openai_access(user, ModelTier.balanced).model
-        == (DEFAULT_TIER_MODELS[ModelTier.balanced])
-    )
-
-
 def test_model_resolvers_fall_back_without_business(db):
     user = make_user(db)
-    assert resolve_chat_model(user) == DEFAULT_TIER_MODELS[DEFAULT_TIER]
+    assert resolve_chat_model(user) == DEFAULT_CHAT_MODEL
     assert resolve_whisper_model(user) == DEFAULT_WHISPER_MODEL
 
 
 def test_models_are_per_business(db):
-    a = make_business(db, openai_model_balanced="gpt-4o")
-    b = make_business(db, openai_model_balanced="gpt-5-mini")
+    a = make_business(db, openai_chat_model="gpt-4o")
+    b = make_business(db, openai_chat_model="gpt-5-mini")
     assert resolve_chat_model(make_user(db, business=a)) == "gpt-4o"
     assert resolve_chat_model(make_user(db, business=b)) == "gpt-5-mini"
 

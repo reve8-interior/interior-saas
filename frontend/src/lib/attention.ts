@@ -22,14 +22,14 @@ export interface AttentionItem {
 }
 
 export const ATTENTION_KEY = ['dashboard-attention'];
-/** How often the bell checks for new customer replies. */
+/** How often the app checks for new customer replies. */
 export const ATTENTION_POLL_MS = 60_000;
 
 export function getAttention(): Promise<AttentionItem[]> {
   return api.get<AttentionItem[]>('/dashboard/attention');
 }
 
-/** Tell the server these items were seen; only this user's bell changes. */
+/** Tell the server these items were seen; only this user's view changes. */
 export function markAttentionRead(keys: string[]): Promise<void> {
   return api.post<void>('/dashboard/attention/read', { keys });
 }

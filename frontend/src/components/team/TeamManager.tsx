@@ -5,7 +5,6 @@ import { MemberClientsEditor } from '@/components/team/MemberClientsEditor';
 import { TeamApi } from '@/lib/team';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Copy,
   Dices,
   Eye,
   EyeOff,
@@ -22,6 +21,10 @@ import { errorMessage } from '@/lib/errors';
 import { fmtDateTime } from '@/lib/format';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { Modal } from '@/components/ui/Modal';
+import {
+  IssuedCredentialsModal,
+  type IssuedCredentials,
+} from '@/components/shared/IssuedCredentialsModal';
 import { LoadingRegion, Skeleton } from '@/components/ui';
 import { RowMenu } from '@/components/ui/RowMenu';
 import {
@@ -90,10 +93,7 @@ export function TeamManager({
     kind: 'reset' | 'remove';
     member: BusinessUser;
   } | null>(null);
-  const [issued, setIssued] = useState<{
-    email: string;
-    password: string;
-  } | null>(null);
+  const [issued, setIssued] = useState<IssuedCredentials | null>(null);
 
   const overviewKey = [...api.key, 'overview'];
   const { data, isLoading } = useQuery({
@@ -213,16 +213,6 @@ export function TeamManager({
   const confirmRemove = (u: BusinessUser) =>
     setPendingAction({ kind: 'remove', member: u });
 
-  function copyCredentials(c: { email: string; password: string }) {
-    navigator.clipboard
-      .writeText(
-        `Email: ${c.email}
-Temporary password: ${c.password}`
-      )
-      .then(() => toast.success('Copied email and password'))
-      .catch(() => toast.error('Copy failed'));
-  }
-
   const tabBtn = (id: 'members' | 'activity', label: string) => (
     <button
       type="button"
@@ -236,49 +226,10 @@ Temporary password: ${c.password}`
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <Modal
-        open={issued !== null}
+      <IssuedCredentialsModal
+        credentials={issued}
         onClose={() => setIssued(null)}
-        title="Share these sign-in details"
-        description="The password is shown only once. They must change it on first login."
-        maxWidth="md"
-      >
-        {issued && (
-          <div className="space-y-4">
-            <dl className="space-y-2 text-sm">
-              <div>
-                <dt className="type-label">Email</dt>
-                <dd className="break-all">{issued.email}</dd>
-              </div>
-              <div>
-                <dt className="type-label">Temporary password</dt>
-                <dd>
-                  <code className="rounded-lg bg-dark-100 px-2 py-1 font-mono dark:bg-dark-900/60">
-                    {issued.password}
-                  </code>
-                </dd>
-              </div>
-            </dl>
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => copyCredentials(issued)}
-              >
-                <Copy className="h-4 w-4" aria-hidden /> Copy email &amp;
-                password
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => setIssued(null)}
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      />
 
       <ConfirmDeleteModal
         isOpen={pendingAction !== null}

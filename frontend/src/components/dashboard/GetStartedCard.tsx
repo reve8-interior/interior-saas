@@ -3,6 +3,7 @@
 import { CheckCircle2, Circle } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useSampleClient } from '@/lib/useSampleClient';
 
 const DISMISS_KEY = 'get-started-dismissed';
 
@@ -22,6 +23,7 @@ export function GetStartedCard({
   hasClients: boolean;
   onAddClient: () => void;
 }) {
+  const { load } = useSampleClient();
   const [dismissed, setDismissed] = useState(() => {
     try {
       return localStorage.getItem(DISMISS_KEY) === '1';
@@ -112,6 +114,14 @@ export function GetStartedCard({
           );
         })}
       </ol>
+      <button
+        type="button"
+        onClick={() => load.mutate()}
+        disabled={load.isPending}
+        className="btn-secondary mt-3 min-h-11"
+      >
+        {load.isPending ? 'Loading…' : 'Or explore with a sample client'}
+      </button>
     </section>
   );
 }

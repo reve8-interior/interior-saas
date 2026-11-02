@@ -3,9 +3,7 @@
 import { NoItemsPanel } from './NoItemsPanel';
 import { ItemsGrid } from './ItemsGrid';
 import { api } from '@/lib/api';
-import { useModelTier } from '@/lib/aiModels';
 import { ExtractionProgress } from '@/components/shared/ExtractionProgress';
-import { ModelTierPicker } from '@/components/shared/ModelTierPicker';
 import {
   type ExtractionQuestion,
   type ExtractionRecord,
@@ -72,7 +70,6 @@ export function CheckpointCard({
   );
   const itemsRef = useRef(items);
   const [isExtracting, setIsExtracting] = useState(false);
-  const { options: modelOptions, tier, setTier } = useModelTier();
   const [isSendingToQuotation, setIsSendingToQuotation] = useState(false);
   const [confirmAdd, setConfirmAdd] = useState(false);
   const router = useRouter();
@@ -140,7 +137,7 @@ export function CheckpointCard({
     }
     setIsExtracting(true);
     try {
-      const result = await extractFromText(clientId, text, tier);
+      const result = await extractFromText(clientId, text);
       const newItems: LineItemData[] = result.line_items.map((li) => ({
         ...li,
         unit: li.unit || 'sqft',
@@ -472,11 +469,8 @@ export function CheckpointCard({
                     hasRun={hasRun}
                     ranAt={ranAt}
                     unmappedNotes={unmappedNotes}
-                    tier={tier}
-                    modelOptions={modelOptions}
                     isExtracting={isExtracting}
                     extractChars={extractChars}
-                    onTierChange={setTier}
                     onAddManual={addManualItem}
                     onRunExtract={() => runExtract()}
                   />
@@ -568,12 +562,6 @@ export function CheckpointCard({
 
                     {showRerun && !cp.added_to_quotation && (
                       <div className="space-y-2 rounded-xl bg-surface-2 p-3 dark:border-line">
-                        <ModelTierPicker
-                          tier={tier}
-                          onChange={setTier}
-                          options={modelOptions}
-                          disabled={isExtracting}
-                        />
                         <button
                           onClick={() => runExtract()}
                           disabled={isExtracting}

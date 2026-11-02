@@ -25,7 +25,7 @@ def test_requires_superadmin(api, db):
         assert api.get(URL, headers=h).status_code == 403
         assert api.post(URL, headers=h, json={"name": "X"}).status_code == 403
         put = api.put(
-            f"{URL}/{biz.id}/openai", headers=h, json={"balanced_model": "o3"}
+            f"{URL}/{biz.id}/openai", headers=h, json={"chat_model": "o3"}
         )
         assert put.status_code == 403
 
@@ -71,13 +71,22 @@ def test_create_with_admin_user_counts_it(api, db):
     assert login.status_code == 200
 
 
-def test_create_admin_email_without_password_rejected(api, db):
+def test_create_admin_email_generates_temporary_password(api, db):
     r = api.post(
         URL,
         headers=superadmin(db),
         json={"name": "Biz", "admin_email": "owner@biz.com"},
     )
-    assert r.status_code == 422
+    assert r.status_code == 201
+    body = r.json()
+    assert body["contact_email"] == "owner@biz.com"
+    temp = body["temporary_password"]
+    assert temp and len(temp) >= 8
+    login = api.post(
+        "/api/v1/auth/login",
+        json={"email": "owner@biz.com", "password": temp},
+    )
+    assert login.status_code == 200
 
 
 def test_duplicate_name_is_case_insensitive_conflict(api, db):
@@ -132,7 +141,7 @@ def test_unknown_business_404(api, db):
     patch = api.patch(f"{URL}/{ghost}", headers=h, json={"name": "x"})
     off = api.post(f"{URL}/{ghost}/deactivate", headers=h)
     put = api.put(
-        f"{URL}/{ghost}/openai", headers=h, json={"balanced_model": "o3"}
+        f"{URL}/{ghost}/openai", headers=h, json={"chat_model": "o3"}
     )
     assert (patch.status_code, off.status_code, put.status_code) == (
         404,
@@ -160,31 +169,20 @@ def test_set_key_stores_encrypted_and_never_returns_it(api, db):
     assert KEY not in listing.text
 
 
-def test_tier_models_and_whisper_can_be_set_and_reset(api, db):
+def test_chat_and_whisper_models_can_be_set_and_reset(api, db):
     h = superadmin(db)
     biz = make_business(db)
     r = api.put(
         f"{URL}/{biz.id}/openai",
         headers=h,
-        json={
-            "economy_model": "gpt-4.1-mini",
-            "balanced_model": "gpt-4o",
-            "premium_model": "gpt-5",
-            "whisper_model": "gpt-4o-transcribe",
-        },
+        json={"chat_model": "gpt-4o", "whisper_model": "gpt-4o-transcribe"},
     )
     body = r.json()
-    assert body["openai_model_economy"] == "gpt-4.1-mini"
-    assert body["openai_model_balanced"] == "gpt-4o"
-    assert body["openai_model_premium"] == "gpt-5"
+    assert body["openai_chat_model"] == "gpt-4o"
     assert body["openai_whisper_model"] == "gpt-4o-transcribe"
-    r = api.put(
-        f"{URL}/{biz.id}/openai", headers=h, json={"balanced_model": ""}
-    )
-    assert r.json()["openai_model_balanced"] is None
-    # other tiers untouched by a single-tier update
-    assert r.json()["openai_model_premium"] == "gpt-5"
-    # whisper model untouched by a model-only update
+    r = api.put(f"{URL}/{biz.id}/openai", headers=h, json={"chat_model": ""})
+    assert r.json()["openai_chat_model"] is None
+    # whisper model untouched by a chat-model-only update
     assert r.json()["openai_whisper_model"] == "gpt-4o-transcribe"
     r = api.put(
         f"{URL}/{biz.id}/openai", headers=h, json={"whisper_model": ""}
@@ -197,7 +195,7 @@ def test_model_update_keeps_existing_key(api, db):
     biz = make_business(db)
     api.put(f"{URL}/{biz.id}/openai", headers=h, json={"api_key": KEY})
     r = api.put(
-        f"{URL}/{biz.id}/openai", headers=h, json={"premium_model": "gpt-4.1"}
+        f"{URL}/{biz.id}/openai", headers=h, json={"chat_model": "gpt-4.1"}
     )
     assert r.json()["has_openai_key"] is True
     assert r.json()["openai_key_last4"] == KEY[-4:]
@@ -209,7 +207,7 @@ def test_invalid_openai_payloads_rejected(api, db):
     for payload in (
         {},
         {"api_key": "not-a-key"},
-        {"economy_model": "bad model!"},
+        {"chat_model": "bad model!"},
         {"whisper_model": "../etc"},
     ):
         r = api.put(f"{URL}/{biz.id}/openai", headers=h, json=payload)
@@ -222,14 +220,14 @@ def test_clear_key_keeps_models(api, db):
     api.put(
         f"{URL}/{biz.id}/openai",
         headers=h,
-        json={"api_key": KEY, "balanced_model": "gpt-4o"},
+        json={"api_key": KEY, "chat_model": "gpt-4o"},
     )
     r = api.delete(f"{URL}/{biz.id}/openai-key", headers=h)
     assert r.status_code == 200
     body = r.json()
     assert body["has_openai_key"] is False
     assert body["openai_key_last4"] is None
-    assert body["openai_model_balanced"] == "gpt-4o"
+    assert body["openai_chat_model"] == "gpt-4o"
     db.refresh(biz)
     assert biz.openai_api_key_enc is None
 
@@ -245,25 +243,146 @@ def test_key_replaced_by_new_key(api, db):
     assert biz.openai_key_last4 == new_key[-4:]
 
 
-def test_image_limits_default_and_update(api, db):
+def test_image_limits_follow_the_plan_until_overridden(api, db):
     h = superadmin(db)
     created = api.post(URL, headers=h, json={"name": "Limits Co"}).json()
-    assert created["max_images"] == 50
-    assert created["max_image_mb"] == 5
+    assert created["max_images"] is None
+    assert created["limits"]["max_images"] == 20
     assert created["image_count"] == 0
 
     r = api.patch(
         f"{URL}/{created['id']}",
         headers=h,
-        json={"max_images": None, "max_image_mb": 2},
+        json={"max_images": 7, "max_image_mb": 2},
     )
     assert r.status_code == 200
-    assert r.json()["max_images"] is None
-    assert r.json()["max_image_mb"] == 2
+    assert r.json()["max_images"] == 7
+    assert r.json()["limits"]["max_images"] == 7
+    assert r.json()["limits"]["max_image_mb"] == 2
+
+    cleared = api.patch(
+        f"{URL}/{created['id']}", headers=h, json={"max_images": None}
+    )
+    assert cleared.json()["max_images"] is None
+    assert cleared.json()["limits"]["max_images"] == 20
 
 
 def test_image_limits_reject_out_of_range(api, db):
     h = superadmin(db)
     biz = make_business(db)
     r = api.patch(f"{URL}/{biz.id}", headers=h, json={"max_image_mb": 0})
+    assert r.status_code == 422
+
+
+def test_supplied_admin_password_is_not_echoed_back(api, db):
+    r = api.post(
+        URL,
+        headers=superadmin(db),
+        json={
+            "name": "Biz",
+            "admin_email": "owner@biz.com",
+            "admin_password": "chosen-pass-1",
+        },
+    )
+    assert r.status_code == 201
+    assert r.json()["temporary_password"] is None
+
+
+def test_no_admin_email_means_no_temporary_password(api, db):
+    r = api.post(URL, headers=superadmin(db), json={"name": "Biz"})
+    assert r.status_code == 201
+    assert r.json()["temporary_password"] is None
+    assert r.json()["contact_email"] is None
+
+
+def test_contact_email_defaults_to_admin_but_explicit_one_wins(api, db):
+    h = superadmin(db)
+    explicit = api.post(
+        URL,
+        headers=h,
+        json={
+            "name": "One",
+            "admin_email": "admin@one.com",
+            "contact_email": "office@one.com",
+        },
+    )
+    assert explicit.json()["contact_email"] == "office@one.com"
+
+
+def test_generated_passwords_differ_per_business(api, db):
+    h = superadmin(db)
+    passwords = {
+        api.post(
+            URL,
+            headers=h,
+            json={"name": f"Biz {i}", "admin_email": f"a{i}@biz.com"},
+        ).json()["temporary_password"]
+        for i in range(3)
+    }
+    assert len(passwords) == 3
+
+
+def test_generated_password_forces_change_on_first_login(api, db):
+    body = api.post(
+        URL,
+        headers=superadmin(db),
+        json={"name": "Biz", "admin_email": "owner@biz.com"},
+    ).json()
+    user = db.execute(
+        select(User).where(User.email == "owner@biz.com")
+    ).scalar_one()
+    assert user.must_change_password is True
+    assert user.password_hash != body["temporary_password"]
+
+
+def test_create_applies_the_chosen_plan_and_overrides(api, db):
+    r = api.post(
+        URL,
+        headers=superadmin(db),
+        json={
+            "name": "Studio Co",
+            "plan": "studio",
+            "ai_credit_bonus": 25,
+            "max_users": 4,
+            "max_clients": 12,
+        },
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert body["plan"] == "studio"
+    assert body["ai_credit_bonus"] == 25
+    assert body["max_users"] == 4 and body["max_clients"] == 12
+    assert body["limits"]["max_users"] == 4
+    assert body["limits"]["max_clients"] == 12
+    # not overridden: follows the plan
+    assert body["max_images"] is None
+    assert body["limits"]["max_images"] == 3000
+
+
+def test_create_with_unknown_plan_is_rejected_and_adds_nothing(api, db):
+    h = superadmin(db)
+    r = api.post(
+        URL,
+        headers=h,
+        json={
+            "name": "Ghost Co",
+            "plan": "ghost",
+            "admin_email": "ghost@biz.com",
+        },
+    )
+    assert r.status_code == 422
+    assert "Ghost Co" not in [
+        b["name"] for b in api.get(URL, headers=h).json()
+    ]
+    assert not db.scalars(
+        select(User).where(User.email == "ghost@biz.com")
+    ).first()
+
+
+def test_create_rejects_out_of_range_override(api, db):
+    r = api.post(
+        URL,
+        headers=superadmin(db),
+        json={"name": "Bad Limits", "max_image_mb": 0},
+    )
     assert r.status_code == 422

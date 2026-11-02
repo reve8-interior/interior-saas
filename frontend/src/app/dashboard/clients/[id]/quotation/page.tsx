@@ -365,7 +365,7 @@ export default function QuotationPage() {
                 type="button"
                 onClick={() => setOnlyUnclear((on) => !on)}
                 aria-pressed={showUnclear}
-                className="inline-flex min-h-control items-center gap-1 rounded-full px-2 font-medium text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
+                className="inline-flex min-h-control items-center gap-1 rounded-control px-2 font-medium text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-500/10"
               >
                 <AlertTriangle className="h-4 w-4" aria-hidden />
                 {quotation.pending_clarity_count} item

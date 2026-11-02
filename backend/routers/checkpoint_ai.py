@@ -46,13 +46,7 @@ from ..schemas.checkpoint_ai import (
 from ..services.ai_access import (
     resolve_chat_model,
 )
-from ..services.ai_models import (
-    ModelCatalog,
-    ModelOption,
-    ModelTier,
-    model_catalog,
-    model_options,
-)
+from ..services.ai_models import ModelCatalog, model_catalog
 from ..services.checkpoint_ai_support import (
     extraction_record,
 )
@@ -81,19 +75,11 @@ logger = logging.getLogger(__name__)
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 
-@router.get("/ai/models", response_model=list[ModelOption])
-async def list_ai_models(
-    current_user: User = Depends(get_current_user),
-) -> list[ModelOption]:
-    """The price tiers the caller's business offers, cheapest first."""
-    return model_options(current_user.business)
-
-
 @router.get("/ai/model-catalog", response_model=ModelCatalog)
 async def get_model_catalog(
     _admin: User = Depends(require_superadmin),
 ) -> ModelCatalog:
-    """Priced models the platform admin can assign to a tier."""
+    """Priced models the platform admin can assign to a business."""
     return model_catalog()
 
 
@@ -105,14 +91,12 @@ async def extract_checkpoint(
     client_id: str,
     file: UploadFile | None = File(default=None),
     text: str | None = Form(default=None),
-    tier: ModelTier | None = Form(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Step 1 — run the PydanticAI agent on uploaded text/audio or pasted text.
 
-    `tier` picks the price tier (economy/balanced/premium); the model
-    behind it is the business's, set by the platform admin.
+    The model is the business's, set by the platform admin.
     Returns extracted meeting minutes, line items, and material rate hints.
     Every call is recorded in agent_audit_log.
     """
@@ -128,7 +112,6 @@ async def extract_checkpoint(
         db,
         current_user=current_user,
         client_id=client_id,
-        tier=tier,
         upload=upload,
         text=text,
     )
@@ -176,7 +159,7 @@ def save_from_extraction(
             ],
             "extraction": extraction_record(
                 item_count=len(body.line_items),
-                model_name=resolve_chat_model(current_user, body.tier),
+                model_name=resolve_chat_model(current_user),
                 unmapped_notes=body.unmapped_notes,
                 questions=[q.model_dump() for q in body.questions],
             ),

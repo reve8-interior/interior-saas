@@ -4,6 +4,7 @@ import {
   GridSkeleton,
   LoadingRegion,
   PageHeaderSkeleton,
+  SkeletonImage,
 } from '@/components/ui';
 import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
 import {
@@ -90,17 +91,15 @@ export default function PortfolioPage() {
               >
                 {d.image_url && (
                   <div className="relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <SkeletonImage
                       loading="lazy"
-                      decoding="async"
                       src={d.thumb_url ?? d.image_url}
                       alt={d.title || 'Design'}
                       onError={onImageError}
                       className="h-56 w-full object-cover transition group-hover:scale-[1.02]"
                     />
                     {d.hotspots.length > 0 && (
-                      <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">
+                      <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-control bg-black/60 px-2 py-0.5 text-xs text-white">
                         <MapPin className="h-3 w-3" />
                         {d.hotspots.length}
                       </span>

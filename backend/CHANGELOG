@@ -1,3 +1,29 @@
+0.20.0
+ - date: 02-11-2026
+ - changes:
+   - feat: plans live in a `plans` table (Free, Solo, Studio, Studio Pro) with editable prices, limits, feature flags and marketing highlights; GET /plans is public, /admin/plans is superadmin CRUD (migration 0049)
+   - feat: a business follows its plan; max_users, max_images, max_image_mb, max_clients, max_quotation_versions and max_portfolio_designs are optional per-business overrides (null follows the plan), settable on create and edit; legacy `pro` maps to `studio`
+   - feat: plan limits are enforced when adding clients, quotation versions, portfolio designs, images and team members
+   - feat: AI becomes credits per month (plan allowance plus ai_credit_bonus); each business has one admin-set chat model instead of three user-picked tiers (migration 0050)
+   - feat: GET /auth/me reports limits and usage meters; AI cost, tokens and speed are hidden from tenants
+   - fix: limit overrides sent when creating a business were ignored
+   - test: migration files form one linear chain with a single head; business create with plan, overrides and an unknown plan
+   - not included: Razorpay billing stays on `feat/pricing-plans`
+
+0.19.0
+ - date: 01-11-2026
+ - changes:
+   - feat: POST /clients/sample adds a demo client with notes, AI-extracted items, two designs (one with hotspots), two quotation versions, shared links and customer messages, and DELETE /clients/{id} removes it; its photos are copied from `samples/` in storage (upload them once per environment with `python -m backend.upload_sample_images`); real clients cannot be deleted (migration 0048, clients.is_sample)
+   - feat: GET /dashboard/inbox lists customer messages across every client the caller may see
+   - feat: creating a business needs one admin email; a temporary password is generated and returned once unless one is given, and the business contact email defaults to the admin's
+   - perf: shared pages and media serve a resized WebP; signed image URLs are stable and media responses are cacheable
+
+0.18.0
+ - date: 31-10-2026
+ - changes:
+   - feat: feature feedback: users are asked to rate one random feature (1-5 stars plus an optional multiple-choice pick) via GET /feedback/next and POST /feedback; one answer per user and feature (migration 0047)
+   - feat: GET /admin/feedback gives the superadmin per-feature averages, choice counts and the latest answers
+
 0.17.0
  - date: 31-10-2026
  - changes:

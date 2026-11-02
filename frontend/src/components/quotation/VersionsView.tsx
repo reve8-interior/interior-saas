@@ -27,6 +27,7 @@ import {
 } from '@/components/designs/RoomImagePicker';
 import { CURRENT, VersionCompare } from '@/components/quotation/VersionCompare';
 import { api } from '@/lib/api';
+import { useScrollTabs } from '@/lib/useScrollTabs';
 import { exportVersionToExcel } from '@/lib/exportQuotation';
 import { useLineItemColumns } from '@/lib/lineItemColumns';
 import type { Client } from '@/lib/schemas/client';
@@ -242,6 +243,7 @@ function VersionPanel({
   onCompare: () => void;
 }) {
   const [tab, setTab] = useState<Tab>('items');
+  const tabsRef = useScrollTabs<HTMLDivElement>(tab);
   const [shareOpen, setShareOpen] = useState(autoShare);
   const {
     data: version,
@@ -339,7 +341,7 @@ function VersionPanel({
             Version {summary.number}
             {summary.label ? ` · ${summary.label}` : ''}
             {!summary.is_active && (
-              <span className="ml-2 rounded-full bg-orange-100 px-2.5 py-0.5 align-middle text-xs font-medium text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
+              <span className="ml-2 rounded-control bg-orange-100 px-2.5 py-0.5 align-middle text-xs font-medium text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
                 Customer access off
               </span>
             )}
@@ -440,9 +442,10 @@ function VersionPanel({
       />
 
       <div
+        ref={tabsRef}
         role="tablist"
         aria-label="Version sections"
-        className="flex gap-1 overflow-x-auto border-b border-line [scrollbar-width:none] dark:border-line [&::-webkit-scrollbar]:hidden"
+        className="scroll-tabs flex gap-1 border-b border-line dark:border-line"
       >
         {tabs.map(({ key, label }) => (
           <button
@@ -824,7 +827,7 @@ export function VersionsView({ clientId }: { clientId: string }) {
                       Version {v.number}
                     </span>
                     {!v.is_active && (
-                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
+                      <span className="rounded-control bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
                         Customer access off
                       </span>
                     )}
@@ -894,7 +897,7 @@ export function VersionsView({ clientId }: { clientId: string }) {
                         Version {v.number}
                       </button>
                       {!v.is_active && (
-                        <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
+                        <span className="ml-2 rounded-control bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">
                           Customer access off
                         </span>
                       )}

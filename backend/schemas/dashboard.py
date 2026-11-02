@@ -1,8 +1,11 @@
 import enum
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
+
+from .quotation_version import QuotationMessageRead
 
 
 class DashboardStats(BaseModel):
@@ -19,10 +22,6 @@ class DashboardStats(BaseModel):
 
     # AI Usage
     ai_total_calls: int
-    ai_total_input_tokens: int
-    ai_total_output_tokens: int
-    ai_avg_latency_ms: float
-    ai_total_cost_usd: float
     ai_calls_by_operation: dict[str, int]
 
     # Margins
@@ -60,3 +59,12 @@ class AttentionItem(BaseModel):
 
 class AttentionMarkRead(BaseModel):
     keys: list[str] = Field(min_length=1, max_length=100)
+
+
+class InboxMessage(QuotationMessageRead):
+    """A customer message plus the client it came from."""
+
+    client_id: uuid.UUID
+    client_name: str
+    # Phone/email, so a reply can start without opening the client first.
+    client_contact: dict[str, Any] = {}

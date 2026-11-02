@@ -24,6 +24,7 @@ const version = {
   room_designs: {},
   line_items: [],
   is_active: true,
+  is_sample: false,
 } as unknown as QuotationVersionSummary;
 
 const share = (over: Partial<QuotationShare> = {}): QuotationShare => ({

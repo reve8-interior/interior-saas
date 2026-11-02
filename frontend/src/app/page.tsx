@@ -8,10 +8,12 @@ import {
   PipelineMockup,
   VersionDiffMockup,
 } from '@/components/landing/Mockups';
+import { PricingTable } from '@/components/landing/PricingTable';
 import { ThemeProvider } from '@/components/providers';
 import { ThemeButton } from '@/components/shared/CustomerChrome';
 import { Logo } from '@/components/ui/Logo';
 import { REQUEST_ACCESS_EMAIL, REQUEST_ACCESS_HREF } from '@/lib/constants';
+import { getPublicPlans } from '@/lib/publicPlans';
 import {
   Check,
   ClipboardList,
@@ -208,6 +210,7 @@ function SectionHead({ eyebrow, title }: { eyebrow: string; title: string }) {
 export default async function Page() {
   const token = (await cookies()).get(AUTH_COOKIE)?.value;
   if (token) redirect('/dashboard');
+  const plans = await getPublicPlans();
 
   return (
     <ThemeProvider defaultTheme="light">
@@ -222,6 +225,7 @@ export default async function Page() {
                 ['#viewer', 'Client view'],
                 ['#features', 'Features'],
                 ['#benefits', 'Benefits'],
+                ...(plans.length ? [['#pricing', 'Pricing']] : []),
               ].map(([href, label]) => (
                 <a
                   key={href}
@@ -431,6 +435,16 @@ export default async function Page() {
               ))}
             </div>
           </section>
+
+          {plans.length > 0 && (
+            <section id="pricing" className={`${SECTION} scroll-mt-16`}>
+              <SectionHead
+                eyebrow="Pricing"
+                title="Simple plans for every studio"
+              />
+              <PricingTable plans={plans} />
+            </section>
+          )}
 
           <section className="mx-auto max-w-3xl px-4 pb-20 text-center sm:px-6">
             <div className="surface p-8 sm:p-12">

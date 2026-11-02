@@ -1,7 +1,6 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { shareStatus } from '@/lib/shareStatus';
@@ -12,7 +11,7 @@ import {
   ExpiryPicker,
   SendLinkPanel,
   StopSharingButton,
-  copyLink,
+  CopyLinkButton,
 } from '@/components/shared/ShareControls';
 import {
   createPortfolioShare,
@@ -155,14 +154,7 @@ export function PortfolioShareModal({
                     </div>
                     {status === 'active' && (
                       <div className="flex shrink-0 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => copyLink(share.url)}
-                          aria-label="Copy link"
-                          className="btn-secondary min-w-11 px-2.5"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </button>
+                        <CopyLinkButton url={share.url} iconOnly />
                         <StopSharingButton
                           onConfirm={() => revoke.mutate(share.id)}
                           disabled={revoke.isPending}

@@ -17,7 +17,7 @@ export function CommandPaletteButton() {
     <button
       type="button"
       onClick={() => window.dispatchEvent(new Event(OPEN_EVENT))}
-      className="hidden min-h-control items-center gap-2 rounded-full border border-line px-4 text-sm text-dark-600 hover:bg-primary-50/70 dark:text-dark-300 dark:hover:bg-white/[0.06] lg:inline-flex"
+      className="hidden min-h-control items-center gap-2 rounded-control border border-line px-4 text-sm text-dark-600 hover:bg-primary-50/70 dark:text-dark-300 dark:hover:bg-white/[0.06] lg:inline-flex"
     >
       <Search className="h-4 w-4" aria-hidden />
       Search
@@ -102,7 +102,7 @@ export function CommandPalette({
         className="fixed inset-0 z-50 bg-dark-950/60 backdrop-blur-md"
         onClick={close}
       />
-      <div className="pointer-events-none fixed inset-0 z-50 flex items-start justify-center p-4 pt-[15vh]">
+      <div className="pointer-events-none fixed inset-0 z-50 flex items-start justify-center p-4 pt-[10dvh] sm:pt-[15dvh]">
         <div
           ref={panelRef}
           tabIndex={-1}

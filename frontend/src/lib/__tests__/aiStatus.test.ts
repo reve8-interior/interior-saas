@@ -14,17 +14,17 @@ describe('notesLockMessage', () => {
     expect(
       notesLockMessage(
         { enabled: true, monthly_limit: null, remaining: null },
-        'pro'
+        'studio'
       )
     ).toBeNull();
   });
   it('explains the free plan and keeps hand entry open', () => {
     const message = notesLockMessage(off, 'free');
-    expect(message).toMatch(/Pro/);
+    expect(message).toMatch(/Upgrade/);
     expect(message).toMatch(/by hand/);
   });
-  it('tells a Pro business without a key to ask its admin', () => {
-    expect(notesLockMessage(off, 'pro')).toMatch(/admin/);
+  it('tells a paid business without a key to ask its admin', () => {
+    expect(notesLockMessage(off, 'studio')).toMatch(/admin/);
   });
   it('explains a used-up allowance', () => {
     expect(
@@ -32,6 +32,6 @@ describe('notesLockMessage', () => {
         { enabled: true, monthly_limit: 10, remaining: 0 },
         'free'
       )
-    ).toMatch(/10 extractions/);
+    ).toMatch(/10 AI credits/);
   });
 });

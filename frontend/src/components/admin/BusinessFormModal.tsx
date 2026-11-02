@@ -2,13 +2,16 @@
 
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { createBusiness, updateBusiness } from '@/lib/businesses';
-import { Plan } from '@/lib/schemas/auth';
+import { listAdminPlans } from '@/lib/plans';
+import type { Plan } from '@/lib/schemas/auth';
 import { Business } from '@/lib/schemas/business';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/lib/errors';
 import { endOfDayIso } from '@/lib/dates';
+import { Copy, Dices } from 'lucide-react';
+import { MIN_PASSWORD_LENGTH, generateTempPassword } from '@/lib/teamForm';
 
 interface FormState {
   name: string;
@@ -20,10 +23,24 @@ interface FormState {
   plan: Plan;
   access_date: string; // yyyy-mm-dd; empty = no limit
   warning_days: string;
-  max_users: string; // empty = unlimited
-  max_images: string; // empty = unlimited
+  ai_credit_bonus: string;
+  // Overrides of the plan; empty = follow the plan.
+  max_users: string;
+  max_clients: string;
+  max_quotation_versions: string;
+  max_images: string;
   max_image_mb: string;
+  max_portfolio_designs: string;
 }
+
+const OVERRIDES = [
+  { key: 'max_users', label: 'Team members', min: 1 },
+  { key: 'max_clients', label: 'Active clients', min: 0 },
+  { key: 'max_quotation_versions', label: 'Versions per quotation', min: 0 },
+  { key: 'max_images', label: 'Uploaded images', min: 0 },
+  { key: 'max_image_mb', label: 'Max image size (MB)', min: 1 },
+  { key: 'max_portfolio_designs', label: 'Portfolio designs', min: 0 },
+] as const;
 
 const EMPTY_FORM: FormState = {
   name: '',
@@ -32,15 +49,23 @@ const EMPTY_FORM: FormState = {
   plan: 'free',
   access_date: '',
   warning_days: '7',
-  max_users: '5',
-  max_images: '50',
-  max_image_mb: '5',
+  ai_credit_bonus: '0',
+  max_users: '',
+  max_clients: '',
+  max_quotation_versions: '',
+  max_images: '',
+  max_image_mb: '',
+  max_portfolio_designs: '',
   admin_name: '',
   admin_email: '',
   admin_password: '',
 };
 
 const FREE_MONTH_OPTIONS = [1, 2, 3, 6, 12];
+
+/** Empty -> null: the business follows its plan for this limit. */
+const overrideValue = (v: string): number | null =>
+  v.trim() ? Number(v) : null;
 
 const blankToNull = (v: string): string | null => (v.trim() ? v.trim() : null);
 
@@ -55,6 +80,16 @@ function monthsFromToday(months: number): string {
   return toDateInput(d);
 }
 
+/** The plan's value for a limit, shown when no override is set. */
+function planValue(
+  business: Business | null,
+  key: (typeof OVERRIDES)[number]['key']
+): string {
+  if (!business?.limits) return 'From plan';
+  const value = business.limits[key];
+  return value === null ? 'Unlimited (plan)' : `${value} (plan)`;
+}
+
 function formFor(business: Business | null): FormState {
   if (!business) return EMPTY_FORM;
   return {
@@ -67,9 +102,13 @@ function formFor(business: Business | null): FormState {
       ? toDateInput(new Date(business.access_expires_at))
       : '',
     warning_days: String(business.warning_days),
+    ai_credit_bonus: String(business.ai_credit_bonus),
     max_users: business.max_users?.toString() ?? '',
+    max_clients: business.max_clients?.toString() ?? '',
+    max_quotation_versions: business.max_quotation_versions?.toString() ?? '',
     max_images: business.max_images?.toString() ?? '',
     max_image_mb: business.max_image_mb?.toString() ?? '',
+    max_portfolio_designs: business.max_portfolio_designs?.toString() ?? '',
   };
 }
 
@@ -83,28 +122,44 @@ interface Props {
 /** Create / edit form. Mount it with a `key` so state resets per target. */
 export function BusinessFormModal({ open, business, onClose }: Props) {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<FormState>(() => formFor(business));
+  const [form, setForm] = useState<FormState>(() => ({
+    ...formFor(business),
+    // New businesses start with a generated password the superadmin can copy and share.
+    admin_password: business ? '' : generateTempPassword(),
+  }));
   const editing = business !== null;
+  const { data: plans = [] } = useQuery({
+    queryKey: ['admin-plans'],
+    queryFn: listAdminPlans,
+  });
+  // Keep the business's current plan selectable while the list loads.
+  const planOptions = plans.some((p) => p.slug === form.plan)
+    ? plans
+    : [...plans, { slug: form.plan, name: business?.plan_name ?? form.plan }];
 
   const saveMutation = useMutation({
     mutationFn: () => {
       const base = {
         name: form.name.trim(),
-        contact_email: blankToNull(form.contact_email),
+        contact_email: editing ? blankToNull(form.contact_email) : null,
         contact_phone: blankToNull(form.contact_phone),
         plan: form.plan,
         access_expires_at: endOfDayIso(form.access_date),
         warning_days: Number(form.warning_days),
-        max_users: form.max_users ? Number(form.max_users) : null,
-        max_images: form.max_images ? Number(form.max_images) : null,
-        max_image_mb: form.max_image_mb ? Number(form.max_image_mb) : null,
+        ai_credit_bonus: Number(form.ai_credit_bonus || 0),
+        max_users: overrideValue(form.max_users),
+        max_clients: overrideValue(form.max_clients),
+        max_quotation_versions: overrideValue(form.max_quotation_versions),
+        max_images: overrideValue(form.max_images),
+        max_image_mb: overrideValue(form.max_image_mb),
+        max_portfolio_designs: overrideValue(form.max_portfolio_designs),
       };
       if (business) return updateBusiness(business.id, base);
       return createBusiness({
         ...base,
         admin_name: blankToNull(form.admin_name),
         admin_email: blankToNull(form.admin_email),
-        admin_password: form.admin_password || null,
+        admin_password: form.admin_password,
       });
     },
     onSuccess: () => {
@@ -129,30 +184,31 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
       toast.error('Warning days must be between 0 and 365');
       return;
     }
-    const maxUsers = form.max_users ? Number(form.max_users) : null;
-    if (maxUsers !== null && (!Number.isInteger(maxUsers) || maxUsers < 1)) {
-      toast.error('Team size must be a whole number of 1 or more, or empty');
+    for (const { key, label, min } of OVERRIDES) {
+      const n = overrideValue(form[key]);
+      if (n !== null && (!Number.isInteger(n) || n < min)) {
+        toast.error(`${label} must be a whole number of ${min}+, or empty`);
+        return;
+      }
+    }
+    const mb = overrideValue(form.max_image_mb);
+    if (mb !== null && mb > 100) {
+      toast.error('Max image size must be 1-100 MB, or empty');
       return;
     }
-    const maxImages = form.max_images ? Number(form.max_images) : null;
-    if (maxImages !== null && (!Number.isInteger(maxImages) || maxImages < 0)) {
-      toast.error('Image limit must be a whole number, or empty for unlimited');
+    const bonus = Number(form.ai_credit_bonus || 0);
+    if (!Number.isInteger(bonus) || bonus < 0) {
+      toast.error('Bonus AI credits must be a whole number of 0 or more');
       return;
     }
-    const maxMb = form.max_image_mb ? Number(form.max_image_mb) : null;
-    if (
-      maxMb !== null &&
-      (!Number.isInteger(maxMb) || maxMb < 1 || maxMb > 100)
-    ) {
-      toast.error('Max image size must be 1–100 MB, or empty for the default');
+    if (!editing && !form.admin_email.trim()) {
+      toast.error('Admin email is required');
       return;
     }
-    if (!editing && !!form.admin_email !== !!form.admin_password) {
-      toast.error('Provide both admin email and password, or neither');
-      return;
-    }
-    if (!editing && form.admin_password && form.admin_password.length < 8) {
-      toast.error('Admin password must be at least 8 characters');
+    if (!editing && form.admin_password.length < MIN_PASSWORD_LENGTH) {
+      toast.error(
+        `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+      );
       return;
     }
     saveMutation.mutate();
@@ -166,31 +222,22 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
       open={open}
       onClose={onClose}
       title={editing ? 'Edit business' : 'Add business'}
-      maxWidth="md"
+      maxWidth="4xl"
     >
       <form onSubmit={onSubmit} className="space-y-4">
-        <div>
-          <label className="field-label">Business name *</label>
-          <input
-            className="field"
-            value={form.name}
-            onChange={set('name')}
-            maxLength={255}
-            autoFocus
-          />
-        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="field-label">Contact email</label>
+            <label className="field-label">Business name *</label>
             <input
-              type="email"
               className="field"
-              value={form.contact_email}
-              onChange={set('contact_email')}
+              value={form.name}
+              onChange={set('name')}
+              maxLength={255}
+              autoFocus
             />
           </div>
           <div>
-            <label className="field-label">Contact phone</label>
+            <label className="field-label">Phone</label>
             <input
               className="field"
               value={form.contact_phone}
@@ -198,6 +245,82 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
               maxLength={50}
             />
           </div>
+          {editing ? (
+            <div className="sm:col-span-2">
+              <label className="field-label">Contact email</label>
+              <input
+                type="email"
+                className="field"
+                value={form.contact_email}
+                onChange={set('contact_email')}
+              />
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="field-label">Admin name</label>
+                <input
+                  className="field"
+                  value={form.admin_name}
+                  onChange={set('admin_name')}
+                />
+              </div>
+              <div>
+                <label className="field-label">Admin email *</label>
+                <input
+                  type="email"
+                  className="field"
+                  value={form.admin_email}
+                  onChange={set('admin_email')}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="field-label">Temporary password</label>
+                <div className="flex gap-2">
+                  <input
+                    className="field min-w-0 flex-1 font-mono"
+                    value={form.admin_password}
+                    onChange={set('admin_password')}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        admin_password: generateTempPassword(),
+                      }))
+                    }
+                  >
+                    <Dices className="h-4 w-4" aria-hidden /> Generate
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() =>
+                      navigator.clipboard
+                        .writeText(
+                          `Email: ${form.admin_email.trim()}
+Temporary password: ${form.admin_password}`
+                        )
+                        .then(() => toast.success('Copied email and password'))
+                        .catch(() => toast.error('Copy failed'))
+                    }
+                  >
+                    <Copy className="h-4 w-4" aria-hidden /> Copy
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-muted">
+                  The admin signs in with this email (also the business&apos;s
+                  contact email) and must change the password at first login.
+                  Copy it before adding; it can&apos;t be shown again.
+                </p>
+              </div>
+            </>
+          )}
         </div>
 
         <fieldset className="space-y-3 rounded-xl bg-surface-2 p-3 dark:border-line">
@@ -209,12 +332,13 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
             <select
               className="field"
               value={form.plan}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, plan: e.target.value as Plan }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value }))}
             >
-              <option value="free">Free</option>
-              <option value="pro">Pro</option>
+              {planOptions.map((p) => (
+                <option key={p.slug} value={p.slug}>
+                  {p.name}
+                </option>
+              ))}
             </select>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -247,7 +371,7 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
                 onClick={() =>
                   setForm((f) => ({ ...f, access_date: monthsFromToday(m) }))
                 }
-                className="rounded-full border border-line px-3 py-1.5 text-xs text-dark-700 hover:bg-primary-50/70 dark:border-line dark:text-dark-300 dark:hover:bg-white/[0.06]"
+                className="rounded-control border border-line px-3 py-1.5 text-xs text-dark-700 hover:bg-primary-50/70 dark:border-line dark:text-dark-300 dark:hover:bg-white/[0.06]"
               >
                 {m} mo from today
               </button>
@@ -255,7 +379,7 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
             <button
               type="button"
               onClick={() => setForm((f) => ({ ...f, access_date: '' }))}
-              className="rounded-full border border-line px-3 py-1.5 text-xs text-dark-700 hover:bg-primary-50/70 dark:border-line dark:text-dark-300 dark:hover:bg-white/[0.06]"
+              className="rounded-control border border-line px-3 py-1.5 text-xs text-dark-700 hover:bg-primary-50/70 dark:border-line dark:text-dark-300 dark:hover:bg-white/[0.06]"
             >
               No limit
             </button>
@@ -268,98 +392,40 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
 
         <fieldset className="space-y-3 rounded-xl bg-surface-2 p-3 dark:border-line">
           <legend className="px-1 text-xs font-medium text-dark-500 dark:text-dark-400">
-            Team
-          </legend>
-          <div>
-            <label className="field-label">Max team members</label>
-            <input
-              type="number"
-              min={1}
-              className="field"
-              placeholder="Unlimited"
-              value={form.max_users}
-              onChange={set('max_users')}
-            />
-          </div>
-          <p className="text-xs text-dark-500 dark:text-dark-400">
-            {business
-              ? `${business.seats_used} active member${business.seats_used === 1 ? '' : 's'} now. `
-              : ''}
-            Only active members use a seat; the business admin manages the team
-            within this limit. Leave empty for no limit.
-          </p>
-        </fieldset>
-
-        <fieldset className="space-y-3 rounded-xl bg-surface-2 p-3 dark:border-line">
-          <legend className="px-1 text-xs font-medium text-dark-500 dark:text-dark-400">
-            Image uploads
+            Limit overrides
           </legend>
           <div className="grid gap-3 sm:grid-cols-2">
+            {OVERRIDES.map(({ key, label, min }) => (
+              <div key={key}>
+                <label className="field-label">{label}</label>
+                <input
+                  type="number"
+                  min={min}
+                  className="field"
+                  placeholder={planValue(business, key)}
+                  value={form[key]}
+                  onChange={set(key)}
+                />
+              </div>
+            ))}
             <div>
-              <label className="field-label">Max images</label>
+              <label className="field-label">Bonus AI credits / month</label>
               <input
                 type="number"
                 min={0}
                 className="field"
-                placeholder="Unlimited"
-                value={form.max_images}
-                onChange={set('max_images')}
-              />
-            </div>
-            <div>
-              <label className="field-label">Max size per image (MB)</label>
-              <input
-                type="number"
-                min={1}
-                max={100}
-                className="field"
-                placeholder="Server default"
-                value={form.max_image_mb}
-                onChange={set('max_image_mb')}
+                value={form.ai_credit_bonus}
+                onChange={set('ai_credit_bonus')}
               />
             </div>
           </div>
-          {business && (
-            <p className="text-xs text-dark-500 dark:text-dark-400">
-              Used: {business.image_count} uploaded image
-              {business.image_count === 1 ? '' : 's'}. Leave a field empty for
-              no limit.
-            </p>
-          )}
+          <p className="text-xs text-dark-500 dark:text-dark-400">
+            Leave a field empty to follow the plan (shown as the placeholder).
+            {business
+              ? ` In use now: ${business.seats_used} team seat${business.seats_used === 1 ? '' : 's'}, ${business.image_count} uploaded image${business.image_count === 1 ? '' : 's'}.`
+              : ''}
+          </p>
         </fieldset>
-
-        {!editing && (
-          <fieldset className="space-y-3 rounded-xl bg-surface-2 p-3 dark:border-line">
-            <legend className="px-1 text-xs font-medium text-dark-500 dark:text-dark-400">
-              First login (optional)
-            </legend>
-            <input
-              className="field"
-              aria-label="Admin name"
-              placeholder="Admin name"
-              value={form.admin_name}
-              onChange={set('admin_name')}
-            />
-            <input
-              type="email"
-              className="field"
-              aria-label="Admin email"
-              placeholder="Admin email"
-              value={form.admin_email}
-              onChange={set('admin_email')}
-              autoComplete="off"
-            />
-            <input
-              type="password"
-              className="field"
-              aria-label="Temporary password"
-              placeholder="Temporary password (min 8 chars)"
-              value={form.admin_password}
-              onChange={set('admin_password')}
-              autoComplete="new-password"
-            />
-          </fieldset>
-        )}
 
         <ModalFooter
           type="submit"

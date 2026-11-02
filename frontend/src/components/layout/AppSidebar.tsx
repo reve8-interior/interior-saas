@@ -4,6 +4,7 @@ import { AccountMenu } from '@/components/layout/AccountMenu';
 import { Skeleton } from '@/components/ui';
 import { Logo } from '@/components/ui/Logo';
 import { AuthUser } from '@/lib/schemas';
+import { isPaidPlan, planLabel } from '@/lib/plans';
 import { AccessStatus } from '@/lib/schemas/auth';
 import { Buildings, CaretLeft, type Icon } from '@phosphor-icons/react';
 import Link from 'next/link';
@@ -17,6 +18,26 @@ export interface NavItem {
   icon: Icon;
   /** Other routes that belong to this item, so it stays highlighted there. */
   alsoActiveOn?: string[];
+  /** Count shown on the item when above zero, e.g. unanswered messages. */
+  badge?: number;
+}
+
+/** Small count pill for a nav item; the hidden text keeps it readable aloud. */
+export function NavBadge({
+  count,
+  className = '',
+}: {
+  count: number;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`flex min-w-[1.125rem] items-center justify-center rounded-control bg-red-600 px-1 text-[11px] font-bold tabular-nums leading-[1.125rem] text-white ${className}`}
+    >
+      {count > 9 ? '9+' : count}
+      <span className="sr-only"> waiting on you</span>
+    </span>
+  );
 }
 
 export interface NavSection {
@@ -149,13 +170,13 @@ export function AppSidebar({
                   {access && (
                     <p className="mt-0.5 flex items-center gap-1.5 text-[10px] text-side-muted">
                       <span
-                        className={`rounded-full px-1.5 py-0.5 font-semibold uppercase ${
-                          access.plan === 'pro'
+                        className={`badge font-semibold uppercase ${
+                          isPaidPlan(access.plan)
                             ? 'bg-brand/15 text-accent-text'
                             : 'bg-text/5 text-side-muted'
                         }`}
                       >
-                        {access.plan}
+                        {planLabel(access.plan)}
                       </span>
                     </p>
                   )}
@@ -219,6 +240,16 @@ export function AppSidebar({
                       >
                         {item.name}
                       </span>
+                      {!!item.badge && (
+                        <NavBadge
+                          count={item.badge}
+                          className={
+                            isCollapsed
+                              ? 'absolute right-2 top-0.5'
+                              : 'ml-auto mr-3'
+                          }
+                        />
+                      )}
                     </Link>
                   );
                 })}
@@ -228,7 +259,7 @@ export function AppSidebar({
         </nav>
 
         {/* Account: avatar pinned to the bottom */}
-        <div className="border-t border-side-line py-3">
+        <div className="relative border-t border-side-line py-3">
           <AccountMenu
             user={user}
             businessName={businessName}

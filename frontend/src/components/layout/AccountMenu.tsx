@@ -1,9 +1,10 @@
 'use client';
 
 import { useTheme } from '@/components/providers/ThemeProvider';
+import { planLabel } from '@/lib/plans';
 import { AuthUser } from '@/lib/schemas';
 import { AccessStatus } from '@/lib/schemas/auth';
-import { GearSix, Moon, SignOut, Sun } from '@phosphor-icons/react';
+import { CaretUp, GearSix, Moon, SignOut, Sun } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -22,7 +23,7 @@ const ITEM_CLS =
 
 /**
  * Desktop account control at the bottom of the sidebar: avatar and name that
- * open a menu (beside the sidebar) with identity, theme, settings and sign-out.
+ * open a drop-up menu above the account row with identity, theme, settings and sign-out.
  */
 export function AccountMenu({
   user,
@@ -57,7 +58,7 @@ export function AccountMenu({
       Array.from(
         menuRef.current?.querySelectorAll<HTMLElement>('[role=menuitem]') ?? []
       );
-    items()[0]?.focus();
+    items()[0]?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpen(false);
@@ -73,7 +74,7 @@ export function AccountMenu({
       const list = items();
       const idx = list.indexOf(document.activeElement as HTMLElement);
       const next = e.key === 'ArrowDown' ? idx + 1 : idx - 1;
-      list[(next + list.length) % list.length]?.focus();
+      list[(next + list.length) % list.length]?.focus({ preventScroll: true });
     };
     document.addEventListener('mousedown', onPointer);
     document.addEventListener('keydown', onKey);
@@ -84,7 +85,7 @@ export function AccountMenu({
   }, [open]);
 
   return (
-    <div ref={rootRef} className="relative mx-4 shrink-0">
+    <div ref={rootRef} className="mx-4 shrink-0">
       <button
         ref={triggerRef}
         type="button"
@@ -111,6 +112,12 @@ export function AccountMenu({
             </span>
           </span>
         )}
+        {!collapsed && (
+          <CaretUp
+            aria-hidden
+            className={`mr-3 h-4 w-4 shrink-0 text-side-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          />
+        )}
       </button>
 
       {open && (
@@ -119,7 +126,7 @@ export function AccountMenu({
           ref={menuRef}
           role="menu"
           aria-label="Account"
-          className="absolute bottom-0 left-full z-50 ml-6 w-64 origin-bottom-left overflow-hidden rounded-2xl border border-line bg-surface shadow-glass"
+          className="animate-slide-up-panel absolute bottom-full left-3 z-50 mb-2 w-60 overflow-hidden rounded-2xl border border-line bg-surface shadow-glass"
         >
           <div className="border-b border-line px-4 py-3">
             <p className="truncate text-sm font-semibold text-text">
@@ -130,8 +137,8 @@ export function AccountMenu({
               <p className="mt-2 flex items-center gap-2 text-xs text-muted">
                 <span className="truncate font-medium">{businessName}</span>
                 {access && (
-                  <span className="shrink-0 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-accent-text">
-                    {access.plan}
+                  <span className="shrink-0 rounded-control bg-brand/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-accent-text">
+                    {planLabel(access.plan)}
                     {access.days_left != null && ` · ${access.days_left}d`}
                   </span>
                 )}

@@ -26,12 +26,12 @@ cp .env.dev_example .env.dev          # then edit values
 
 ## Environment Files
 
-| File                | Purpose                                         |
-| ------------------- | ----------------------------------------------- |
-| `.env.dev`          | Local dev (local Postgres, local file storage)  |
-| `.env.dev_example`  | Template for dev                                |
-| `.env.prod`         | Production secrets (gitignored)                 |
-| `.env.prod_example` | Template for prod                               |
+| File                | Purpose                                        |
+| ------------------- | ---------------------------------------------- |
+| `.env.dev`          | Local dev (local Postgres, local file storage) |
+| `.env.dev_example`  | Template for dev                               |
+| `.env.prod`         | Production secrets (gitignored)                |
+| `.env.prod_example` | Template for prod                              |
 
 Settings are defined in [core/config.py](core/config.py); see [docs/ENV_VARIABLES.md](../docs/ENV_VARIABLES.md) for every variable.
 
@@ -62,6 +62,7 @@ python -m backend
 python -m backend.seed_demo                      # 7 demo clients with checkpoints, designs, quotations
 python -m backend.seed_demo --reset              # recreate demo clients
 python -m backend.seed_demo --business "Studio"  # seed into one business
+python -m backend.upload_sample_images         # once per environment: photos for the "Load sample client" button
 ```
 
 ## Database Migrations (Alembic)
@@ -82,21 +83,21 @@ Migrations live in `migrations/versions/` (date-prefixed, committed). RLS polici
 
 All routes are mounted under `/api/v1` (see [main.py](main.py)):
 
-| Router                | Prefix / area                                  |
-| --------------------- | ---------------------------------------------- |
-| `auth`                | `/auth` — login, profile, password change      |
-| `admin_monitor`       | `/admin` — platform usage monitoring           |
-| `businesses`, `business_users` | `/businesses` — tenants and their users |
-| `team`                | `/team` — in-business team management          |
-| `clients`             | `/clients` — client CRUD, per-client access    |
-| `checkpoints`, `checkpoint_ai` | conversation checkpoints, AI extraction/transcription |
-| `designs`, `media`    | design gallery, portfolio, hotspots, images    |
-| `share`               | share links (authenticated + public routes)    |
-| `quotations`, `quotation_versions` | quotations, versions, agreed version, XLSX |
-| `materials`           | material rates and margins                     |
-| `settings`            | app/business settings                          |
-| `dashboard`           | dashboard aggregates                           |
-| `n8n`                 | `/n8n` — webhook (`X-Webhook-Secret` header)   |
+| Router                             | Prefix / area                                         |
+| ---------------------------------- | ----------------------------------------------------- |
+| `auth`                             | `/auth` — login, profile, password change             |
+| `admin_monitor`                    | `/admin` — platform usage monitoring                  |
+| `businesses`, `business_users`     | `/businesses` — tenants and their users               |
+| `team`                             | `/team` — in-business team management                 |
+| `clients`                          | `/clients` — client CRUD, per-client access           |
+| `checkpoints`, `checkpoint_ai`     | conversation checkpoints, AI extraction/transcription |
+| `designs`, `media`                 | design gallery, portfolio, hotspots, images           |
+| `share`                            | share links (authenticated + public routes)           |
+| `quotations`, `quotation_versions` | quotations, versions, agreed version, XLSX            |
+| `materials`                        | material rates and margins                            |
+| `settings`                         | app/business settings                                 |
+| `dashboard`                        | dashboard aggregates                                  |
+| `n8n`                              | `/n8n` — webhook (`X-Webhook-Secret` header)          |
 
 ## Testing
 
@@ -133,6 +134,7 @@ backend/
 ├── main.py            # FastAPI app, middleware, router mounting
 ├── rls.py             # Row-level security policies
 ├── seed_demo.py       # Demo data seeder
+├── upload_sample_images.py  # Puts the sample client photos (data/) into storage
 ├── agents/            # AI checkpoint extraction agent
 │   └── prompts/       # System prompts
 ├── core/              # config, database, security (JWT), logging, bootstrap

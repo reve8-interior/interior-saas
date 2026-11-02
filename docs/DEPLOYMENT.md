@@ -71,10 +71,10 @@ Order matters: DB → API → Web → back-fill CORS.
 
 ## Troubleshooting
 
-| Symptom | Cause |
-| --- | --- |
-| `Network is unreachable` / IPv6 error | Used direct host; switch to session pooler |
-| `password authentication failed` | User must be `postgres.<ref>` on pooler; check URL-encoding |
-| CORS error in browser | `ALLOWED_ORIGINS` mismatch (scheme, trailing slash) |
-| Startup `Insecure placeholder values` | Set real secrets in Render env |
-| First request very slow | Render free plan cold start |
+| Symptom                               | Cause                                                       |
+| ------------------------------------- | ----------------------------------------------------------- |
+| `Network is unreachable` / IPv6 error | Used direct host; switch to session pooler                  |
+| `password authentication failed`      | User must be `postgres.<ref>` on pooler; check URL-encoding |
+| CORS error in browser                 | `ALLOWED_ORIGINS` mismatch (scheme, trailing slash)         |
+| Startup `Insecure placeholder values` | Set real secrets in Render env                              |
+| First request very slow               | Render free plan cold start                                 |

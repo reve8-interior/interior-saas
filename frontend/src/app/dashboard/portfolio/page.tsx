@@ -1,6 +1,11 @@
 'use client';
 
-import { EmptyState, ErrorState, GridSkeleton } from '@/components/ui';
+import {
+  EmptyState,
+  ErrorState,
+  GridSkeleton,
+  SkeletonImage,
+} from '@/components/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
@@ -235,20 +240,18 @@ export default function PortfolioPage() {
                     aria-label={`Preview ${design.title || 'design'}`}
                     className="block w-full"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <SkeletonImage
                       loading="lazy"
-                      decoding="async"
                       src={design.thumb_url ?? design.image_url}
                       alt={design.title || 'Design'}
                       className="h-40 w-full object-cover"
                     />
-                    <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">
+                    <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-control bg-black/60 px-2 py-0.5 text-xs text-white">
                       <MapPin className="h-3 w-3" />
                       {design.hotspots.length}
                     </span>
                   </button>
-                  <label className="absolute left-2 top-2 flex min-h-control cursor-pointer items-center gap-2 rounded-full bg-black/60 px-3 text-xs font-medium text-white">
+                  <label className="absolute left-2 top-2 flex min-h-control cursor-pointer items-center gap-2 rounded-control bg-black/60 px-3 text-xs font-medium text-white">
                     <input
                       type="checkbox"
                       checked={picked.has(design.id)}

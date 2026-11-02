@@ -105,21 +105,22 @@ def test_user_without_business_sees_no_clients(api, db, tenants):
     assert api.get("/api/v1/clients", headers=auth(legacy)).json() == []
 
 
-def test_dashboard_stats_are_scoped_and_report_cost(api, db, tenants):
+def test_dashboard_stats_are_scoped_and_hide_cost(api, db, tenants):
     admin_a, admin_b, *_ = tenants
     a = api.get("/api/v1/dashboard/stats", headers=auth(admin_a)).json()
     b = api.get("/api/v1/dashboard/stats", headers=auth(admin_b)).json()
     assert (a["total_clients"], a["ai_total_calls"]) == (1, 1)
-    assert a["ai_total_cost_usd"] == pytest.approx(0.25)
     assert (b["total_clients"], b["ai_total_calls"]) == (1, 1)
-    assert b["ai_total_cost_usd"] == pytest.approx(4.0)
+    # Cost, tokens and latency are admin-only.
+    for stats in (a, b):
+        assert not {k for k in stats if "cost" in k or "token" in k}
+        assert "ai_avg_latency_ms" not in stats
 
 
-def test_dashboard_cost_is_zero_without_usage(api, db):
+def test_dashboard_has_no_ai_calls_without_usage(api, db):
     biz = make_business(db)
     user = make_user(db, role=UserRole.admin, business=biz)
     stats = api.get("/api/v1/dashboard/stats", headers=auth(user)).json()
-    assert stats["ai_total_cost_usd"] == 0
     assert stats["ai_total_calls"] == 0
 
 

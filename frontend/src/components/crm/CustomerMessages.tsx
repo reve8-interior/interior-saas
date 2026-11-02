@@ -2,13 +2,18 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, MessageCircleQuestion, ThumbsUp } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { ReplyActions } from '@/components/quotation/ReplyActions';
+import { api } from '@/lib/api';
 import { ATTENTION_KEY } from '@/lib/attention';
+import type { Client } from '@/lib/schemas/client';
 import { CARD_CLS } from '@/lib/constants';
 import { timeAgo } from '@/lib/dates';
+import { INBOX_KEY } from '@/lib/inbox';
 import { errorMessage } from '@/lib/errors';
 import {
+  CUSTOMER_MESSAGES_ID as SECTION_ID,
   isOpenQuestion,
   listQuotationMessages,
   openQuestionCount,
@@ -19,7 +24,7 @@ import {
 
 /**
  * Everything customers sent from the shared quotation link, newest first with
- * open questions on top. A question keeps the bell lit until it is resolved.
+ * open questions on top. A question keeps the Inbox badge lit until resolved.
  * Renders nothing until a customer has written, so it never shows empty.
  */
 export function CustomerMessages({ clientId }: { clientId: string }) {
@@ -36,9 +41,25 @@ export function CustomerMessages({ clientId }: { clientId: string }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: quotationMessagesKey(clientId) });
       qc.invalidateQueries({ queryKey: ATTENTION_KEY });
+      qc.invalidateQueries({ queryKey: INBOX_KEY });
     },
     onError: (err) => toast.error(errorMessage(err)),
   });
+
+  const { data: client } = useQuery<Client>({
+    queryKey: ['client', clientId],
+    queryFn: () => api.get<Client>(`/clients/${clientId}`),
+  });
+
+  // Arriving from the inbox or a link badge: bring the thread into view.
+  const hasMessages = messages.length > 0;
+  useEffect(() => {
+    if (hasMessages && window.location.hash === `#${SECTION_ID}`) {
+      document
+        .getElementById(SECTION_ID)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [hasMessages]);
 
   if (messages.length === 0) return null;
   const open = openQuestionCount(messages);
@@ -49,7 +70,7 @@ export function CustomerMessages({ clientId }: { clientId: string }) {
 
   return (
     <section
-      id="customer-messages"
+      id={SECTION_ID}
       aria-labelledby="customer-messages-heading"
       className={`${CARD_CLS} scroll-mt-32`}
     >
@@ -63,7 +84,7 @@ export function CustomerMessages({ clientId }: { clientId: string }) {
         {open > 0 ? (
           <span
             role="status"
-            className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white"
+            className="rounded-control bg-red-600 px-2 py-0.5 text-xs font-semibold text-white"
           >
             {open} open
           </span>
@@ -78,6 +99,8 @@ export function CustomerMessages({ clientId }: { clientId: string }) {
           <MessageRow
             key={m.id}
             message={m}
+            clientId={clientId}
+            contact={client?.contact_info}
             busy={toggle.isPending && toggle.variables?.id === m.id}
             onToggle={(resolved) => toggle.mutate({ id: m.id, resolved })}
           />
@@ -99,10 +122,14 @@ export function CustomerMessages({ clientId }: { clientId: string }) {
 
 function MessageRow({
   message: m,
+  clientId,
+  contact,
   busy,
   onToggle,
 }: {
   message: QuotationMessage;
+  clientId: string;
+  contact: Record<string, string> | undefined;
   busy: boolean;
   onToggle: (resolved: boolean) => void;
 }) {
@@ -138,6 +165,16 @@ function MessageRow({
             {m.resolved_by_name ? ` by ${m.resolved_by_name}` : ''}
             {m.resolved_at ? ` · ${timeAgo(m.resolved_at)}` : ''}
           </p>
+        )}
+        {open && (
+          <div className="mt-2">
+            <ReplyActions
+              clientId={clientId}
+              versionId={m.version_id}
+              versionNumber={m.version_number}
+              contact={contact}
+            />
+          </div>
         )}
       </div>
       {asked && (

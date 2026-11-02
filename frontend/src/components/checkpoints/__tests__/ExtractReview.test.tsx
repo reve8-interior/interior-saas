@@ -19,8 +19,6 @@ const setup = (itemCount = 1) => {
       extraction={
         {
           model: 'gpt-test',
-          cost_usd: 0.01,
-          latency_ms: 1200,
           scope: { total_items: 0, items_in_context: 0, matched_rooms: [] },
           unmapped_notes: [],
           warnings: [],

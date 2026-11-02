@@ -13,6 +13,9 @@ export interface QuotationMessage {
   resolved_by_name: string | null;
 }
 
+/** Anchor of the customer thread on the client page; links point here. */
+export const CUSTOMER_MESSAGES_ID = 'customer-messages';
+
 export const quotationMessagesKey = (clientId: string) =>
   ['quotation-messages', clientId] as const;
 

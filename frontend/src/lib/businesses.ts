@@ -32,9 +32,7 @@ export function setBusinessActive(
 
 export interface OpenAISettings {
   api_key?: string;
-  economy_model?: string;
-  balanced_model?: string;
-  premium_model?: string;
+  chat_model?: string;
   whisper_model?: string;
 }
 

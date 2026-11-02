@@ -3,6 +3,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
+from .plan import PlanLimits, UsageMeter
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -53,3 +55,5 @@ class UserMe(BaseModel):
     business_name: str | None = None
     access: AccessStatus = Field(default_factory=AccessStatus)
     ai: AiStatus = Field(default_factory=AiStatus)
+    limits: PlanLimits | None = None
+    usage: list[UsageMeter] = Field(default_factory=list)

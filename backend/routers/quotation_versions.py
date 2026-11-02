@@ -42,6 +42,7 @@ from ..schemas.quotation_version import (
 from ..schemas.share import SharedDesign
 from ..services import share_links
 from ..services.client_access import get_client_or_404, restrict_to_accessible
+from ..services.plan_limits import ensure_can_add_version
 from ..services.quotation_version import (
     AttachmentError,
     EmptyQuotationError,
@@ -60,7 +61,7 @@ from ..services.quotation_version_xlsx import (
     parse_version_xlsx,
 )
 from .deps import get_current_user
-from .designs import design_image_url, design_thumb_url
+from .designs import design_thumb_url, design_view_url
 from .quotations import _latest_quotation
 from .share import _shared_hotspot
 
@@ -118,6 +119,7 @@ def save_version(
     quotation = _latest_quotation(client_id, db)
     if not quotation:
         raise HTTPException(status_code=404, detail="No quotation found")
+    ensure_can_add_version(current_user.business, quotation.id, db)
     try:
         version = create_version(
             db, quotation, current_user.id, body.label, body.room_designs
@@ -154,6 +156,7 @@ async def import_version(
     quotation = _latest_quotation(client_id, db)
     if not quotation:
         raise HTTPException(status_code=404, detail="No quotation found")
+    ensure_can_add_version(current_user.business, quotation.id, db)
     data = await file.read(_MAX_IMPORT_BYTES + 1)
     if len(data) > _MAX_IMPORT_BYTES:
         raise HTTPException(status_code=413, detail="File is larger than 5 MB")
@@ -507,7 +510,7 @@ def view_shared_quotation(token: str, db: Session = Depends(get_db)):
                 id=d.id,
                 title=d.title,
                 description=d.description,
-                image_url=design_image_url(d),
+                image_url=design_view_url(d),
                 thumb_url=design_thumb_url(d),
                 hotspots=[
                     _shared_hotspot(h, share.show_prices) for h in d.hotspots

@@ -13,7 +13,7 @@ export function ThemeButton() {
       onClick={toggleTheme}
       aria-label={`Switch to ${next} mode`}
       title={`Switch to ${next} mode`}
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-text transition-colors hover:bg-surface-2 print:hidden"
+      className="icon-btn print:hidden"
     >
       {theme === 'dark' ? (
         <Sun className="h-5 w-5" aria-hidden />
@@ -35,7 +35,7 @@ export function PrintButton({ beforePrint }: { beforePrint?: () => void }) {
         setTimeout(() => window.print(), 100);
       }}
       aria-label="Print or save as PDF"
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line-strong bg-surface text-text transition-colors hover:bg-surface-2 print:hidden"
+      className="icon-btn print:hidden"
     >
       <Printer className="h-5 w-5" aria-hidden />
     </button>
