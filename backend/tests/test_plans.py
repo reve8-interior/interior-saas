@@ -1,5 +1,7 @@
 """Plan catalogue, effective limits, enforcement and the plans API."""
 
+from datetime import UTC, datetime, timedelta
+
 from backend.models.plan import Plan
 from backend.models.user import UserRole
 from backend.schemas.plan import PlanCreate, PlanUpdate
@@ -10,6 +12,7 @@ from backend.services.plan_limits import (
     get_plan,
     seed_plans,
 )
+from backend.services.site_access import site_mode
 
 import pytest
 from fastapi import HTTPException
@@ -76,10 +79,45 @@ def test_unseeded_plan_falls_back_to_built_in_defaults(db):
     assert get_plan(db, "no_such_plan").name == "Free"
 
 
-def test_website_fields_are_reserved_but_off(db):
-    for default in DEFAULTS_BY_SLUG.values():
-        assert default.website_enabled is False
-        assert default.website_max_pages == 0
+WEBSITE_FLAGS = {
+    "free": (False, 0, False, False),
+    "solo": (True, 1, False, False),
+    "studio": (True, 1, True, False),
+    "studio_pro": (True, 1, True, True),
+}
+
+
+@pytest.mark.parametrize("slug", WEBSITE_FLAGS)
+def test_seeded_website_flags_per_plan(slug):
+    plan = DEFAULTS_BY_SLUG[slug]
+    assert (
+        plan.website_enabled,
+        plan.website_templates,
+        plan.website_custom_domain,
+        plan.website_remove_badge,
+    ) == WEBSITE_FLAGS[slug]
+    assert plan.website_max_pages == 0
+
+
+def test_site_mode_follows_plan(db):
+    assert site_mode(db, make_business(db, plan="free")) == "gallery"
+    assert site_mode(db, make_business(db, plan="solo")) == "site"
+    assert site_mode(db, make_business(db, plan="pro")) == "site"
+
+
+@pytest.mark.parametrize(
+    ("plan", "delta", "expected"),
+    [
+        ("solo", timedelta(days=-1), "gallery"),
+        ("solo", timedelta(days=1), "site"),
+        ("solo", None, "site"),
+        ("free", timedelta(days=1), "gallery"),
+    ],
+)
+def test_site_mode_respects_access_expiry(db, plan, delta, expected):
+    expires = None if delta is None else datetime.now(UTC) + delta
+    biz = make_business(db, plan=plan, access_expires_at=expires)
+    assert site_mode(db, biz) == expected
 
 
 def test_business_override_beats_plan_and_null_follows_plan(db):
@@ -227,6 +265,48 @@ def test_only_one_plan_is_recommended(api, db):
     as_owner(db)
     flagged = [p.slug for p in db.query(Plan).filter_by(is_recommended=True)]
     assert flagged == ["solo"]
+
+
+def test_pricing_visibility_defaults_to_shown(api, db):
+    admin = superadmin(db)
+    r = api.get(f"{ADMIN_PLANS}/visibility", headers=auth(admin))
+    assert r.status_code == 200
+    assert r.json() == {"show_pricing": True}
+
+
+def test_hiding_pricing_empties_public_plans_and_can_be_undone(api, db):
+    admin = superadmin(db)
+    assert api.get(PLANS).json() != []
+
+    off = api.put(
+        f"{ADMIN_PLANS}/visibility",
+        headers=auth(admin),
+        json={"show_pricing": False},
+    )
+    assert off.status_code == 200
+    assert off.json() == {"show_pricing": False}
+    assert api.get(PLANS).json() == []
+    assert api.get(
+        f"{ADMIN_PLANS}/visibility", headers=auth(admin)
+    ).json() == {"show_pricing": False}
+
+    api.put(
+        f"{ADMIN_PLANS}/visibility",
+        headers=auth(admin),
+        json={"show_pricing": True},
+    )
+    assert api.get(PLANS).json() != []
+
+
+def test_pricing_visibility_requires_superadmin_and_a_boolean(api, db):
+    _, user = _admin_in(db)
+    body = {"show_pricing": False}
+    url = f"{ADMIN_PLANS}/visibility"
+    assert api.put(url, headers=auth(user), json=body).status_code == 403
+    assert api.put(url, json=body).status_code in (401, 403)
+    admin = superadmin(db)
+    bad = api.put(url, headers=auth(admin), json={"show_pricing": "maybe"})
+    assert bad.status_code == 422
 
 
 def test_assigning_an_unknown_plan_to_a_business_is_rejected(api, db):

@@ -115,10 +115,8 @@ def active_client_count(business_id: uuid.UUID, db: Session) -> int:
 def portfolio_design_count(business_id: uuid.UUID, db: Session) -> int:
     return (
         db.scalar(
-            select(func.count(Design.id))
-            .join(Client, Client.id == Design.client_id)
-            .where(
-                Client.business_id == business_id,
+            select(func.count(Design.id)).where(
+                Design.business_id == business_id,
                 Design.in_portfolio.is_(True),
             )
         )

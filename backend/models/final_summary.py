@@ -17,7 +17,7 @@ class ConfirmationMethod(str, enum.Enum):
 class FinalSummary(Base):
     __tablename__ = "final_summaries"
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     client_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("clients.id", ondelete="CASCADE"),

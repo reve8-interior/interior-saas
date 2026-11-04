@@ -2,7 +2,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { QuotationLineItem } from '@/lib/schemas/quotation';
+import { ApiError } from '@/lib/api';
+import { checkIntake } from '@/lib/intake';
 import { AddRowsSheet } from '../AddRowsSheet';
+
+vi.mock('@/lib/intake', () => ({
+  checkIntake: vi.fn().mockResolvedValue([]),
+}));
 
 vi.mock('@/lib/quotation', () => ({
   getMaterials: () => Promise.resolve([]),
@@ -16,6 +22,7 @@ function setup(onCreate = vi.fn().mockResolvedValue(saved())) {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <AddRowsSheet
+        clientId="c1"
         rooms={['Kitchen']}
         customCols={[]}
         defaultRoom="Kitchen"
@@ -47,6 +54,72 @@ describe('AddRowsSheet', () => {
       room: 'Kitchen',
       description: 'Base unit',
     });
+  });
+
+  it('warns about a similar existing line and adds only when confirmed', async () => {
+    vi.mocked(checkIntake).mockResolvedValueOnce([
+      {
+        room: 'Kitchen',
+        room_status: 'existing',
+        similar: {
+          id: 'l1',
+          room: 'Kitchen',
+          description: 'Base unit',
+          summary: 'Kitchen — Base unit',
+        },
+      },
+    ]);
+    const onCreate = setup();
+    describeRow(1, 'Base units');
+    fireEvent.click(screen.getByRole('button', { name: 'Save rows' }));
+    await screen.findByText('Already in this quotation?');
+    expect(onCreate).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Add anyway' }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalledTimes(1));
+  });
+
+  it('sends allow_duplicate only after the designer confirmed', async () => {
+    vi.mocked(checkIntake).mockResolvedValueOnce([
+      {
+        room: 'Kitchen',
+        room_status: 'existing',
+        similar: {
+          id: 'l1',
+          room: 'Kitchen',
+          description: 'Base unit',
+          summary: 'Kitchen — Base unit',
+        },
+      },
+    ]);
+    const onCreate = setup();
+    describeRow(1, 'Base units');
+    fireEvent.click(screen.getByRole('button', { name: 'Save rows' }));
+    await screen.findByText('Already in this quotation?');
+    fireEvent.click(screen.getByRole('button', { name: 'Add anyway' }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalled());
+    expect(onCreate.mock.calls[0][0]).toMatchObject({ allow_duplicate: true });
+  });
+
+  it('does not allow duplicates on a normal save', async () => {
+    const onCreate = setup();
+    describeRow(1, 'Chimney');
+    fireEvent.click(screen.getByRole('button', { name: 'Save rows' }));
+    await waitFor(() => expect(onCreate).toHaveBeenCalled());
+    expect(onCreate.mock.calls[0][0]).toMatchObject({ allow_duplicate: false });
+  });
+
+  it('shows the duplicate warning when only the server catches it', async () => {
+    const onCreate = vi
+      .fn()
+      .mockRejectedValue(
+        new ApiError('Looks like “Base unit” is already in Kitchen.', 409, {})
+      );
+    setup(onCreate);
+    describeRow(1, 'Base units');
+    fireEvent.click(screen.getByRole('button', { name: 'Save rows' }));
+    await screen.findByText('Already in this quotation?');
+    expect(screen.getByRole('button', { name: 'Add anyway' })).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('names the row with a problem and saves nothing', () => {

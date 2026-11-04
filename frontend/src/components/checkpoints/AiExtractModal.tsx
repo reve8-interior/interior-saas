@@ -165,6 +165,7 @@ export function AiExtractModal({
         client_budget: budgetValue ? parseFloat(budgetValue) : null,
         unmapped_notes: source.unmapped_notes,
         questions: source.questions,
+        audit_log_id: source.audit_log_id,
         create_quotation: false,
       });
       setPastedText('');

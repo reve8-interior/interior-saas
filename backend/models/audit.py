@@ -12,7 +12,7 @@ from .base import Base, uuid_pk
 class AuditLog(Base):
     __tablename__ = "audit_log"
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),

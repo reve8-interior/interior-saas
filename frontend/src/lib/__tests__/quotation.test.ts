@@ -32,7 +32,22 @@ describe('quotation API client', () => {
     expect(api.post).toHaveBeenCalledWith('/quotations/q1/items', payload);
     expect(api.patch).toHaveBeenCalledWith('/quotations/q1/items/i1', {
       status: 'agreed',
+      expected_updated_at: undefined,
     });
-    expect(api.delete).toHaveBeenCalledWith('/quotations/q1/items/i1');
+    expect(api.delete).toHaveBeenCalledWith('/quotations/q1/items/i1', {
+      params: { expected_updated_at: undefined },
+    });
+  });
+
+  it('sends the loaded updated_at so a newer edit by someone else is refused', async () => {
+    await updateLineItem('q1', 'i1', { qty: 2 }, '2030-01-01T00:00:00Z');
+    await deleteLineItem('q1', 'i1', '2030-01-01T00:00:00Z');
+    expect(api.patch).toHaveBeenCalledWith('/quotations/q1/items/i1', {
+      qty: 2,
+      expected_updated_at: '2030-01-01T00:00:00Z',
+    });
+    expect(api.delete).toHaveBeenCalledWith('/quotations/q1/items/i1', {
+      params: { expected_updated_at: '2030-01-01T00:00:00Z' },
+    });
   });
 });

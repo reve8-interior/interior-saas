@@ -1,5 +1,5 @@
 import enum
-
+import uuid
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String
@@ -19,7 +19,7 @@ class UserRole(str, enum.Enum):
 class User(Base, TimestampMixin):
     __tablename__ = "users"
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     email: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False, index=True
     )
@@ -38,7 +38,7 @@ class User(Base, TimestampMixin):
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    business_id: Mapped[object | None] = mapped_column(
+    business_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("businesses.id", ondelete="SET NULL"),
         nullable=True,
         index=True,

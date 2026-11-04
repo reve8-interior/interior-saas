@@ -8,7 +8,9 @@ import {
   deletePlan,
   formatInr,
   formatLimit,
+  getPricingVisibility,
   listAdminPlans,
+  setPricingVisibility,
 } from '@/lib/plans';
 import type { AdminPlan } from '@/lib/schemas/plan';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -54,6 +56,25 @@ export default function PlansPage() {
     enabled: allowed,
   });
 
+  const { data: visibility } = useQuery({
+    queryKey: ['admin-pricing-visibility'],
+    queryFn: getPricingVisibility,
+    enabled: allowed,
+  });
+
+  const visibilityMutation = useMutation({
+    mutationFn: setPricingVisibility,
+    onSuccess: (res) => {
+      toast.success(
+        res.show_pricing
+          ? 'Pricing table shown on landing page'
+          : 'Pricing table hidden'
+      );
+      queryClient.setQueryData(['admin-pricing-visibility'], res);
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  });
+
   const removeMutation = useMutation({
     mutationFn: (plan: AdminPlan) => deletePlan(plan.id),
     onSuccess: () => {
@@ -80,6 +101,26 @@ export default function PlansPage() {
           <Plus className="h-4 w-4" /> Add plan
         </button>
       </div>
+
+      <label className="surface flex items-center justify-between gap-4 p-4">
+        <span>
+          <span className="block text-sm font-medium">
+            Show pricing table on landing page
+          </span>
+          <span className="block text-xs text-dark-500 dark:text-dark-400">
+            Hides the section and its nav link. Can take up to 5 minutes to
+            reach visitors.
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          role="switch"
+          className="h-5 w-5 shrink-0"
+          checked={visibility?.show_pricing ?? true}
+          disabled={!visibility || visibilityMutation.isPending}
+          onChange={(e) => visibilityMutation.mutate(e.target.checked)}
+        />
+      </label>
 
       {isLoading && <PageLoader />}
 

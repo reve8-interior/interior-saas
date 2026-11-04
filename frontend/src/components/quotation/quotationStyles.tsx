@@ -79,6 +79,11 @@ export function SourceChip({
           {item.source_design_title ? `: ${item.source_design_title}` : ''}
         </Link>
       )}
+      {item.edited_by && (
+        <span className="block text-xs font-normal text-dark-500 dark:text-dark-400">
+          Edited by {item.edited_by}
+        </span>
+      )}
     </span>
   );
 }

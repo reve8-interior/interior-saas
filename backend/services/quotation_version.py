@@ -24,6 +24,7 @@ from ..schemas.quotation_version import (
     SharedQuotationRoom,
 )
 from . import share_links
+from .quotation_concurrency import ensure_editable, lock_quotation
 from .quotation_service import (
     _effective_price,
     build_quotation_view,
@@ -146,6 +147,10 @@ def restore_version(
     the number of restored items.
     """
     quotation = db.get(Quotation, version.quotation_id)
+    # Same protection as any other rewrite: one at a time, and not while
+    # the quotation is approved.
+    lock_quotation(db, quotation)
+    ensure_editable(quotation)
     backup = (
         create_version(
             db,

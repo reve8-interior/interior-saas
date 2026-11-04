@@ -12,8 +12,15 @@ from ..core.logging import logger
 from ..models.business import Business
 from ..models.plan import Plan
 from ..models.user import User
-from ..schemas.plan import PlanCreate, PlanRead, PlanUpdate, PublicPlan
+from ..schemas.plan import (
+    PlanCreate,
+    PlanRead,
+    PlanUpdate,
+    PricingVisibility,
+    PublicPlan,
+)
 from ..services import audit
+from ..services.landing_settings import get_show_pricing, set_show_pricing
 from ..services.plan_limits import seed_plans
 from .deps import require_superadmin
 
@@ -30,13 +37,47 @@ def _plan_or_404(plan_id: uuid.UUID, db: Session) -> Plan:
 
 @public_router.get("", response_model=list[PublicPlan])
 def list_public_plans(db: Session = Depends(get_db)):
-    """Plans shown on the landing page, cheapest first. No login needed."""
+    """Plans shown on the landing page, cheapest first. No login needed.
+
+    Empty when an admin has switched the pricing table off.
+    """
+    if not get_show_pricing(db):
+        return []
     seed_plans(db)
     return db.scalars(
         select(Plan)
         .where(Plan.is_public.is_(True))
         .order_by(Plan.sort_order, Plan.price_monthly_inr)
     ).all()
+
+
+@admin_router.get("/visibility", response_model=PricingVisibility)
+def get_pricing_visibility(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superadmin),
+):
+    return PricingVisibility(show_pricing=get_show_pricing(db))
+
+
+@admin_router.put("/visibility", response_model=PricingVisibility)
+def set_pricing_visibility(
+    body: PricingVisibility,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_superadmin),
+):
+    """Show or hide the landing-page pricing table."""
+    set_show_pricing(db, body.show_pricing)
+    audit.record(
+        db,
+        actor=actor,
+        business_id=None,
+        action="landing.pricing_visibility",
+        entity_type="app_setting",
+        entity_id=None,
+        payload={"show_pricing": body.show_pricing},
+    )
+    db.commit()
+    return body
 
 
 @admin_router.get("", response_model=list[PlanRead])

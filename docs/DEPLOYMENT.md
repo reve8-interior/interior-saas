@@ -42,6 +42,16 @@ Order matters: DB → API → Web → back-fill CORS.
    (environments `dev` / `prod`), then push a tag `b-prod-X.Y.Z`.
    Free plan sleeps after ~15 min idle (first request ~30-60 s); use Starter to avoid.
 
+### Public site rate limit
+
+- `GET /api/v1/site/{slug}` allows 60 requests/min per client address.
+- The key is `request.client.host` only; `X-Forwarded-For` is not read by the app.
+- Behind a proxy (e.g. Render), uvicorn only rewrites `request.client` from `X-Forwarded-For` for trusted proxies (`FORWARDED_ALLOW_IPS`). Without it all visitors share the proxy's address and one limit.
+- Set `FORWARDED_ALLOW_IPS` to the proxy's address range where it is known. Avoid `'*'` if you can: uvicorn (>= 0.29) then takes the client-controlled left-most `X-Forwarded-For` entry, so a caller can spoof the address and dodge the per-IP limit. If the range is unknown, `'*'` is a trade-off, not a guarantee.
+- The limiter only blunts casual scraping; it is not a security control.
+- The limiter is in memory, per worker process (effective limit = 60 x workers; not shared across instances).
+- The website feature adds no new required env vars.
+
 ## 3. Vercel (frontend)
 
 1. Import repo → **Root Directory** `frontend`, framework Next.js (see `frontend/vercel.json`).

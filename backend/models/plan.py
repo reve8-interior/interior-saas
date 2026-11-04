@@ -1,3 +1,5 @@
+import uuid
+
 from sqlalchemy import Boolean, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -15,7 +17,7 @@ class Plan(Base, TimestampMixin):
 
     __tablename__ = "plans"
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     slug: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     tagline: Mapped[str | None] = mapped_column(String(255))

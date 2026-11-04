@@ -13,7 +13,7 @@ class ShareLink(Base):
 
     __tablename__ = "share_links"
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     client_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("clients.id", ondelete="CASCADE"),

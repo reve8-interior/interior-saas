@@ -1,6 +1,6 @@
 import type { AiStatus, Plan } from '@/lib/schemas/auth';
 
-/** Why "Add from notes" can't run right now, or null when it can. */
+/** Why "Add with AI" can't run right now, or null when it can. */
 export function notesLockMessage(ai: AiStatus, plan: Plan): string | null {
   if (ai.enabled && ai.remaining === 0) {
     return `You've used this month's ${ai.monthly_limit} AI credits. They renew on the 1st, or upgrade your plan for more. You can still add items by hand.`;

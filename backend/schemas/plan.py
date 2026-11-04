@@ -159,3 +159,9 @@ class PlanLimits(BaseModel):
     website_max_pages: int
     website_custom_domain: bool
     website_remove_badge: bool
+
+
+class PricingVisibility(BaseModel):
+    """Whether the landing page shows its pricing table."""
+
+    show_pricing: bool

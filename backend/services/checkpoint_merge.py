@@ -15,9 +15,7 @@ normalization + token-sort similarity for items that arrive without one
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
-from difflib import SequenceMatcher
 from typing import Protocol
 from uuid import UUID
 
@@ -29,13 +27,14 @@ from ..models.quotation_line_item import (
     QuotationLineItem,
 )
 from .dimension_parser import normalize_unit
+from .intake_gate import IntakeRejected, decide
 from .quotation_service import resolve_line_item
-
-# Similarity (0..1) above which two descriptions in the same room are
-# considered the same work item. 0.72 tolerates rewording ("wardrobe with
-# sliding doors" vs "sliding door wardrobe") without conflating distinct
-# items ("wardrobe" vs "study table").
-DESCRIPTION_MATCH_THRESHOLD = 0.72
+from .text_matching import (  # noqa: F401  (re-exported for callers)
+    DESCRIPTION_MATCH_THRESHOLD,
+    description_similarity,
+    find_matching_item,
+    normalize_text,
+)
 
 # Fields whose change invalidates previously derived pricing and any
 # prior agreement on the item (mirrors routers.quotations._DERIVED_INPUTS).
@@ -79,49 +78,6 @@ class MergeResult:
     # guessing another row would edit the wrong thing.
     skipped: int = 0
     updated_item_ids: list[str] = field(default_factory=list)
-
-
-def normalize_text(text: str) -> str:
-    """Lowercase, strip punctuation, collapse whitespace."""
-    cleaned = re.sub(r"[^\w\s]", " ", text.lower())
-    return re.sub(r"\s+", " ", cleaned).strip()
-
-
-def _token_sort(text: str) -> str:
-    return " ".join(sorted(normalize_text(text).split()))
-
-
-def description_similarity(a: str, b: str) -> float:
-    """Word-order-insensitive similarity between two descriptions."""
-    norm_a, norm_b = _token_sort(a), _token_sort(b)
-    if not norm_a or not norm_b:
-        return 0.0
-    if norm_a == norm_b:
-        return 1.0
-    return SequenceMatcher(None, norm_a, norm_b).ratio()
-
-
-def find_matching_item(
-    room: str,
-    description: str,
-    candidates: list[QuotationLineItem],
-) -> QuotationLineItem | None:
-    """Best existing item in the same room describing the same work.
-
-    Returns None when nothing scores above DESCRIPTION_MATCH_THRESHOLD.
-    """
-    room_norm = normalize_text(room)
-    best: QuotationLineItem | None = None
-    best_score = 0.0
-    for item in candidates:
-        if normalize_text(item.room) != room_norm:
-            continue
-        score = description_similarity(item.description, description)
-        if score > best_score:
-            best, best_score = item, score
-    if best is not None and best_score >= DESCRIPTION_MATCH_THRESHOLD:
-        return best
-    return None
 
 
 def _anchor_id(incoming: IncomingItem) -> str | None:
@@ -236,35 +192,28 @@ def merge_checkpoint_items(
     # Track by Python object identity: transient items have id=None
     # until flush, so DB ids cannot key this set.
     claimed: set[int] = set()
-    by_id = {
-        str(li.id): li for li in quotation.line_items if li.id is not None
-    }
 
     for incoming in items_in:
-        anchor = _anchor_id(incoming)
-        match = by_id.get(anchor) if anchor else None
-        if match is not None and id(match) in claimed:
-            # Two rows in one checkpoint pointing at the same item: the
-            # first already applied, so fold the second into it too.
-            _apply_update(match, incoming, checkpoint_id)
-            continue
-        if match is None:
-            candidates = [
-                li for li in quotation.line_items if id(li) not in claimed
-            ]
-            match = find_matching_item(
-                incoming.room, incoming.description, candidates
+        try:
+            decision = decide(
+                incoming.room,
+                incoming.description,
+                quotation.line_items,
+                action=_action(incoming),
+                target_item_id=_anchor_id(incoming),
+                taken=claimed,
             )
-            if match is None and anchor and _action(incoming) != "add":
-                # The item was deleted after the notes were read, and
-                # nothing similar took its place: skip rather than guess.
-                result.skipped += 1
-                continue
+        except IntakeRejected:
+            # A blank row cannot say what it is; nothing to apply.
+            result.skipped += 1
+            continue
+        match = decision.target
 
-        if _action(incoming) == "remove":
-            if match is None:
-                # Nothing to drop — a removal must never create a row.
-                continue
+        if decision.outcome == "skip":
+            result.skipped += 1
+            continue
+
+        if decision.outcome == "remove" and match is not None:
             match.status = QuotationItemStatus.removed
             match.source_checkpoint_id = checkpoint_id
             claimed.add(id(match))
@@ -273,7 +222,7 @@ def merge_checkpoint_items(
                 result.updated_item_ids.append(str(match.id))
             continue
 
-        if match is not None:
+        if decision.outcome == "update" and match is not None:
             _apply_update(match, incoming, checkpoint_id)
             claimed.add(id(match))
             result.updated += 1
@@ -287,8 +236,8 @@ def merge_checkpoint_items(
             new_item = QuotationLineItem(
                 quotation_id=quotation.id,
                 source_checkpoint_id=checkpoint_id,
-                room=incoming.room,
-                description=incoming.description,
+                room=decision.room,
+                description=decision.description,
                 # The agent may legitimately have no basis for a unit;
                 # a blank one is caught by the required-column check.
                 unit=(incoming.unit or "").strip(),

@@ -69,12 +69,17 @@ export function HotspotList({
                 )}
               </span>
               <span className="min-w-0 flex-1 truncate">{h.label}</span>
-              {linkedIds?.has(h.id) && (
-                <Check
-                  className="h-4 w-4 shrink-0 text-green-600"
-                  aria-label="In quotation"
-                />
-              )}
+              {linkedIds &&
+                (linkedIds.has(h.id) ? (
+                  <Check
+                    className="h-4 w-4 shrink-0 text-green-600"
+                    aria-label="In quotation"
+                  />
+                ) : (
+                  <span className="shrink-0 text-xs text-muted">
+                    Not in quotation
+                  </span>
+                ))}
             </button>
           </li>
         );

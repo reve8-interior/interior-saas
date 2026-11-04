@@ -335,12 +335,9 @@ function DesignBlocks() {
           Drop images here
         </div>
       </Tile>
-      <Tile n={2} title="Add hotspot" line="Drag a box or click to pin.">
+      <Tile n={2} title="Mark an item" line="Drag a box or click the image.">
         <PinImage />
-        <div className="flex gap-2">
-          <Btn tone="blue">Add hotspot</Btn>
-          <Btn tone="ghost">Done adding</Btn>
-        </div>
+        <p className={MUTED}>3 marked · 1 in quotation</p>
       </Tile>
       <Tile n={3} title="Fill details" line="Name, material, size, cost.">
         <div className="space-y-1.5">
@@ -355,9 +352,14 @@ function DesignBlocks() {
         </div>
         <Btn>Save</Btn>
       </Tile>
-      <Tile n={4} title="To quotation" line="One hotspot, or Add all.">
+      <Tile
+        n={4}
+        title="To quotation"
+        line="Pick the room, then Add to quotation."
+      >
+        <Row tone="amber" badge="Similar line" label="Sofa" note="Update it?" />
         <Row tone="green" badge="In quotation" label="Sofa" note="₹58,000" />
-        <p className={MUTED}>Tap it to jump to the row</p>
+        <p className={MUTED}>Or Add all. Tap a row to jump to it</p>
       </Tile>
       <Tile title="Customer view" line="See it as your customer will.">
         <PinImage />
@@ -426,7 +428,11 @@ function QuotationBlocks() {
 function NotesSteps() {
   return (
     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-      <Tile n={1} title="Paste notes" line="Quotation → Add from notes.">
+      <Tile
+        n={1}
+        title="Paste notes"
+        line="Meeting notes → Add with AI → From notes."
+      >
         <div
           className={`rounded-lg border border-dashed border-line p-2 ${MUTED}`}
         >
@@ -452,6 +458,19 @@ function NotesSteps() {
           <span className="text-primary-600">Verify all</span>
         </div>
         <Btn tone="blue">Add to Quotation (2)</Btn>
+        <p className={MUTED}>Added by mistake? Undo add.</p>
+      </Tile>
+      <Tile
+        title="Floor plan"
+        line="Add with AI → From floor plan. Rows land here to review."
+      >
+        <Row tone="green" badge="New" label="Kitchen · base units" />
+        <Row
+          tone="amber"
+          badge="Update"
+          label="Hall · TV unit"
+          note="fills size"
+        />
       </Tile>
     </div>
   );
@@ -569,7 +588,7 @@ function TeamBlocks() {
 
 const FAQ: { q: string; a: string }[] = [
   {
-    q: '“Add from notes” is missing or says AI is off',
+    q: '“Add with AI” is missing or says AI is off',
     a: 'AI is not on for your business. Add rows by hand, or ask your admin.',
   },
   {
@@ -675,7 +694,7 @@ export default function GuidePage() {
         <section id="meeting-notes" className="scroll-mt-32">
           <SectionTitle
             title="Meeting notes (AI)"
-            sub="Optional. Quotation → Add from notes"
+            sub="Optional. Quotation → Add with AI"
           />
           <NotesSteps />
         </section>

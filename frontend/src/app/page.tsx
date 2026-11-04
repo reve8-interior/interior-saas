@@ -80,7 +80,7 @@ const FLOW: Feature[] = [
   {
     icon: Sparkles,
     title: 'Extract the items',
-    line: 'AI suggests quotation items from your notes. You review and apply.',
+    line: 'AI suggests items from notes, voice, text or a floor plan. You review and apply.',
   },
   {
     icon: Images,
@@ -376,7 +376,9 @@ export default async function Page() {
               reverse
               points={[
                 'Write notes the way you talk. No forms to fill.',
+                'Or add a floor plan: rooms and sizes become starter rows.',
                 'AI suggests the items and rooms. You review before anything is added.',
+                'Repeats are caught: a line already there is updated, not duplicated.',
                 'Open questions stay flagged until you resolve them.',
               ]}
             >

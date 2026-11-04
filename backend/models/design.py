@@ -12,10 +12,12 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from ..rls import BUSINESS_ID_DEFAULT
 from .base import Base, TimestampMixin, uuid_pk
 
 
@@ -27,11 +29,22 @@ class DesignSource(str, enum.Enum):
 class Design(Base, TimestampMixin):
     __tablename__ = "designs"
 
-    id: Mapped[object] = uuid_pk()
-    client_id: Mapped[uuid.UUID] = mapped_column(
+    id: Mapped[uuid.UUID] = uuid_pk()
+    # Owning business and the RLS key, so a design needs no client. Every
+    # code path sets it (the DB default fills it in scoped requests); it is
+    # NULL only on legacy rows whose client had no business (see 0051).
+    business_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("businesses.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+        server_default=text(BUSINESS_ID_DEFAULT),
+    )
+    # None for designs that belong to no client (e.g. website projects).
+    client_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("clients.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     source: Mapped[str] = mapped_column(
@@ -58,8 +71,19 @@ class Design(Base, TimestampMixin):
     # Order on the portfolio (lowest first); None = not placed yet, listed
     # after placed designs, newest first.
     portfolio_position: Mapped[int | None] = mapped_column(Integer)
+    # Website project this image belongs to; deleting the project keeps it.
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    # Order within the project (lowest first).
+    project_position: Mapped[int | None] = mapped_column(Integer)
 
-    client: Mapped["Client"] = relationship("Client", back_populates="designs")  # type: ignore[name-defined]
+    client: Mapped["Client | None"] = relationship(
+        "Client", back_populates="designs"
+    )  # type: ignore[name-defined]
     hotspots: Mapped[list["DesignHotspot"]] = relationship(
         "DesignHotspot",
         back_populates="design",
@@ -77,7 +101,7 @@ class DesignHotspot(Base):
 
     __tablename__ = "design_hotspots"
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     design_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("designs.id", ondelete="CASCADE"),

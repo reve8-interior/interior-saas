@@ -208,6 +208,8 @@ module.exports = {
           'system-ui',
           'sans-serif',
         ],
+        // Public designer website headings (Fraunces via next/font in app/layout.tsx).
+        display: ['var(--font-display)', 'Georgia', 'ui-serif', 'serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       // Two text weights, 400 and 550 for any emphasis; titles take 600. Nothing heavier.

@@ -17,7 +17,7 @@ class QuotationMessage(Base):
 
     __tablename__ = "quotation_messages"
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     quotation_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("quotations.id", ondelete="CASCADE"),

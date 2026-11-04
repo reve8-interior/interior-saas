@@ -1,3 +1,33 @@
+0.22.0
+ - date: 03-11-2026
+ - changes:
+   - feat: floor plan to draft rows: `POST /clients/{id}/quotation/floor-plan/extract` reads rooms and sizes from a plan image, matching them to the quotation's rooms; `.../floor-plan/draft` turns confirmed rooms into starter rows (qty and rate from past priced lines), marking each as new, a repeat of a quotation line (fills only its blanks) or already in an earlier unapplied draft
+   - feat: one intake gate, `services/intake_gate.decide()`, for every row that reaches a quotation (meetings from notes, voice, text and floor plan; design hotspots; hand-typed rows): blank room or description is rejected, a close room name takes the quotation's own spelling, and the row resolves to add, update, remove or skip; removed lines are never matched, updated or revived, and rows of one meeting are never folded into each other
+   - feat: `POST /clients/{id}/quotation/intake-check` returns, per row, the matching room, a similar existing line and a catalogue material it names (with unit and rate)
+   - feat: hotspot add and hand-typed add return 409 on a similar line unless `allow_duplicate`; a hotspot can instead update that line (`update_item_id`); renaming a line or bringing a removed one back meets the same check
+   - feat: an approved quotation is frozen for every write (409); `POST /clients/{id}/quotation/reopen` lets it change again and is audited; restoring a version now locks the quotation and honours the freeze
+   - feat: protection for shared quotations: edits carry `expected_updated_at` and a stale one is a 409 naming who changed the row; changes and undo take a row lock; undo is refused when rows were edited by hand since (unless `force`); each line reports `edited_by`
+   - feat: `POST /clients/{id}/checkpoints/from-extraction` takes `allow_incomplete` so starter drafts can leave rates and custom columns blank; adding to the quotation still enforces mandatory columns
+   - feat: AI runs are captured for evaluation (proposed output, final output and guard flags, migration 0056), extracted rows pass guards, and `GET .../quotation/review` runs pre-send checks (docs/AI_EVAL_PLAN.md)
+   - feat: admins can show or hide the landing page pricing table (`/admin/plans`)
+   - feat: the built-in plans list the AI intake and team-safety features in their highlights (migration 0057 updates a plan only if its highlights still match the original seed, so edited plans keep their wording)
+   - refactor: text matching moved to `services/text_matching.py`; `checkpoint_merge` re-exports it
+   - test: gate rules and edge cases (blank input, room snapping, removed lines, anchors, batches, repeatability), the gate over HTTP for each source, and a guard that fails if a new file builds quotation lines without the gate
+   - note: there is no drag-and-drop move or bulk status change in the product, so nothing to gate there
+
+0.21.0
+ - date: 03-11-2026
+ - changes:
+   - feat: designer website: `GET /site/{slug}` is a public, rate-limited endpoint returning a redirect, a simple gallery or the full site; unavailable cases all return the same 404 and no client names, prices or hotspots are exposed
+   - feat: site settings, readable slug (availability check, rename with redirects, withdraw), logo and hero upload, publish, unpublish and preview for business admins (`/site/*`)
+   - feat: projects: named groups of designs with cover, ordering, fresh uploads and a design library for the picker (`/projects/*`); client-less designs count toward image quotas
+   - feat: six site themes (`businesses.site_theme`)
+   - feat: plans decide gallery vs full site (`website_enabled`); a lapsed or downgraded plan serves the gallery and keeps all content; Free admins can still list and delete project images
+   - feat: branding images are served as signed media under `branding/`
+   - migrations 0051 to 0055: `designs.business_id` and nullable `client_id` (nothing is deleted), `projects`, business site fields and `slug_aliases`, plan website flags, `site_theme`
+   - deploy: set `FORWARDED_ALLOW_IPS` on the proxy host so the public-site rate limit sees real client addresses (see docs/DEPLOYMENT.md)
+   - not included: custom domains (flag only), server-side rendering
+
 0.20.0
  - date: 02-11-2026
  - changes:

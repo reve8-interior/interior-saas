@@ -23,6 +23,7 @@ DEFAULT_WHISPER_MODEL = "whisper-1"
 OP_CHECKPOINT_EXTRACT = "checkpoint_extract"
 OP_AUDIO_TRANSCRIBE = "audio_transcribe"
 OP_MATERIALS_EXTRACT = "materials_extract"
+OP_FLOORPLAN_EXTRACT = "floorplan_extract"
 
 
 @dataclass(frozen=True)
@@ -78,7 +79,9 @@ def _extractions_this_month(db: Session, business: Business) -> int:
         db.scalar(
             select(func.count(AgentAuditLog.id)).where(
                 AgentAuditLog.business_id == business.id,
-                AgentAuditLog.operation == OP_CHECKPOINT_EXTRACT,
+                AgentAuditLog.operation.in_(
+                    (OP_CHECKPOINT_EXTRACT, OP_FLOORPLAN_EXTRACT)
+                ),
                 AgentAuditLog.status == "success",
                 AgentAuditLog.timestamp >= month_start,
             )
@@ -90,7 +93,7 @@ def _extractions_this_month(db: Session, business: Business) -> int:
 def ai_status(db: Session, business: Business | None) -> AiStatus:
     """What the UI may offer: off without a key, capped by plan credits.
 
-    One credit is one successful meeting-note extraction.
+    One credit is one successful meeting-note or floor-plan extraction.
     """
     if business is None or not business.openai_api_key_enc:
         return AiStatus()
@@ -131,6 +134,9 @@ def log_ai_usage(
     audio_seconds: float | None = None,
     client_id: uuid.UUID | None = None,
     raw_input_hash: str | None = None,
+    prompt_version: str | None = None,
+    guard_flags: list[dict] | None = None,
+    proposed_output: dict | None = None,
 ) -> AgentAuditLog:
     """Record one AI call. business_id is filled from the request scope."""
     log = AgentAuditLog(
@@ -149,6 +155,9 @@ def log_ai_usage(
         ),
         status=status,
         raw_input_hash=raw_input_hash,
+        prompt_version=prompt_version,
+        guard_flags=guard_flags or [],
+        proposed_output=proposed_output,
         timestamp=datetime.now(timezone.utc),
     )
     db.add(log)

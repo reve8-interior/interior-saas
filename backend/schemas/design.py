@@ -73,6 +73,12 @@ class HotspotQuotationAdd(BaseModel):
     qty: float | None = Field(default=None, ge=0)
     rate: float | None = Field(default=None, ge=0)
     remarks: str | None = Field(default=None, max_length=2000)
+    # Add even though a similar item is already in the room (otherwise 409).
+    allow_duplicate: bool = False
+    # Update this existing quotation line with the hotspot instead of adding
+    # a new one: the hotspot is linked to it, and any value filled in here
+    # replaces the line's current value (blank values are left alone).
+    update_item_id: UUID | None = None
 
 
 class DesignPortfolioUpdate(BaseModel):

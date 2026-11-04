@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..rls import BUSINESS_ID_DEFAULT
@@ -13,7 +13,7 @@ from .base import Base, uuid_pk
 class AgentAuditLog(Base):
     __tablename__ = "agent_audit_log"
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     # Null for calls that aren't about a client (e.g. materials extraction).
     client_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
@@ -41,6 +41,16 @@ class AgentAuditLog(Base):
     )
     # SHA-256 of raw input — never store PII in audit rows
     raw_input_hash: Mapped[str | None] = mapped_column(String(64))
+    # Which system prompt produced the output, for attributing quality changes.
+    prompt_version: Mapped[str | None] = mapped_column(String(20))
+    # Risks the guards raised: [{code, severity, message}].
+    guard_flags: Mapped[list] = mapped_column(
+        JSONB, nullable=False, default=list, server_default="[]"
+    )
+    # What the AI proposed vs what the designer saved: the pair that
+    # becomes the evaluation set (docs/AI_EVAL_PLAN.md).
+    proposed_output: Mapped[dict | None] = mapped_column(JSONB)
+    final_output: Mapped[dict | None] = mapped_column(JSONB)
     timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=datetime.utcnow, index=True
     )

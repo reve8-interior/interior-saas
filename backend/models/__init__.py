@@ -14,6 +14,7 @@ from .margin import MarginConfig
 from .material import MaterialRate
 from .plan import Plan
 from .portfolio_share import PortfolioShare
+from .project import Project
 from .quotation import Quotation
 from .quotation_line_item import (
     QuotationCatalogType,
@@ -23,6 +24,7 @@ from .quotation_line_item import (
 from .quotation_message import QuotationMessage
 from .quotation_version import QuotationShare, QuotationVersion
 from .share_link import ShareLink
+from .slug_alias import SlugAlias
 from .user import User
 
 __all__ = [
@@ -40,6 +42,8 @@ __all__ = [
     "ShareLink",
     "Plan",
     "PortfolioShare",
+    "Project",
+    "SlugAlias",
     "MaterialRate",
     "MarginConfig",
     "Quotation",

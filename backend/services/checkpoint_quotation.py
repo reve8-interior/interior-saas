@@ -9,6 +9,11 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from .quotation_concurrency import (
+    ensure_editable,
+    lock_quotation,
+    refuse_if_hand_edited,
+)
 from ..models.audit import AuditLog
 from ..models.checkpoint import Checkpoint
 from ..models.quotation import Quotation
@@ -76,6 +81,8 @@ def add_checkpoint_to_quotation(
     cp_uuid = uuid.UUID(body.checkpoint_id)
 
     if existing_quotation:
+        lock_quotation(db, existing_quotation)
+        ensure_editable(existing_quotation)
         snapshot_line_items(existing_quotation, body.checkpoint_id)
         merge = merge_checkpoint_items(
             existing_quotation, cp_uuid, list(body.line_items), db
@@ -136,7 +143,11 @@ def add_checkpoint_to_quotation(
 
 
 def remove_checkpoint(
-    db: Session, client_id: str, checkpoint_id: str, user: User
+    db: Session,
+    client_id: str,
+    checkpoint_id: str,
+    user: User,
+    force: bool = False,
 ) -> RemoveCheckpointResponse:
     """Take a meeting's rows back out of the quotation.
 
@@ -198,6 +209,10 @@ def remove_checkpoint(
     )
     if not quotation:
         raise HTTPException(status_code=404, detail="No quotation found")
+
+    lock_quotation(db, quotation)
+    ensure_editable(quotation)
+    refuse_if_hand_edited(quotation.line_items, applied_at, force)
 
     snapshots: list[dict] = list(quotation.snapshots or [])
     indices = [
@@ -265,7 +280,7 @@ def remove_checkpoint(
 
 
 def revert_to_checkpoint(
-    db: Session, quotation_id: str, checkpoint_id: str
+    db: Session, quotation_id: str, checkpoint_id: str, force: bool = False
 ) -> RevertResponse:
     """Step 1 — run the PydanticAI agent on uploaded text/audio or pasted text.
 
@@ -292,6 +307,12 @@ def revert_to_checkpoint(
             status_code=404,
             detail=f"No snapshot found for checkpoint {checkpoint_id}",
         )
+
+    lock_quotation(db, quotation)
+    ensure_editable(quotation)
+    reverted: Checkpoint | None = db.get(Checkpoint, uuid.UUID(checkpoint_id))
+    if reverted is not None and reverted.applied_at is not None:
+        refuse_if_hand_edited(quotation.line_items, reverted.applied_at, force)
 
     # Clear added_to_quotation on the checkpoint whose items we're replacing
     prev_checkpoint_id = quotation.checkpoint_id

@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..agents.checkpoint_agent import run_checkpoint_extraction
+from ..agents.prompts.checkpoint_extraction import CHECKPOINT_PROMPT_VERSION
 from ..models.quotation import Quotation
 from ..models.user import User
 from ..schemas.checkpoint_ai import (
@@ -27,6 +28,7 @@ from .ai_access import (
     log_ai_usage,
     resolve_openai_access,
 )
+from .ai_guards import GuardFlag, check_extracted_items, scan_input
 from .checkpoint_ai_support import (
     item_summary,
     material_hints,
@@ -147,6 +149,10 @@ async def extract_checkpoint_from_input(
     )
     scope = build_scope_context(transcript, existing_items)
 
+    input_flags = scan_input(transcript)
+    if input_flags:
+        logger.warning("ai_input_flagged", extra={"client_id": client_id})
+
     t0 = time.monotonic()
     try:
         (
@@ -180,16 +186,6 @@ async def extract_checkpoint_from_input(
         )
 
     latency_ms = int((time.monotonic() - t0) * 1000)
-    log = write_audit_log(
-        db,
-        client_id=client_id,
-        model_name=model_name,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        latency_ms=latency_ms,
-        status=status,
-        raw_hash=raw_hash,
-    )
 
     # Everything the model got wrong that a rule can fix is fixed here,
     # before a human ever sees the rows: refs resolved to real ids, room
@@ -200,6 +196,36 @@ async def extract_checkpoint_from_input(
     )
     summaries = {str(li.id): item_summary(li) for li in existing_items}
     hints = material_hints(normalized.line_items, db)
+
+    flags: list[GuardFlag] = input_flags + check_extracted_items(
+        normalized.line_items, transcript=transcript, existing=existing_items
+    )
+    proposed = [
+        {
+            "action": li.action,
+            "target_item_id": li.target_item_id,
+            "room": li.room,
+            "description": li.description,
+            "unit": li.unit,
+            "raw_dimension": li.raw_dimension,
+            "qty": li.qty,
+            "rate": li.rate,
+        }
+        for li in normalized.line_items
+    ]
+    log = write_audit_log(
+        db,
+        client_id=client_id,
+        model_name=model_name,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        latency_ms=latency_ms,
+        status=status,
+        raw_hash=raw_hash,
+        prompt_version=CHECKPOINT_PROMPT_VERSION,
+        guard_flags=[f.to_dict() for f in flags],
+        proposed_output={"line_items": proposed},
+    )
 
     return ExtractionResponse(
         audit_log_id=str(log.id),
@@ -225,7 +251,7 @@ async def extract_checkpoint_from_input(
         client_budget=normalized.client_budget,
         material_hints=hints,
         unmapped_notes=normalized.unmapped_notes,
-        warnings=normalized.warnings,
+        warnings=normalized.warnings + [f.message for f in flags],
         questions=[
             ExtractedQuestionOut(
                 question=q.question, suggested_note=q.suggested_note

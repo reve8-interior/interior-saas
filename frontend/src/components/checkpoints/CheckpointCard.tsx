@@ -9,6 +9,7 @@ import {
   type ExtractionRecord,
   deleteCheckpoint,
   extractFromText,
+  undoQuotationAdd,
   updateCheckpointNotes,
   updateQuotationItems,
 } from '@/lib/checkpoints';
@@ -72,6 +73,9 @@ export function CheckpointCard({
   const [isExtracting, setIsExtracting] = useState(false);
   const [isSendingToQuotation, setIsSendingToQuotation] = useState(false);
   const [confirmAdd, setConfirmAdd] = useState(false);
+  const [confirmUndo, setConfirmUndo] = useState(false);
+  const [isUndoing, setIsUndoing] = useState(false);
+  const [undoRefusal, setUndoRefusal] = useState<string | null>(null);
   const router = useRouter();
 
   // Proof that extraction has already run. An empty item list means two
@@ -293,6 +297,28 @@ export function CheckpointCard({
       toast.error(errorMessage(err, 'Failed to update quotation'));
     } finally {
       setIsSendingToQuotation(false);
+    }
+  }
+
+  /** Takes the rows back out; hand edits since need a second, explicit go-ahead. */
+  async function undoAdd(force: boolean) {
+    setIsUndoing(true);
+    try {
+      await undoQuotationAdd(clientId, cp.id, force);
+      toast.success(`Meeting #${number} taken out of the quotation`);
+      setConfirmUndo(false);
+      setUndoRefusal(null);
+      onQuotationUpdated();
+    } catch (err) {
+      const message = errorMessage(err, 'Could not undo');
+      if (!force && message.includes('edited by hand')) {
+        setUndoRefusal(message);
+      } else {
+        toast.error(message);
+        setConfirmUndo(false);
+      }
+    } finally {
+      setIsUndoing(false);
     }
   }
 
@@ -529,7 +555,14 @@ export function CheckpointCard({
                           className="text-brand-600 dark:text-brand-400 font-medium underline-offset-2 hover:underline"
                         >
                           View in quotation →
-                        </Link>
+                        </Link>{' '}
+                        <button
+                          type="button"
+                          onClick={() => setConfirmUndo(true)}
+                          className="link-action-muted"
+                        >
+                          Undo add
+                        </button>
                       </p>
                     )}
 
@@ -674,6 +707,31 @@ export function CheckpointCard({
           )}
         </>
       )}
+
+      <Modal
+        open={confirmUndo}
+        onClose={() => {
+          setConfirmUndo(false);
+          setUndoRefusal(null);
+        }}
+        title="Take this meeting out of the quotation?"
+        maxWidth="md"
+      >
+        <p className="mb-4 text-sm text-dark-600 dark:text-dark-400">
+          {undoRefusal ??
+            'The quotation goes back to how it was before this meeting was added, and the meeting returns to a draft you can review and add again. This only works while nothing was added after it.'}
+        </p>
+        <ModalFooter
+          onCancel={() => {
+            setConfirmUndo(false);
+            setUndoRefusal(null);
+          }}
+          onConfirm={() => undoAdd(undoRefusal !== null)}
+          confirmLabel={undoRefusal ? 'Undo anyway' : 'Undo add'}
+          loading={isUndoing}
+          loadingLabel="Undoing…"
+        />
+      </Modal>
 
       <ConfirmDeleteModal
         isOpen={confirmDelete}

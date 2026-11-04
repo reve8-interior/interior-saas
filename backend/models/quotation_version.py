@@ -37,7 +37,7 @@ class QuotationVersion(Base):
         ),
     )
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     quotation_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("quotations.id", ondelete="CASCADE"),
@@ -86,7 +86,7 @@ class QuotationShare(Base):
 
     __tablename__ = "quotation_shares"
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     version_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("quotation_versions.id", ondelete="CASCADE"),

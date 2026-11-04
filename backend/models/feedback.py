@@ -27,7 +27,7 @@ class Feedback(Base):
         ),
     )
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     # Kept when the user or business is deleted, so the ratings survive.
     user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),

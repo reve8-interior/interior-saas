@@ -1,9 +1,9 @@
 """Postgres row-level security for per-business data isolation.
 
 How it works:
-- Tables that carry `business_id` (clients, materials_rates) are filtered by
-  it directly; every other table that hangs off them is filtered through an
-  EXISTS on its parent, which is itself RLS-filtered.
+- Tables that carry `business_id` (clients, materials_rates, designs, ...) are
+  filtered by it directly; every other table that hangs off them is filtered
+  through an EXISTS on its parent, which is itself RLS-filtered.
 - Policies target the NOLOGIN role `portal_app`. Requests from business users
   run `SET LOCAL ROLE portal_app` and set `app.business_id`, so the policies
   apply even when the app connects as a superuser/table owner (who would
@@ -31,10 +31,11 @@ _POLICIES: dict[str, str] = {
     "materials_rates": _BUSINESS_PREDICATE,
     "client_access": "EXISTS (SELECT 1 FROM clients c WHERE c.id = client_id)",
     "checkpoints": "EXISTS (SELECT 1 FROM clients c WHERE c.id = client_id)",
-    "designs": "EXISTS (SELECT 1 FROM clients c WHERE c.id = client_id)",
+    "designs": _BUSINESS_PREDICATE,
     "design_hotspots": "EXISTS (SELECT 1 FROM designs d WHERE d.id = design_id)",
     "share_links": "EXISTS (SELECT 1 FROM clients c WHERE c.id = client_id)",
     "portfolio_shares": _BUSINESS_PREDICATE,
+    "projects": _BUSINESS_PREDICATE,
     "final_summaries": "EXISTS (SELECT 1 FROM clients c WHERE c.id = client_id)",
     "quotations": "EXISTS (SELECT 1 FROM clients c WHERE c.id = client_id)",
     "quotation_versions": (
@@ -52,6 +53,9 @@ _POLICIES: dict[str, str] = {
     "users": _BUSINESS_PREDICATE,
     "businesses": f"id = {BUSINESS_ID_DEFAULT}",
     "app_settings": "true",
+    # Public slugs: any business reads/writes them so claims can detect
+    # collisions; the public site resolves them unscoped.
+    "slug_aliases": "true",
     "audit_log": "true",
     # Any user writes their own answers; only the superadmin console reads.
     "feedback": "true",
@@ -60,6 +64,28 @@ _POLICIES: dict[str, str] = {
         "EXISTS (SELECT 1 FROM quotations q WHERE q.id = quotation_id)"
     ),
 }
+
+# Predicates used while a table predates its business_id column: older
+# migrations replay apply_rls before that column is added (agent_audit_log
+# gains it in 0017, designs in 0051), when the row is keyed by its client.
+_LEGACY_POLICIES: dict[str, str] = {
+    "agent_audit_log": (
+        "EXISTS (SELECT 1 FROM clients c WHERE c.id = client_id)"
+    ),
+    "designs": "EXISTS (SELECT 1 FROM clients c WHERE c.id = client_id)",
+}
+
+
+def _has_column(conn: Connection, table: str, column: str) -> bool:
+    return (
+        conn.exec_driver_sql(
+            "SELECT 1 FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = %s "
+            "AND column_name = %s",
+            (table, column),
+        ).first()
+        is not None
+    )
 
 
 def apply_rls(conn: Connection) -> None:
@@ -93,6 +119,10 @@ def apply_rls(conn: Connection) -> None:
             is None
         ):
             continue
+        if table in _LEGACY_POLICIES and not _has_column(
+            conn, table, "business_id"
+        ):
+            predicate = _LEGACY_POLICIES[table]
         conn.exec_driver_sql(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
         conn.exec_driver_sql(
             f"DROP POLICY IF EXISTS business_isolation ON {table}"

@@ -34,6 +34,8 @@ class QuotationLineItemCreate(BaseModel):
     remarks: str | None = Field(default=None, max_length=2000)
     extra: dict[str, str | float | None] = Field(default_factory=dict)
     material_id: UUID | None = Field(default=None)
+    # Add even though a similar line is already in the room.
+    allow_duplicate: bool = False
 
 
 class QuotationLineItemUpdate(BaseModel):
@@ -54,6 +56,11 @@ class QuotationLineItemUpdate(BaseModel):
     extra: dict[str, str | float | None] | None = None
     status: QuotationItemStatus | None = None
     material_id: UUID | None = Field(default=None)
+    # The updated_at the editor last saw; a mismatch means someone else
+    # changed the row meanwhile and the edit is refused (409).
+    expected_updated_at: datetime | None = None
+    # Rename into a room/wording that matches another line anyway.
+    allow_duplicate: bool = False
 
 
 class QuotationLineItemRead(BaseModel):
@@ -82,6 +89,8 @@ class QuotationLineItemRead(BaseModel):
     source_design_title: str | None = None
     # The hotspot itself, so the design editor can open on it.
     source_hotspot_id: UUID | None = None
+    # Who last changed the line, from the audit trail (None if unknown).
+    edited_by: str | None = None
     created_at: datetime
     updated_at: datetime
 

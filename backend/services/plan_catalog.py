@@ -12,6 +12,11 @@ FREE_SLUG = "free"
 # Slugs that existed before plans became editable.
 PLAN_ALIASES: dict[str, str] = {"pro": "studio"}
 
+# Shown on every plan: all of them include AI credits.
+_AI_INTAKE = "AI quotes from notes, voice, text or a floor plan"
+# Only meaningful once more than one person works on a quotation.
+_TEAM_SAFE = "Duplicate checks and edit protection for your team"
+
 DEFAULT_PLANS: tuple[PlanCreate, ...] = (
     PlanCreate(
         slug="free",
@@ -25,7 +30,7 @@ DEFAULT_PLANS: tuple[PlanCreate, ...] = (
         max_image_mb=5,
         max_portfolio_designs=10,
         ai_credits_monthly=10,
-        highlights=["Watermarked exports", "Community support"],
+        highlights=["Watermarked exports", "Community support", _AI_INTAKE],
     ),
     PlanCreate(
         slug="solo",
@@ -42,7 +47,9 @@ DEFAULT_PLANS: tuple[PlanCreate, ...] = (
         max_portfolio_designs=50,
         ai_credits_monthly=50,
         clean_export=True,
-        highlights=["Clean exports", "Email support"],
+        website_enabled=True,
+        website_templates=1,
+        highlights=["Clean exports", "Email support", _AI_INTAKE, _TEAM_SAFE],
     ),
     PlanCreate(
         slug="studio",
@@ -60,7 +67,14 @@ DEFAULT_PLANS: tuple[PlanCreate, ...] = (
         max_portfolio_designs=None,
         ai_credits_monthly=200,
         clean_export=True,
-        highlights=["Unlimited clients and quotation versions"],
+        website_enabled=True,
+        website_templates=1,
+        website_custom_domain=True,
+        highlights=[
+            "Unlimited clients and quotation versions",
+            _AI_INTAKE,
+            _TEAM_SAFE,
+        ],
     ),
     PlanCreate(
         slug="studio_pro",
@@ -80,7 +94,16 @@ DEFAULT_PLANS: tuple[PlanCreate, ...] = (
         branded_export=True,
         bulk_materials_import=True,
         priority_support=True,
-        highlights=["Your logo on exports", "Bulk materials import"],
+        website_enabled=True,
+        website_templates=1,
+        website_custom_domain=True,
+        website_remove_badge=True,
+        highlights=[
+            "Your logo on exports",
+            "Bulk materials import",
+            _AI_INTAKE,
+            _TEAM_SAFE,
+        ],
     ),
 )
 

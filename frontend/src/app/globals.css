@@ -742,3 +742,139 @@ select {
     animation: none;
   }
 }
+
+/* ── Public designer website: a fixed light "editorial" surface ────────────────
+   Re-declares the light tokens so the site reads the same whatever theme the visitor last used in the app,
+   on a slightly warmer canvas. Token utilities (bg-canvas, text-text, border-line ...) resolve to these. */
+.site-light {
+  color-scheme: light;
+  --brand-1: 30 79 214;
+  --brand-2: 12 150 194;
+  --accent-text: 30 79 214;
+  --ink: 247 246 242;
+  --surface: 255 255 255;
+  --surface-2: 239 237 231;
+  --text: 10 19 48;
+  --muted: 61 72 103;
+  --faint: 84 95 128;
+  --line: rgb(20 40 110 / 0.12);
+  --line-strong: rgb(20 40 110 / 0.22);
+  /* Dark bands (hero, footer, project overlay): --deep base, --deep-2 scrim/overlay, --deep-hi gradient highlight. */
+  --deep: 10 19 48;
+  --deep-2: 6 11 29;
+  --deep-hi: 20 45 115;
+  --font-display: var(--font-fraunces);
+  --site-font-body: var(--font-inter);
+  background-color: rgb(var(--ink));
+  color: rgb(var(--text));
+  font-family: var(--site-font-body), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Website themes (schemas.site.SiteTheme). Each overrides the .site-light tokens above; "classic" is the default. */
+.site-theme-warm-linen {
+  --brand-1: 176 74 44;
+  --brand-2: 214 140 69;
+  --accent-text: 156 62 35;
+  --ink: 249 244 236;
+  --surface: 255 252 247;
+  --surface-2: 240 232 219;
+  --text: 43 29 22;
+  --muted: 94 76 66;
+  --faint: 115 96 85;
+  --line: rgb(80 50 30 / 0.14);
+  --line-strong: rgb(80 50 30 / 0.26);
+  --deep: 46 27 20;
+  --deep-2: 28 16 12;
+  --deep-hi: 84 45 30;
+}
+
+.site-theme-sage-stone {
+  --brand-1: 74 107 85;
+  --brand-2: 156 140 118;
+  --accent-text: 59 90 70;
+  --ink: 244 244 240;
+  --surface: 252 252 249;
+  --surface-2: 232 233 226;
+  --text: 31 40 34;
+  --muted: 76 88 80;
+  --faint: 95 107 98;
+  --line: rgb(40 60 45 / 0.14);
+  --line-strong: rgb(40 60 45 / 0.26);
+  --deep: 32 48 38;
+  --deep-2: 20 31 25;
+  --deep-hi: 58 84 66;
+  --font-display: var(--font-cormorant);
+}
+
+.site-theme-midnight-gold {
+  color-scheme: dark;
+  --brand-1: 201 164 92;
+  --brand-2: 232 200 130;
+  --accent-text: 214 178 106;
+  --ink: 15 18 30;
+  --surface: 22 26 42;
+  --surface-2: 30 35 56;
+  --text: 238 234 224;
+  --muted: 176 176 190;
+  --faint: 148 150 168;
+  --line: rgb(255 255 255 / 0.12);
+  --line-strong: rgb(255 255 255 / 0.22);
+  --deep: 8 10 20;
+  --deep-2: 5 6 14;
+  --deep-hi: 28 33 58;
+  --font-display: var(--font-playfair);
+}
+
+.site-theme-mono-editorial {
+  --brand-1: 20 20 20;
+  --brand-2: 220 56 36;
+  --accent-text: 190 40 24;
+  --ink: 255 255 255;
+  --surface: 255 255 255;
+  --surface-2: 243 243 243;
+  --text: 12 12 12;
+  --muted: 70 70 70;
+  --faint: 98 98 98;
+  --line: rgb(0 0 0 / 0.14);
+  --line-strong: rgb(0 0 0 / 0.28);
+  --deep: 12 12 12;
+  --deep-2: 6 6 6;
+  --deep-hi: 38 38 38;
+  --font-display: var(--font-space-grotesk);
+  --site-font-body: var(--font-space-grotesk);
+}
+
+.site-theme-blush-modern {
+  --brand-1: 190 84 110;
+  --brand-2: 232 160 175;
+  --accent-text: 168 62 90;
+  --ink: 253 246 245;
+  --surface: 255 251 250;
+  --surface-2: 245 232 231;
+  --text: 40 32 38;
+  --muted: 92 80 88;
+  --faint: 114 101 109;
+  --line: rgb(90 40 55 / 0.13);
+  --line-strong: rgb(90 40 55 / 0.25);
+  --deep: 52 34 44;
+  --deep-2: 32 20 28;
+  --deep-hi: 96 58 76;
+  --font-display: var(--font-dm-serif);
+  --site-font-body: var(--font-dm-sans);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:has(.site-light) {
+    scroll-behavior: auto;
+  }
+}
+
+/* Slow settle on the website hero photo (applied with motion-safe: only). */
+@keyframes siteHeroZoom {
+  from {
+    transform: scale(1.06);
+  }
+  to {
+    transform: scale(1);
+  }
+}

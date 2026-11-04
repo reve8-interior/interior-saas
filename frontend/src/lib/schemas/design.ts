@@ -39,6 +39,10 @@ export interface HotspotQuotationInput {
   qty: number | null;
   rate: number | null;
   remarks: string | null;
+  /** Add even though a similar item is already in the room. */
+  allow_duplicate?: boolean;
+  /** Update this existing line with the hotspot instead of adding a new one. */
+  update_item_id?: string | null;
 }
 
 export interface HotspotInput extends HotspotRegion {

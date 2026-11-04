@@ -292,6 +292,7 @@ def _build_sample(db: Session, user: User, stored: list[str]) -> Client:
     garden_id, garden_path = _store_image(client.id, GARDEN_PHOTO, stored)
     living = Design(
         id=living_id,
+        business_id=client.business_id,
         client_id=client.id,
         source=DesignSource.designer_uploaded,
         title="Living room - sage feature wall",
@@ -303,6 +304,7 @@ def _build_sample(db: Session, user: User, stored: list[str]) -> Client:
     )
     garden = Design(
         id=garden_id,
+        business_id=client.business_id,
         client_id=client.id,
         source=DesignSource.designer_uploaded,
         title="Living room - garden view",

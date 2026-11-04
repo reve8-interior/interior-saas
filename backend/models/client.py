@@ -1,10 +1,10 @@
 import enum
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Boolean, Enum, ForeignKey, String, DateTime, text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from datetime import datetime
 
 from ..rls import BUSINESS_ID_DEFAULT
 from .base import Base, TimestampMixin, uuid_pk
@@ -21,7 +21,7 @@ class ProjectPhase(str, enum.Enum):
 class Client(Base, TimestampMixin):
     __tablename__ = "clients"
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     # Filled from the request's business by a DB default; see backend/rls.py.
     business_id: Mapped[uuid.UUID | None] = mapped_column(

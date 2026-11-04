@@ -134,6 +134,9 @@ def write_audit_log(
     latency_ms: int,
     status: str,
     raw_hash: str,
+    prompt_version: str | None = None,
+    guard_flags: list[dict] | None = None,
+    proposed_output: dict | None = None,
 ) -> AgentAuditLog:
     return log_ai_usage(
         db,
@@ -145,7 +148,47 @@ def write_audit_log(
         status=status,
         client_id=uuid.UUID(client_id),
         raw_input_hash=raw_hash,
+        prompt_version=prompt_version,
+        guard_flags=guard_flags,
+        proposed_output=proposed_output,
     )
+
+
+def record_final_output(
+    db: Session,
+    audit_log_id: str | None,
+    client_id: str,
+    line_items: list,
+) -> None:
+    """Store the rows the designer saved beside what the AI proposed.
+
+    Silently skipped for an unknown or foreign run id: this is evaluation
+    data, never a reason to fail the save.
+    """
+    if not audit_log_id:
+        return
+    try:
+        log_id = uuid.UUID(audit_log_id)
+    except ValueError:
+        return
+    log = db.get(AgentAuditLog, log_id)
+    if log is None or log.client_id != uuid.UUID(client_id):
+        return
+    log.final_output = {
+        "line_items": [
+            {
+                "action": li.action,
+                "target_item_id": getattr(li, "target_item_id", None),
+                "room": li.room,
+                "description": li.description,
+                "unit": li.unit,
+                "raw_dimension": li.raw_dimension,
+                "qty": li.qty,
+                "rate": li.rate,
+            }
+            for li in line_items
+        ]
+    }
 
 
 def snapshot_line_items(quotation: Quotation, checkpoint_id: str) -> None:

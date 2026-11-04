@@ -8,6 +8,8 @@ import { Modal } from '@/components/ui/Modal';
 import { INPUT_CLS } from '@/lib/constants';
 import { errorMessage } from '@/lib/errors';
 import { fmtRupees } from '@/lib/format';
+import { ApiError } from '@/lib/api';
+import { checkIntake } from '@/lib/intake';
 import type { LineItemColumnDef } from '@/lib/lineItemColumns';
 import {
   blankRow,
@@ -37,6 +39,7 @@ const LABEL_CLS = 'field-label md:sr-only';
  * ignored. If a save fails partway, the unsaved rows stay here to retry.
  */
 export function AddRowsSheet({
+  clientId,
   rooms,
   customCols,
   defaultRoom,
@@ -44,6 +47,7 @@ export function AddRowsSheet({
   onChanged,
   onClose,
 }: {
+  clientId: string;
   rooms: string[];
   customCols: LineItemColumnDef[];
   defaultRoom?: string;
@@ -60,6 +64,7 @@ export function AddRowsSheet({
   const [rowErrors, setRowErrors] = useState<Record<number, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [duplicates, setDuplicates] = useState<string[]>([]);
   const [focusRow, setFocusRow] = useState<number | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const roomRef = useRef<HTMLInputElement>(null);
@@ -93,6 +98,7 @@ export function AddRowsSheet({
 
   const updateRow = (id: number, edit: (row: LineItemRow) => LineItemRow) => {
     setRows((prev) => prev.map((r) => (r.id === id ? edit(r) : r)));
+    setDuplicates([]);
     setRowErrors(({ [id]: _cleared, ...rest }) => rest);
   };
 
@@ -123,7 +129,24 @@ export function AddRowsSheet({
     else addRow();
   };
 
-  const save = async (thenNextRoom: boolean) => {
+  /** Lines already in the quotation that a typed row looks like, named for the designer. */
+  const findDuplicates = async (): Promise<string[]> => {
+    try {
+      const results = await checkIntake(
+        clientId,
+        filled.map((r) => ({ room: room.trim(), description: r.description }))
+      );
+      return results.flatMap((res, i) =>
+        res.similar
+          ? [`“${filled[i].description}” looks like ${res.similar.summary}`]
+          : []
+      );
+    } catch {
+      return [];
+    }
+  };
+
+  const save = async (thenNextRoom: boolean, confirmed = false) => {
     if (!room.trim()) {
       setFormError('Choose a room first.');
       roomRef.current?.focus();
@@ -147,13 +170,26 @@ export function AddRowsSheet({
     }
 
     setFormError(null);
+    if (!confirmed) {
+      setSaving(true);
+      const found = await findDuplicates();
+      setSaving(false);
+      if (found.length > 0) {
+        setDuplicates(found);
+        return;
+      }
+    }
+    setDuplicates([]);
     setSaving(true);
     const savedIds = new Set<number>();
     let flagged = 0;
     let failure: unknown = null;
     for (const row of filled) {
       try {
-        const item = await onCreate(rowPayload(room, row, customCols));
+        const item = await onCreate({
+          ...rowPayload(room, row, customCols),
+          allow_duplicate: confirmed,
+        });
         savedIds.add(row.id);
         if (item.status === 'pending_clarity') flagged += 1;
       } catch (err) {
@@ -166,6 +202,16 @@ export function AddRowsSheet({
 
     if (failure) {
       setRows((prev) => prev.filter((r) => !savedIds.has(r.id)));
+      if (failure instanceof ApiError && failure.status === 409) {
+        // The server found a similar line the earlier check did not.
+        setDuplicates([failure.message]);
+        setFormError(
+          savedIds.size > 0
+            ? `${savedIds.size} of ${filled.length} saved.`
+            : null
+        );
+        return;
+      }
       setFormError(
         `${savedIds.size} of ${filled.length} saved. ${errorMessage(failure, "The rest couldn't be saved")}. Try again.`
       );
@@ -213,6 +259,7 @@ export function AddRowsSheet({
             onChange={(e) => {
               setRoom(e.target.value);
               setFormError(null);
+              setDuplicates([]);
             }}
             placeholder="Living Room"
           />
@@ -403,6 +450,22 @@ export function AddRowsSheet({
         </div>
 
         <div className="sticky bottom-0 z-10 -mx-6 border-t border-line bg-white px-6 py-4 dark:bg-dark-800 max-sm:-mx-4 max-sm:px-4">
+          {duplicates.length > 0 && (
+            <div
+              role="alert"
+              className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-900/20 dark:text-amber-200"
+            >
+              <p className="font-medium">Already in this quotation?</p>
+              <ul className="list-disc pl-5">
+                {duplicates.map((d) => (
+                  <li key={d}>{d}</li>
+                ))}
+              </ul>
+              <p className="mt-1 text-xs">
+                Edit the existing line instead, change the rows, or add anyway.
+              </p>
+            </div>
+          )}
           {formError && (
             <p
               role="alert"
@@ -428,7 +491,7 @@ export function AddRowsSheet({
             </button>
             <button
               type="button"
-              onClick={() => save(true)}
+              onClick={() => save(true, duplicates.length > 0)}
               disabled={saving}
               className="btn-secondary"
             >
@@ -436,11 +499,15 @@ export function AddRowsSheet({
             </button>
             <button
               type="button"
-              onClick={() => save(false)}
+              onClick={() => save(false, duplicates.length > 0)}
               disabled={saving}
               className="btn-primary"
             >
-              {saving ? 'Saving…' : 'Save rows'}
+              {saving
+                ? 'Saving…'
+                : duplicates.length > 0
+                  ? 'Add anyway'
+                  : 'Save rows'}
             </button>
           </div>
         </div>

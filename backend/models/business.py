@@ -1,6 +1,8 @@
+import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin, uuid_pk
@@ -11,7 +13,7 @@ class Business(Base, TimestampMixin):
 
     __tablename__ = "businesses"
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     name: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False, index=True
     )
@@ -65,6 +67,34 @@ class Business(Base, TimestampMixin):
     openai_chat_model: Mapped[str | None] = mapped_column(String(100))
     # Voice transcription model; null = platform default.
     openai_whisper_model: Mapped[str | None] = mapped_column(String(100))
+
+    # Public designer website. slug is the URL handle (null = no site yet).
+    slug: Mapped[str | None] = mapped_column(
+        String(40), unique=True, index=True
+    )
+    site_published: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    site_tagline: Mapped[str | None] = mapped_column(String(255))
+    site_about: Mapped[str | None] = mapped_column(Text)
+    site_address: Mapped[str | None] = mapped_column(String(500))
+    # [{title, description}]
+    site_services: Mapped[list] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    # [{label, url}]
+    site_socials: Mapped[list] = mapped_column(
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
+    )
+    logo_path: Mapped[str | None] = mapped_column(String(500))
+    hero_path: Mapped[str | None] = mapped_column(String(500))
+    hide_badge: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    # Key of a preset in schemas.site.SiteTheme (colours + font pairing).
+    site_theme: Mapped[str] = mapped_column(
+        String(30), nullable=False, default="classic", server_default="classic"
+    )
 
     @property
     def has_openai_key(self) -> bool:

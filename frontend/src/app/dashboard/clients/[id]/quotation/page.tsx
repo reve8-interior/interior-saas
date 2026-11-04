@@ -4,6 +4,7 @@ import { RoomSection } from '@/components/quotation/RoomSection';
 import { BlockSkeleton, ErrorState } from '@/components/ui';
 import {
   createLineItem,
+  reopenQuotation,
   createQuotation,
   deleteLineItem,
   getQuotation,
@@ -39,6 +40,7 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   History,
+  ShieldCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -54,6 +56,7 @@ import { LineItemFormModal } from '@/components/quotation/LineItemFormModal';
 import { SaveVersionModal } from '@/components/quotation/SaveVersionModal';
 import { MeetingReviewBanner } from '@/components/quotation/MeetingReviewBanner';
 import { AddRowsSheet } from '@/components/quotation/AddRowsSheet';
+import { QuotationReviewModal } from '@/components/quotation/QuotationReviewModal';
 import { QuotationAddPanel } from '@/components/quotation/QuotationAddPanel';
 
 export default function QuotationPage() {
@@ -62,6 +65,7 @@ export default function QuotationPage() {
   const router = useRouter();
   const [showAdd, setShowAdd] = useState(false);
   const [savingVersion, setSavingVersion] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
   const [onlyUnclear, setOnlyUnclear] = useState(false);
   const [addToRoom, setAddToRoom] = useState<string | null>(null);
   const [editing, setEditing] = useState<QuotationLineItem | null>(null);
@@ -173,6 +177,19 @@ export default function QuotationPage() {
       toast.error(e.message || 'Failed to create quotation'),
   });
 
+  /** The row's updated_at as loaded, so a teammate's newer edit is caught. */
+  const stampOf = (itemId: string) =>
+    // An open edit form keeps the copy it was opened on, not a later refetch.
+    (editing?.id === itemId ? editing.updated_at : undefined) ??
+    quotation?.rooms.flatMap((r) => r.items).find((i) => i.id === itemId)
+      ?.updated_at;
+
+  // On a conflict the latest rows are reloaded so the retry starts fresh.
+  const onEditError = (e: Error) => {
+    toast.error(e.message || 'Failed to update item');
+    invalidate();
+  };
+
   const updateItemMutation = useMutation({
     mutationFn: ({
       itemId,
@@ -180,13 +197,39 @@ export default function QuotationPage() {
     }: {
       itemId: string;
       payload: LineItemUpdate;
-    }) => updateLineItem(quotation!.id, itemId, payload),
+    }) => updateLineItem(quotation!.id, itemId, payload, stampOf(itemId)),
     onSuccess: () => {
       invalidate();
       setEditing(null);
       toast.success('Line item updated');
     },
-    onError: (e: Error) => toast.error(e.message || 'Failed to update item'),
+    onError: (e, variables) => {
+      // A rename that matches another line: ask once, then save anyway.
+      if (
+        e instanceof ApiError &&
+        e.status === 409 &&
+        e.message.includes('Add it anyway') &&
+        window.confirm(`${e.message}
+
+Save this change anyway?`)
+      ) {
+        updateItemMutation.mutate({
+          ...variables,
+          payload: { ...variables.payload, allow_duplicate: true },
+        });
+        return;
+      }
+      onEditError(e);
+    },
+  });
+
+  const reopenMutation = useMutation({
+    mutationFn: () => reopenQuotation(id),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Quotation reopened for changes');
+    },
+    onError: onEditError,
   });
 
   // Single-cell edits from the table: no modal, quiet success, error toast.
@@ -197,9 +240,9 @@ export default function QuotationPage() {
     }: {
       itemId: string;
       payload: LineItemUpdate;
-    }) => updateLineItem(quotation!.id, itemId, payload),
+    }) => updateLineItem(quotation!.id, itemId, payload, stampOf(itemId)),
     onSuccess: invalidate,
-    onError: (e: Error) => toast.error(e.message || 'Failed to update item'),
+    onError: onEditError,
   });
   const quickUpdate = (itemId: string, payload: LineItemUpdate) =>
     quickUpdateMutation.mutate({ itemId, payload });
@@ -220,6 +263,8 @@ export default function QuotationPage() {
         remarks: item.remarks,
         extra: item.extra,
         material_id: item.material_id,
+        // Putting back what was there a moment ago is not a new duplicate.
+        allow_duplicate: true,
       }),
     onSuccess: () => {
       invalidate();
@@ -230,7 +275,7 @@ export default function QuotationPage() {
 
   const deleteItemMutation = useMutation({
     mutationFn: (item: QuotationLineItem) =>
-      deleteLineItem(quotation!.id, item.id),
+      deleteLineItem(quotation!.id, item.id, item.updated_at),
     onSuccess: (_, item) => {
       invalidate();
       toast.success(`Deleted “${item.description}”`, {
@@ -241,7 +286,10 @@ export default function QuotationPage() {
         },
       });
     },
-    onError: (e: Error) => toast.error(e.message || 'Failed to delete item'),
+    onError: (e: Error) => {
+      toast.error(e.message || 'Failed to delete item');
+      invalidate();
+    },
   });
 
   const savings = quotationSavings(quotation);
@@ -311,6 +359,13 @@ export default function QuotationPage() {
           )}
           <button
             type="button"
+            onClick={() => setReviewing(true)}
+            className="btn-secondary"
+          >
+            <ShieldCheck className="h-4 w-4" /> Review
+          </button>
+          <button
+            type="button"
             onClick={() => setSavingVersion(true)}
             className="btn-primary"
           >
@@ -320,6 +375,13 @@ export default function QuotationPage() {
       )}
 
       <MeetingReviewBanner clientId={id} checkpoints={checkpoints} />
+
+      {reviewing && (
+        <QuotationReviewModal
+          clientId={id}
+          onClose={() => setReviewing(false)}
+        />
+      )}
 
       {isLoading && <BlockSkeleton />}
 
@@ -360,6 +422,16 @@ export default function QuotationPage() {
                 ? 'Approved'
                 : STATE_LABELS[quotation.derived_state]}
             </span>
+            {quotation.status === 'approved' && (
+              <button
+                type="button"
+                onClick={() => reopenMutation.mutate()}
+                disabled={reopenMutation.isPending}
+                className="link-action"
+              >
+                {reopenMutation.isPending ? 'Reopening…' : 'Reopen to edit'}
+              </button>
+            )}
             {quotation.pending_clarity_count > 0 && (
               <button
                 type="button"
@@ -482,6 +554,7 @@ export default function QuotationPage() {
 
       {showAdd && quotation && (
         <AddRowsSheet
+          clientId={id}
           rooms={existingRooms}
           customCols={customCols}
           defaultRoom={addToRoom ?? undefined}

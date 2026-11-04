@@ -28,6 +28,7 @@ import type { Design } from '@/lib/schemas/design';
 import type { Quotation } from '@/lib/schemas/quotation';
 import { getQuotation } from '@/lib/quotation';
 import { errorMessage } from '@/lib/errors';
+import { FilePreviewList } from '@/components/designs/FilePreviewList';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 
@@ -343,13 +344,13 @@ export default function DesignsPage() {
               className="block w-full text-sm text-dark-700 file:mr-3 file:rounded-lg file:border-0 file:bg-primary-600 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-primary-500 dark:text-dark-300"
             />
             {files.length > 0 && (
-              <ul className="mt-2 space-y-1 text-xs text-dark-600 dark:text-dark-300">
-                {files.map((f) => (
-                  <li key={f.name + f.size} className="truncate">
-                    {f.name} · {(f.size / 1024 / 1024).toFixed(1)} MB
-                  </li>
-                ))}
-              </ul>
+              <FilePreviewList
+                files={files}
+                onRemove={(f) => {
+                  setFiles((prev) => prev.filter((x) => x !== f));
+                  if (fileRef.current) fileRef.current.value = '';
+                }}
+              />
             )}
             {fileError && (
               <p className="mt-1 text-xs text-red-600 dark:text-red-400">

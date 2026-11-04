@@ -14,10 +14,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { TopBarActions } from '@/components/layout/TopBarActions';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Checkpoint, LineItemData } from '@/components/checkpoints/types';
-import { AddFromNotes } from '@/components/checkpoints/AddFromNotes';
+import { AddWithAi } from '@/components/checkpoints/AddWithAi';
 import { CheckpointCard } from '@/components/checkpoints/CheckpointCard';
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -94,14 +93,6 @@ export default function CheckpointsPage() {
 
   return (
     <div className="space-y-6">
-      <TopBarActions>
-        <AddFromNotes
-          clientId={id}
-          onSaved={handleAiSaved}
-          className="btn-primary"
-        />
-      </TopBarActions>
-
       {sorted.length > 1 && (
         <input
           type="search"
@@ -112,28 +103,40 @@ export default function CheckpointsPage() {
           className="field max-w-md"
         />
       )}
-      {sorted.length > 1 && (
-        <div
-          role="group"
-          aria-label="Filter meeting notes"
-          className="flex flex-wrap gap-2"
-        >
-          {(
-            Object.keys(CONVERSATION_FILTER_LABELS) as ConversationFilter[]
-          ).map((f) => (
-            <button
-              key={f}
-              type="button"
-              aria-pressed={filter === f}
-              onClick={() => setFilter(f)}
-              className="filter-chip"
+      {sorted.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          {sorted.length > 1 && (
+            <div
+              role="group"
+              aria-label="Filter meeting notes"
+              className="flex flex-wrap gap-2"
             >
-              {CONVERSATION_FILTER_LABELS[f]}
-              <span className="ml-1.5 tabular-nums opacity-70">
-                {sorted.filter((cp) => matchesConversationFilter(cp, f)).length}
-              </span>
-            </button>
-          ))}
+              {(
+                Object.keys(CONVERSATION_FILTER_LABELS) as ConversationFilter[]
+              ).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  aria-pressed={filter === f}
+                  onClick={() => setFilter(f)}
+                  className="filter-chip"
+                >
+                  {CONVERSATION_FILTER_LABELS[f]}
+                  <span className="ml-1.5 tabular-nums opacity-70">
+                    {
+                      sorted.filter((cp) => matchesConversationFilter(cp, f))
+                        .length
+                    }
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          <AddWithAi
+            clientId={id}
+            onSaved={handleAiSaved}
+            className="btn-primary ml-auto"
+          />
         </div>
       )}
 
@@ -146,7 +149,7 @@ export default function CheckpointsPage() {
       ) : sorted.length === 0 ? (
         <EmptyState
           action={
-            <AddFromNotes
+            <AddWithAi
               clientId={id}
               onSaved={handleAiSaved}
               className="btn-primary"

@@ -32,15 +32,19 @@ from .routers import (  # noqa: E402
     checkpoints,
     clients,
     dashboard,
+    floorplan,
+    intake,
     designs,
     feedback,
     materials,
     media,
     n8n,
     plans,
+    projects,
     quotation_versions,
     quotations,
     share,
+    site,
     team,
 )
 from .routers import settings as settings_router  # noqa: E402
@@ -216,6 +220,8 @@ app.include_router(checkpoints.router, prefix="/api/v1", tags=["Checkpoints"])
 app.include_router(
     checkpoint_ai.router, prefix="/api/v1", tags=["Checkpoint AI"]
 )
+app.include_router(floorplan.router, prefix="/api/v1", tags=["Floor plan"])
+app.include_router(intake.router, prefix="/api/v1", tags=["Intake"])
 app.include_router(designs.router, prefix="/api/v1", tags=["Designs"])
 app.include_router(
     feedback.router, prefix="/api/v1/feedback", tags=["Feedback"]
@@ -224,6 +230,10 @@ app.include_router(share.router, prefix="/api/v1", tags=["Share Links"])
 app.include_router(
     share.public_router, prefix="/api/v1", tags=["Public Share"]
 )
+# Admin /site routes first: the public site router must not shadow them.
+app.include_router(site.router, prefix="/api/v1", tags=["Site"])
+app.include_router(site.public_router, prefix="/api/v1", tags=["Public Site"])
+app.include_router(projects.router, prefix="/api/v1", tags=["Projects"])
 app.include_router(media.router, prefix="/api/v1", tags=["Media"])
 app.include_router(quotations.router, prefix="/api/v1", tags=["Quotations"])
 app.include_router(

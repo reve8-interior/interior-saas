@@ -23,11 +23,26 @@ from ..schemas.quotation import (
     QuotationLineItemUpdate,
     QuotationRead,
 )
+from ..schemas.quotation_review import QuotationReview
 from ..services.client_access import get_client_or_404, restrict_to_accessible
+from ..services.intake_gate import (
+    IntakeRejected,
+    decide,
+    refuse_duplicate,
+    tidy,
+)
+from ..services.room_matching import match_name
+from ..services.quotation_concurrency import (
+    ensure_editable,
+    ensure_not_stale,
+    last_editor_names,
+    lock_quotation,
+)
 from ..services.quotation_diff import (
     attach_item_ids,
     compute_quotation_diff,
 )
+from ..services.quotation_review import review_quotation
 from ..services.quotation_service import (
     build_quotation_view,
     derive_state,
@@ -134,10 +149,13 @@ def create_quotation(
 
 
 def _attach_design_sources(view: QuotationRead, db: Session) -> None:
-    """Mark lines created from a design hotspot with that design."""
+    """Mark lines with their last editor and, if from a hotspot, its design."""
     items = [i for room in view.rooms for i in room.items]
     if not items:
         return
+    editors = last_editor_names(db, [i.id for i in items])
+    for item in items:
+        item.edited_by = editors.get(item.id)
     rows = db.execute(
         select(
             DesignHotspot.quotation_line_item_id,
@@ -174,6 +192,22 @@ def get_quotation(
     view = build_quotation_view(quotation)
     _attach_design_sources(view, db)
     return view
+
+
+@router.get(
+    "/clients/{client_id}/quotation/review", response_model=QuotationReview
+)
+def review_client_quotation(
+    client_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Pre-send checks: missing prices, duplicates, outliers, gaps."""
+    get_client_or_404(client_id, db, current_user)
+    quotation = _latest_quotation(client_id, db)
+    if not quotation:
+        raise HTTPException(status_code=404, detail="Quotation not found")
+    return review_quotation(list(quotation.line_items))
 
 
 @router.get(
@@ -317,7 +351,23 @@ def create_line_item(
 ):
     quotation = _quotation_or_404(quotation_id, db, current_user)
 
-    item = QuotationLineItem(quotation_id=quotation.id, **body.model_dump())
+    lock_quotation(db, quotation)
+    ensure_editable(quotation)
+    try:
+        decision = decide(body.room, body.description, quotation.line_items)
+        refuse_duplicate(decision, body.allow_duplicate)
+    except IntakeRejected as rejected:
+        raise HTTPException(
+            status_code=rejected.status_code, detail=str(rejected)
+        ) from rejected
+    item = QuotationLineItem(
+        quotation_id=quotation.id,
+        **{
+            **body.model_dump(exclude={"allow_duplicate"}),
+            "room": decision.room,
+            "description": decision.description,
+        },
+    )
     resolve_line_item(item)
 
     db.add(item)
@@ -342,6 +392,99 @@ def create_line_item(
     return item
 
 
+def _gate_renamed_line(
+    quotation: Quotation,
+    item: QuotationLineItem,
+    changes: dict,
+    allow_duplicate: bool,
+) -> None:
+    """Editing a line's room or wording, or bringing a removed line back,
+    meets the same gate as adding one.
+
+    Only a real change is checked, so an unrelated edit to a line that
+    already resembles another is never blocked. `changes` is updated in
+    place with the tidy text and the quotation's own room spelling.
+    """
+    revived = (
+        item.status == QuotationItemStatus.removed
+        and changes.get("status", QuotationItemStatus.removed)
+        != QuotationItemStatus.removed
+    )
+    if "room" not in changes and "description" not in changes and not revived:
+        return
+    room = changes.get("room", item.room)
+    description = changes.get("description", item.description)
+    # The line's own room counts as one of the quotation's rooms, so
+    # re-typing it in other letters keeps the quotation's spelling.
+    live_rooms = list(
+        dict.fromkeys(
+            i.room
+            for i in quotation.line_items
+            if i.status != QuotationItemStatus.removed
+        )
+    )
+    snapped, status = match_name(tidy(room), live_rooms)
+    if status == "existing":
+        room = snapped
+    try:
+        decision = decide(
+            room,
+            description,
+            [i for i in quotation.line_items if i is not item],
+        )
+        moved = (
+            revived
+            or decision.room != item.room
+            or tidy(description) != tidy(item.description)
+        )
+        if moved:
+            refuse_duplicate(decision, allow_duplicate)
+    except IntakeRejected as rejected:
+        raise HTTPException(
+            status_code=rejected.status_code, detail=str(rejected)
+        ) from rejected
+    if "room" in changes:
+        changes["room"] = decision.room
+    if "description" in changes:
+        changes["description"] = decision.description
+
+
+@router.post(
+    "/clients/{client_id}/quotation/reopen",
+    response_model=QuotationRead,
+)
+def reopen_quotation(
+    client_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Let an approved quotation change again. Audited; the approved
+    version stays as it was frozen."""
+    get_client_or_404(client_id, db, current_user)
+    quotation = _latest_quotation(client_id, db)
+    if not quotation:
+        raise HTTPException(status_code=404, detail="No quotation found")
+    lock_quotation(db, quotation)
+    if quotation.status != QuotationStatus.approved:
+        raise HTTPException(
+            status_code=409, detail="This quotation is not approved"
+        )
+    quotation.status = QuotationStatus.pending
+    db.add(
+        AuditLog(
+            user_id=current_user.id,
+            action="quotation_reopened",
+            entity_type="quotation",
+            entity_id=str(quotation.id),
+            payload={"client_id": client_id},
+            timestamp=datetime.utcnow(),
+        )
+    )
+    db.commit()
+    db.refresh(quotation)
+    return build_quotation_view(quotation)
+
+
 @router.patch(
     "/quotations/{quotation_id}/items/{item_id}",
     response_model=QuotationLineItemRead,
@@ -356,9 +499,17 @@ def update_line_item(
     quotation = _quotation_or_404(quotation_id, db, current_user)
     item = _item_or_404(quotation, item_id, db)
 
-    changes = body.model_dump(exclude_unset=True)
+    lock_quotation(db, quotation)
+    ensure_editable(quotation)
+    db.refresh(item)
+    ensure_not_stale(db, item, body.expected_updated_at)
+
+    changes = body.model_dump(
+        exclude_unset=True, exclude={"expected_updated_at", "allow_duplicate"}
+    )
     if not changes:
         raise HTTPException(status_code=400, detail="No fields to update")
+    _gate_renamed_line(quotation, item, changes, body.allow_duplicate)
 
     for field, value in changes.items():
         setattr(item, field, value)
@@ -397,11 +548,16 @@ def update_line_item(
 def delete_line_item(
     quotation_id: str,
     item_id: str,
+    expected_updated_at: datetime | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     quotation = _quotation_or_404(quotation_id, db, current_user)
     item = _item_or_404(quotation, item_id, db)
+    lock_quotation(db, quotation)
+    ensure_editable(quotation)
+    db.refresh(item)
+    ensure_not_stale(db, item, expected_updated_at)
 
     db.add(
         AuditLog(

@@ -61,7 +61,7 @@ from ..services.quotation_version_xlsx import (
     parse_version_xlsx,
 )
 from .deps import get_current_user
-from .designs import design_thumb_url, design_view_url
+from ..services.portfolio import design_thumb_url, design_view_url
 from .quotations import _latest_quotation
 from .share import _shared_hotspot
 

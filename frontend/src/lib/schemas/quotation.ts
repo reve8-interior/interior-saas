@@ -35,6 +35,8 @@ export interface QuotationLineItem {
   source_checkpoint_id?: string | null;
   source_design_id?: string | null;
   source_design_title?: string | null;
+  /** Who last changed the line, from the audit trail. */
+  edited_by?: string | null;
   source_hotspot_id?: string | null;
   created_at: string;
   updated_at: string;
@@ -84,6 +86,8 @@ export interface LineItemCreate {
   remarks?: string | null;
   extra?: Record<string, string | number | null>;
   material_id?: string | null;
+  /** Add even though a similar line is already in the room. */
+  allow_duplicate?: boolean;
 }
 
 export type LineItemUpdate = Partial<LineItemCreate> & {

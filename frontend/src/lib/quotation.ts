@@ -26,6 +26,11 @@ export function createQuotation(clientId: string): Promise<Quotation> {
   return api.post<Quotation>(`/clients/${clientId}/quotation`, {});
 }
 
+/** Let an approved quotation change again (the approved version stays frozen). */
+export function reopenQuotation(clientId: string): Promise<Quotation> {
+  return api.post<Quotation>(`/clients/${clientId}/quotation/reopen`, {});
+}
+
 /** Add a line item; the backend parses raw_dimension and derives price. */
 export function createLineItem(
   quotationId: string,
@@ -40,24 +45,50 @@ export function createLineItem(
 /** Delete a line item permanently. */
 export function deleteLineItem(
   quotationId: string,
-  itemId: string
+  itemId: string,
+  expectedUpdatedAt?: string
 ): Promise<void> {
-  return api.delete<void>(`/quotations/${quotationId}/items/${itemId}`);
+  return api.delete<void>(`/quotations/${quotationId}/items/${itemId}`, {
+    params: { expected_updated_at: expectedUpdatedAt },
+  });
 }
 
 /** Partially update a line item (price, remarks, status, …). */
 export function updateLineItem(
   quotationId: string,
   itemId: string,
-  payload: LineItemUpdate
+  payload: LineItemUpdate,
+  expectedUpdatedAt?: string
 ): Promise<QuotationLineItem> {
+  // The server refuses (409) if someone else changed the row since this
+  // copy was loaded.
   return api.patch<QuotationLineItem>(
     `/quotations/${quotationId}/items/${itemId}`,
-    payload
+    { ...payload, expected_updated_at: expectedUpdatedAt }
   );
 }
 
 /** Fetch all materials for dropdown selection. */
 export function getMaterials(): Promise<Material[]> {
   return api.get<Material[]>('/materials');
+}
+
+export type ReviewSeverity = 'error' | 'warning' | 'info';
+
+export interface ReviewFinding {
+  code: string;
+  severity: ReviewSeverity;
+  message: string;
+  room: string | null;
+  item_id: string | null;
+}
+
+export interface QuotationReview {
+  findings: ReviewFinding[];
+  items_checked: number;
+}
+
+/** Pre-send checks: missing prices, duplicates, outliers, likely gaps. */
+export function reviewQuotation(clientId: string): Promise<QuotationReview> {
+  return api.get<QuotationReview>(`/clients/${clientId}/quotation/review`);
 }

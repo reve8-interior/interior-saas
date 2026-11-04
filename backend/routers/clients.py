@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import delete, select
@@ -161,6 +161,8 @@ def set_client_access(
     admin: User = Depends(require_business_admin),
 ):
     """Choose which designers (besides the lead) can see this client."""
+    if admin.business_id is None:
+        raise HTTPException(status_code=403, detail="No business")
     client = get_client_or_404(client_id, db, admin)
     return access.set_client_members(
         client, set(body.member_ids), admin.business_id, db, admin
@@ -184,7 +186,7 @@ def update_phase(
 
     # Track when the project was completed
     if body.phase == ProjectPhase.completed:
-        client.completed_at = datetime.utcnow()
+        client.completed_at = datetime.now(timezone.utc)
     elif old_phase == ProjectPhase.completed:
         client.completed_at = None
 
@@ -195,7 +197,7 @@ def update_phase(
             entity_type="client",
             entity_id=str(client.id),
             payload={"from": old_phase, "to": body.phase},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     )
     db.commit()
@@ -231,7 +233,7 @@ def delete_sample_client(
             entity_type="client",
             entity_id=str(client.id),
             payload={},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     )
     db.commit()
@@ -260,7 +262,7 @@ def deactivate_client(
             entity_type="client",
             entity_id=str(client.id),
             payload={},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     )
     db.commit()
@@ -288,7 +290,7 @@ def activate_client(
             entity_type="client",
             entity_id=str(client.id),
             payload={},
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
         )
     )
     db.commit()

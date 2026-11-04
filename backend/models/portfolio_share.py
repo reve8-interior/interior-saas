@@ -13,7 +13,7 @@ class PortfolioShare(Base):
 
     __tablename__ = "portfolio_shares"
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     business_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("businesses.id", ondelete="CASCADE"),

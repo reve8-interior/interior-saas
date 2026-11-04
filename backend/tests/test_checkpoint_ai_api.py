@@ -257,6 +257,20 @@ class TestFromExtraction:
         assert r.status_code == 422
         assert "mandatory" in r.json()["detail"]
 
+    def test_starter_draft_may_leave_mandatory_columns_blank(self, api, db):
+        user, client = setup_client(db)
+        r = api.post(
+            f"/api/v1/clients/{client.id}/checkpoints/from-extraction",
+            headers=auth(user),
+            json={
+                "summary_text": "n",
+                "raw_transcript": "",
+                "line_items": [{**ITEM, "unit": ""}],
+                "allow_incomplete": True,
+            },
+        )
+        assert r.status_code == 201, r.text
+
     def test_legacy_clients_still_sending_audit_log_id_are_accepted(
         self, api, db
     ):

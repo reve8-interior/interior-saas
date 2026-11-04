@@ -109,8 +109,15 @@ class FromExtractionRequest(BaseModel):
     client_budget: float | None = None
     unmapped_notes: list[str] = Field(default_factory=list)
     questions: list[ExtractedQuestionOut] = Field(default_factory=list)
+    # The extraction run these rows came from; links the designer's final
+    # rows to what the AI proposed (see docs/AI_EVAL_PLAN.md).
+    audit_log_id: str | None = None
     # kept for API compat; ignored — we always upsert
     create_quotation: bool = True
+    # Starter drafts (floor plan) leave rates and custom columns blank on
+    # purpose: the designer fills them in the review, and adding to the
+    # quotation still enforces the mandatory columns.
+    allow_incomplete: bool = False
 
 
 class FromExtractionResponse(BaseModel):

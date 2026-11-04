@@ -21,6 +21,8 @@ interface HotspotImageProps<T extends RenderableHotspot> {
   onSelect: (id: string | null) => void;
   /** When true, dragging on the image draws a new region (a click drops a pin). */
   drawing?: boolean;
+  /** While drawing, existing hotspots stay clickable and draggable; only empty image draws. */
+  markersActive?: boolean;
   onDraw?: (region: HotspotRegion) => void;
   /** Region being edited but not yet saved. */
   draft?: HotspotRegion | null;
@@ -71,6 +73,7 @@ export function HotspotImage<T extends RenderableHotspot>({
   selectedId,
   onSelect,
   drawing = false,
+  markersActive = false,
   onDraw,
   draft = null,
   onImageError,
@@ -262,7 +265,9 @@ export function HotspotImage<T extends RenderableHotspot>({
                 onMouseEnter={() => onHover?.(h.id)}
                 onMouseLeave={() => onHover?.(null)}
                 onPointerDown={(e) => {
-                  if (!onMove || drawing) return;
+                  // A press on a marker must not start drawing a new region.
+                  if (markersActive) e.stopPropagation();
+                  if (!onMove || (drawing && !markersActive)) return;
                   e.currentTarget.setPointerCapture(e.pointerId);
                   const p = point(e);
                   grab.current = {
@@ -272,6 +277,10 @@ export function HotspotImage<T extends RenderableHotspot>({
                   };
                 }}
                 onPointerMove={(e) => {
+                  if (markersActive) {
+                    e.stopPropagation();
+                    setCursor(null);
+                  }
                   const g = grab.current;
                   if (!g || g.id !== h.id) return;
                   const p = point(e);
@@ -298,7 +307,7 @@ export function HotspotImage<T extends RenderableHotspot>({
                     draggedRecently.current = false;
                     return;
                   }
-                  if (!drawing) onSelect(h.id);
+                  if (!drawing || markersActive) onSelect(h.id);
                 }}
                 style={
                   isPin
@@ -311,7 +320,7 @@ export function HotspotImage<T extends RenderableHotspot>({
                       }
                 }
                 className={`group absolute ${active || drag?.id === h.id ? 'z-20' : 'z-10'} ${
-                  onMove && !drawing
+                  onMove && (!drawing || markersActive)
                     ? 'cursor-grab touch-none active:cursor-grabbing'
                     : ''
                 } ${
@@ -324,7 +333,7 @@ export function HotspotImage<T extends RenderableHotspot>({
                             ? 'border-green-400 bg-green-500/15 hover:bg-green-500/25'
                             : 'border-white/90 bg-white/10 hover:bg-white/25'
                       } ${hot && !active ? '!bg-white/25' : ''} shadow-[0_0_0_1px_rgba(0,0,0,0.35)]`
-                } ${drawing ? 'pointer-events-none' : ''}`}
+                } ${drawing && !markersActive ? 'pointer-events-none' : ''}`}
               >
                 {isPin && (
                   <>

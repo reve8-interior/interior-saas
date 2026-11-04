@@ -63,6 +63,7 @@ def test_ai_designs_do_not_count(api, db):
     db.add(
         Design(
             id=uuid.uuid4(),
+            business_id=client.business_id,
             client_id=client.id,
             source=DesignSource.ai_generated,
             image_url="https://example.com/x.png",

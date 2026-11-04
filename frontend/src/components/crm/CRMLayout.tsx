@@ -30,6 +30,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   BookOpen,
   Columns,
+  Globe,
   Images,
   LinkSimple,
   SquaresFour,
@@ -85,6 +86,12 @@ const navigationSections: NavSection[] = [
   },
 ];
 
+const WEBSITE_ITEM = {
+  name: 'Website',
+  href: '/dashboard/website',
+  icon: Globe,
+};
+
 const TEAM_ITEM = { name: 'Team', href: '/dashboard/team', icon: UserGear };
 
 const CLIENT_PAGE = /^\/dashboard\/clients\/([^/]+)(?:\/|$)/;
@@ -103,6 +110,7 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith('/dashboard/clients')) return 'Clients';
   if (pathname.startsWith('/dashboard/materials')) return 'Material Library';
   if (pathname === '/dashboard/portfolio') return 'Portfolio';
+  if (pathname.startsWith('/dashboard/website')) return 'Website';
   if (pathname === '/dashboard/shared') return 'Shared links';
   if (pathname === '/dashboard/guide') return 'Guide';
   if (pathname === '/dashboard/team') return 'Team';
@@ -143,18 +151,21 @@ export default function CRMLayout({ children }: { children: ReactNode }) {
   });
   const inboxOpen = openInboxCount(inbox);
 
-  // Only business admins manage the team.
+  // Only business admins manage the team and the website.
   const sections = useMemo<NavSection[]>(() => {
     const isAdmin = user?.roles.includes('admin');
     return navigationSections.map((section) => ({
       ...section,
       items: [
         ...(isAdmin && section.title === 'Manage' ? [TEAM_ITEM] : []),
-        ...section.items.map((item) =>
-          item.href === '/dashboard/inbox'
-            ? { ...item, badge: inboxOpen }
-            : item
-        ),
+        ...section.items.flatMap((item) => {
+          if (item.href === '/dashboard/inbox')
+            return [{ ...item, badge: inboxOpen }];
+          // Website settings are admin-only; sits right after Portfolio.
+          if (item.href === '/dashboard/portfolio')
+            return isAdmin ? [item, WEBSITE_ITEM] : [item];
+          return [item];
+        }),
       ],
     }));
   }, [user, inboxOpen]);

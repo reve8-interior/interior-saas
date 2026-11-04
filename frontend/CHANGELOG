@@ -1,3 +1,34 @@
+0.24.0
+ - date: 03-11-2026
+ - changes:
+   - feat: "Add with AI" menu in the meeting notes tab, inline with the filters: from notes, voice or text, or from a floor plan with an image preview, room matching to your existing rooms and sizes carried into the rows
+   - feat: floor plan rows go straight into the meeting notes draft, where new, update and removed rows are reviewed; rows that repeat a quotation line fill only its blanks, and rows already there are left out and listed in the minutes
+   - feat: design hotspots: simpler editor with no empty space, a large preview of the image on upload, an always-visible Quotation card, room dropdown starting on the design's or quotation's room, and "Update existing line" when a similar line exists
+   - feat: the hotspot panel offers the catalogue rate for a material the description names ("Use Teak: ₹900/sqft")
+   - feat: adding rows by hand warns about similar existing lines and adds only after "Add anyway"; renaming a line into a look-alike asks before saving
+   - feat: quotation lines show "Edited by" under their source link
+   - feat: "Undo add" on an added meeting, with a second confirm when hand edits would be lost
+   - feat: an approved quotation shows "Reopen to edit"; changes are blocked until then
+   - feat: pre-send quotation review dialog; admin toggle to show or hide the landing page pricing table
+   - feat: pricing cards show the AI intake and team-safety lines; the landing page and the in-app guide describe the floor plan flow, duplicate checks, the new hotspot steps and Undo add
+   - fix: the quotation review dialog is readable in dark mode
+   - fix: image previews in the design upload, and room as a dropdown when adding hotspots
+   - test: floor plan helpers, room preselect, duplicate warnings and material suggestion
+   - not tried: none of this has been checked in a browser or with a real floor plan image
+
+0.23.0
+ - date: 03-11-2026
+ - changes:
+   - feat: Website page under the dashboard sidebar (admins): logo, hero, tagline, about, services, contact details and social links, plus a live preview and a Publish toggle
+   - feat: choose a readable web address (`/your-studio`) with a live availability check; renaming keeps the old link redirecting; "Remove public address" withdraws it
+   - feat: projects: named groups of designs built from existing client designs or fresh uploads, with a cover image and ordering, managed inside the Website page
+   - feat: six colour and font themes for the public site, with a suggestion based on project categories
+   - feat: public single-page site at `/<slug>` with a sticky section nav, project galleries, studio, services and a contact footer with "Powered by Reve8"; free plans see a simple image gallery at the same link
+   - feat: Website settings sections collapse, and Save stays disabled until something changes
+   - style: public site renders on a fixed light editorial surface whatever the app theme
+   - test: Collapsible, ProjectsManager, and a guard that theme keys match the CSS classes and the backend list
+   - not included: custom domains (planned), server-side rendering for SEO
+
 0.22.0
  - date: 02-11-2026
  - changes:

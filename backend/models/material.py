@@ -1,6 +1,5 @@
-from datetime import datetime
-
 import uuid
+from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Numeric, String, text
 from sqlalchemy.dialects.postgresql import UUID
@@ -13,7 +12,7 @@ from .base import Base, uuid_pk
 class MaterialRate(Base):
     __tablename__ = "materials_rates"
 
-    id: Mapped[object] = uuid_pk()
+    id: Mapped[uuid.UUID] = uuid_pk()
     # Filled from the request's business by a DB default; see backend/rls.py.
     business_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),

@@ -28,12 +28,12 @@ from ..schemas.share import (
 from ..services import share_links
 from ..services.shared_links_overview import list_shared_links
 from ..services.client_access import get_client_or_404, restrict_to_accessible
-from .deps import get_current_user
-from .designs import (
-    PORTFOLIO_ORDER,
+from ..services.portfolio import (
     design_thumb_url,
     design_view_url,
+    portfolio_designs_q,
 )
+from .deps import get_current_user
 
 router = APIRouter()
 public_router = APIRouter()
@@ -207,25 +207,10 @@ def _own_business(db: Session, user: User) -> Business:
     return business
 
 
-def _portfolio_designs_q(business_id: uuid.UUID):
-    """Opted-in designs of one business's active clients, newest first."""
-    return (
-        select(Design)
-        .join(Client, Client.id == Design.client_id)
-        .options(
-            selectinload(Design.hotspots).selectinload(DesignHotspot.material)
-        )
-        .where(Client.business_id == business_id)
-        .where(Client.is_active.is_(True))
-        .where(Design.in_portfolio.is_(True))
-        .order_by(*PORTFOLIO_ORDER)
-    )
-
-
 def _portfolio_view(
     db: Session, business: Business, design_ids: list[str] | None = None
 ) -> PortfolioView:
-    q = _portfolio_designs_q(business.id)
+    q = portfolio_designs_q(business.id)
     if design_ids is not None:
         q = q.where(Design.id.in_([uuid.UUID(d) for d in design_ids]))
     designs = db.execute(q).scalars().all()

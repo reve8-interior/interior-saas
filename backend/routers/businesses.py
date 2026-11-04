@@ -84,20 +84,22 @@ def list_businesses(
     db: Session = Depends(get_db),
     _: User = Depends(require_superadmin),
 ):
-    counts = dict(
-        db.execute(
+    counts = {
+        bid: n
+        for bid, n in db.execute(
             select(User.business_id, func.count(User.id))
             .where(User.business_id.is_not(None))
             .group_by(User.business_id)
         ).all()
-    )
-    active_counts = dict(
-        db.execute(
+    }
+    active_counts = {
+        bid: n
+        for bid, n in db.execute(
             select(User.business_id, func.count(User.id))
             .where(User.business_id.is_not(None), User.is_active.is_(True))
             .group_by(User.business_id)
         ).all()
-    )
+    }
     businesses = db.execute(select(Business).order_by(Business.name)).scalars()
     result: list[BusinessRead] = []
     for business in businesses:
@@ -134,7 +136,7 @@ def create_business(
 
     business = Business(
         name=name,
-        # One email for the business: the admin's unless a separate contact is given.
+        # One email for the business: the admin's unless a contact is given.
         contact_email=body.contact_email or admin_email,
         contact_phone=body.contact_phone,
         plan=body.plan,

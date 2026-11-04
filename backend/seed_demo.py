@@ -499,6 +499,7 @@ def _seed_client(db, client_data: dict, admin_id, imported) -> None:
         db.add(Checkpoint(client_id=client.id, **cp))
 
     design = Design(
+        business_id=client.business_id,
         client_id=client.id,
         source=DesignSource.designer_uploaded,
         title=client_data["design_title"],

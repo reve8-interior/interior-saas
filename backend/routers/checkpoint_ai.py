@@ -49,6 +49,7 @@ from ..services.ai_access import (
 from ..services.ai_models import ModelCatalog, model_catalog
 from ..services.checkpoint_ai_support import (
     extraction_record,
+    record_final_output,
 )
 from ..services.checkpoint_extraction import (
     Upload,
@@ -139,9 +140,13 @@ def save_from_extraction(
 
     # Validate all mandatory columns (user-configurable) before the DB.
     # A removal carries no measurements — it only names what to drop.
-    problems = missing_required_problems(
-        [li for li in body.line_items if li.action != "remove"],
-        get_line_item_columns(db),
+    problems = (
+        []
+        if body.allow_incomplete
+        else missing_required_problems(
+            [li for li in body.line_items if li.action != "remove"],
+            get_line_item_columns(db),
+        )
     )
     if problems:
         raise HTTPException(
@@ -170,6 +175,7 @@ def save_from_extraction(
         status="draft",
     )
     db.add(checkpoint)
+    record_final_output(db, body.audit_log_id, client_id, body.line_items)
     db.commit()
     db.refresh(checkpoint)
 
@@ -189,15 +195,18 @@ def save_from_extraction(
 def revert_quotation_to_checkpoint(
     quotation_id: str,
     checkpoint_id: str,
+    force: bool = False,
     db: Session = Depends(get_db),
     _current_user: User = Depends(get_current_user),
 ):
     """Restore quotation line items from the snapshot saved for checkpoint_id.
 
+    Refused (409) when rows were edited by hand since, unless force=true.
+
     The current state is itself snapshotted first (tagged 'pre-revert') so
     the revert itself is reversible.
     """
-    return revert_to_checkpoint(db, quotation_id, checkpoint_id)
+    return revert_to_checkpoint(db, quotation_id, checkpoint_id, force)
 
 
 @router.post(
@@ -207,10 +216,13 @@ def revert_quotation_to_checkpoint(
 def remove_checkpoint_from_quotation(
     client_id: str,
     checkpoint_id: str,
+    force: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Undo a checkpoint's contribution to the quotation.
+
+    Refused (409) when rows were edited by hand since, unless force=true.
 
     Restores the snapshot taken just before the checkpoint was applied
     and clears its added_to_quotation flag, so it can be re-verified and
@@ -218,7 +230,7 @@ def remove_checkpoint_from_quotation(
     the quotation never lands in a state it was not in.
     """
     get_client_or_404(client_id, db, current_user)
-    return remove_checkpoint(db, client_id, checkpoint_id, current_user)
+    return remove_checkpoint(db, client_id, checkpoint_id, current_user, force)
 
 
 @router.post(

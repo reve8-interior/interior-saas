@@ -190,7 +190,11 @@ export interface FromExtractionRequest {
   client_budget?: number | null;
   unmapped_notes?: string[];
   questions?: ExtractionQuestion[];
+  /** The extraction run these rows came from, for evaluation. */
+  audit_log_id?: string | null;
   create_quotation: boolean;
+  /** Starter drafts: blanks are filled in the review; adding still enforces them. */
+  allow_incomplete?: boolean;
 }
 
 export interface FromExtractionResponse {
@@ -254,6 +258,23 @@ export async function updateQuotationItems(
   return api.post<UpdateQuotationItemsResponse>(
     `/clients/${clientId}/quotation/update-items`,
     { checkpoint_id: checkpointId, line_items: lineItems }
+  );
+}
+
+/**
+ * Takes a meeting's rows back out of the quotation and returns it to a draft.
+ * Refused (409) when rows were edited by hand since, unless `force`.
+ */
+export async function undoQuotationAdd(
+  clientId: string,
+  checkpointId: string,
+  force = false
+): Promise<void> {
+  await api.post(
+    `/clients/${clientId}/quotation/remove-checkpoint/${checkpointId}${
+      force ? '?force=true' : ''
+    }`,
+    {}
   );
 }
 

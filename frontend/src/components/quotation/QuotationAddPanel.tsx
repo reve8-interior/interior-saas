@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { Sparkles } from 'lucide-react';
-import { AddFromNotes } from '@/components/checkpoints/AddFromNotes';
+import { AddWithAi } from '@/components/checkpoints/AddWithAi';
 import { notesLockMessage } from '@/lib/aiStatus';
 import { getMe } from '@/lib/profile';
 
@@ -43,7 +43,7 @@ export function QuotationAddPanel({
     return hasRows ? (
       <div className="flex flex-wrap justify-end gap-2">
         {handButton('btn-primary')}
-        <AddFromNotes clientId={clientId} onSaved={onNotesSaved} />
+        <AddWithAi clientId={clientId} onSaved={onNotesSaved} />
       </div>
     ) : (
       <div className="rounded-2xl border border-dashed border-line p-12 text-center">
@@ -52,7 +52,7 @@ export function QuotationAddPanel({
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           {handButton('btn-primary')}
-          <AddFromNotes clientId={clientId} onSaved={onNotesSaved} />
+          <AddWithAi clientId={clientId} onSaved={onNotesSaved} />
         </div>
       </div>
     );
@@ -69,7 +69,7 @@ export function QuotationAddPanel({
           Client asked for changes? Paste the notes and AI drafts the updates.
         </p>
         <div className="flex flex-wrap gap-2 max-sm:w-full max-sm:[&>*]:flex-1">
-          <AddFromNotes
+          <AddWithAi
             clientId={clientId}
             onSaved={onNotesSaved}
             className="btn-primary"
@@ -93,7 +93,7 @@ export function QuotationAddPanel({
         and you check them before anything is added.
       </p>
       <div className="mt-5 flex justify-center">
-        <AddFromNotes
+        <AddWithAi
           clientId={clientId}
           onSaved={onNotesSaved}
           className="btn-primary"

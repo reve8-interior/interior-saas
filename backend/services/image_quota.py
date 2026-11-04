@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from ..core.config import settings
 from ..models.business import Business
-from ..models.client import Client
 from ..models.design import Design
 from .plan_limits import effective_limits
 
@@ -26,10 +25,8 @@ def effective_max_bytes(business: Business | None, db: Session) -> int:
 def uploaded_image_count(business_id: object, db: Session) -> int:
     return (
         db.scalar(
-            select(func.count(Design.id))
-            .join(Client, Client.id == Design.client_id)
-            .where(
-                Client.business_id == business_id,
+            select(func.count(Design.id)).where(
+                Design.business_id == business_id,
                 Design.storage_path.is_not(None),
             )
         )

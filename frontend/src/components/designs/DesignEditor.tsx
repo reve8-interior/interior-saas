@@ -62,9 +62,9 @@ export function DesignEditor({
 }: DesignEditorProps) {
   const qc = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [drawing, setDrawing] = useState(false);
-  // An add session: stays on after each save so several spots go in a row.
-  const [adding, setAdding] = useState(false);
+  // The image is always ready for a new pin until a hotspot is open; saving
+  // one returns here so several spots go in a row.
+  const [drawing, setDrawing] = useState(true);
   const [region, setRegion] = useState<HotspotRegion | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   // What to do once the designer confirms losing unsaved details.
@@ -83,8 +83,7 @@ export function DesignEditor({
     setSelectedId(null);
     setRegion(null);
     setForm(null);
-    setDrawing(false);
-    setAdding(false);
+    setDrawing(true);
   };
 
   /** Next spot: clear the form and go straight back to drawing. */
@@ -179,8 +178,7 @@ export function DesignEditor({
 
   const select = (id: string | null) => {
     const hotspot = design.hotspots.find((h) => h.id === id);
-    setDrawing(false);
-    setAdding(false);
+    setDrawing(!hotspot);
     setSelectedId(id);
     if (!hotspot) {
       setRegion(null);
@@ -278,7 +276,7 @@ export function DesignEditor({
     if (id === null && dirty) return;
     leave(() => select(id));
   };
-  const cancelEdit = () => leave(adding && !selectedId ? nextSpot : reset);
+  const cancelEdit = () => leave(reset);
 
   const hasImage = Boolean(design.image_url);
   const selectedHotspot =
@@ -297,10 +295,11 @@ export function DesignEditor({
       description="Mark items in the image and link them to your materials"
       maxWidth="6xl"
     >
-      {/* The form column grows with its content and the whole editor scrolls;
-          the image stays pinned in view beside it on desktop. */}
+      {/* Image on the left, with the add-to-quotation panel beneath it while a
+          hotspot is open so the space is used; the short form sits on the right.
+          With no form open the image stays pinned beside the hotspot list. */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-        <div className="space-y-3 lg:sticky lg:top-0">
+        <div className={`space-y-3 ${form ? '' : 'lg:sticky lg:top-0'}`}>
           {hasImage ? (
             <HotspotImage
               src={design.image_url as string}
@@ -309,6 +308,7 @@ export function DesignEditor({
               selectedId={selectedId}
               onSelect={handleSelect}
               drawing={drawing}
+              markersActive
               onDraw={onDraw}
               draft={region}
               linkedIds={linkedIds}
@@ -320,12 +320,21 @@ export function DesignEditor({
             <p className="text-sm text-dark-500">This design has no image.</p>
           )}
           <p className="text-xs text-dark-500 dark:text-dark-400">
-            {drawing
-              ? 'Drag over an item to mark it, or click once to drop a pin.'
-              : adding
-                ? 'Fill in the details and save. You can then mark the next one.'
-                : 'Click a marker to edit it, drag it to move it, or add a new hotspot. Green markers are already in the quotation.'}
+            {form && !selectedId
+              ? 'Name it and save. You can then mark the next item.'
+              : form
+                ? 'Drag the marker to move it. Green markers are already in the quotation.'
+                : 'Click the image to drop a pin, or drag to draw a box. Click a marker to edit it. Green markers are already in the quotation.'}
           </p>
+          {form && selectedHotspot && (
+            <AddToQuotationPanel
+              key={`quotation-${selectedHotspot.id}`}
+              clientId={clientId}
+              designId={design.id}
+              hotspot={selectedHotspot}
+              defaultRoom={design.rooms[0]}
+            />
+          )}
         </div>
 
         <aside className="space-y-4">
@@ -487,15 +496,7 @@ export function DesignEditor({
                 </div>
               </details>
 
-              {selectedHotspot ? (
-                <AddToQuotationPanel
-                  key={`quotation-${selectedHotspot.id}`}
-                  clientId={clientId}
-                  designId={design.id}
-                  hotspot={selectedHotspot}
-                  defaultRoom={design.rooms[0]}
-                />
-              ) : (
+              {!selectedHotspot && (
                 <p className="text-xs text-muted">
                   Save the hotspot first, then you can add it to the quotation.
                 </p>
@@ -532,7 +533,7 @@ export function DesignEditor({
                     onClick={cancelEdit}
                     className="btn-secondary"
                   >
-                    {adding && !selectedId ? 'Discard' : 'Cancel'}
+                    {selectedId ? 'Cancel' : 'Discard'}
                   </button>
                   <button
                     type="button"
@@ -547,28 +548,14 @@ export function DesignEditor({
             </div>
           ) : (
             <div className="space-y-4">
-              <button
-                type="button"
-                disabled={!hasImage}
-                onClick={() => {
-                  if (adding) return reset();
-                  nextSpot();
-                  setAdding(true);
-                }}
-                className={
-                  adding ? 'btn-secondary w-full' : 'btn-primary w-full'
-                }
-              >
-                <Crosshair className="h-4 w-4" />
-                {adding ? 'Done adding' : 'Add hotspot'}
-              </button>
-
-              {design.hotspots.length === 0 && (
-                <p className="text-sm text-muted">
-                  No hotspots yet. Choose Add hotspot, then click the image to
-                  drop a pin or drag to draw a box.
-                </p>
-              )}
+              <div className="flex items-center gap-2 text-sm text-muted">
+                <Crosshair className="h-4 w-4 shrink-0" aria-hidden />
+                <span>
+                  {design.hotspots.length === 0
+                    ? 'Click the item you want to price, right on the image.'
+                    : `${design.hotspots.length} marked · ${design.hotspots.filter((h) => h.quotation_line_item_id).length} in quotation`}
+                </span>
+              </div>
 
               <HotspotList
                 hotspots={design.hotspots}

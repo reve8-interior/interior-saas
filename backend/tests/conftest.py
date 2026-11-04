@@ -26,6 +26,7 @@ from backend.models.business import Business
 from backend.models.client import Client
 from backend.models.user import User, UserRole
 from backend.rls import apply_rls
+from backend.services import rate_limit
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
@@ -49,6 +50,14 @@ def tables() -> Generator[None, None, None]:
         apply_rls(conn)
     yield
     Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits() -> Generator[None, None, None]:
+    """In-process rate-limit hits must not carry over between tests."""
+    rate_limit.reset()
+    yield
+    rate_limit.reset()
 
 
 @pytest.fixture

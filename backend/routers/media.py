@@ -18,6 +18,7 @@ from ..services.storage import (
 router = APIRouter()
 
 # Longest a browser or CDN may reuse an image without asking again.
+_ALLOWED_PREFIXES = ("designs/", "branding/")
 _MAX_CACHE_SECONDS = 24 * 60 * 60
 
 
@@ -27,7 +28,7 @@ def get_media(
     exp: int = Query(...),
     sig: str = Query(...),
 ) -> Response:
-    if not path.startswith("designs/") or not verify_media_signature(
+    if not path.startswith(_ALLOWED_PREFIXES) or not verify_media_signature(
         path, exp, sig
     ):
         raise HTTPException(status_code=404, detail="Not found")
