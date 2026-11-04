@@ -126,6 +126,9 @@ class PublicPlan(BaseModel):
     branded_export: bool
     bulk_materials_import: bool
     priority_support: bool
+    website_enabled: bool
+    website_custom_domain: bool
+    website_remove_badge: bool
     highlights: list[str]
 
 

@@ -19,6 +19,9 @@ const plan = (changes: Partial<PublicPlan>): PublicPlan => ({
   branded_export: false,
   bulk_materials_import: false,
   priority_support: false,
+  website_enabled: false,
+  website_custom_domain: false,
+  website_remove_badge: false,
   highlights: [],
   ...changes,
 });
@@ -44,6 +47,16 @@ describe('planFeatureLines', () => {
       'Hi',
     ]);
     expect(lines).not.toContain('Bulk materials import');
+  });
+
+  it('lists the website only on plans that include it', () => {
+    expect(planFeatureLines(plan({}))).not.toContain('Your own website');
+    const lines = planFeatureLines(
+      plan({ website_enabled: true, website_custom_domain: true })
+    );
+    expect(lines).toContain('Your own website');
+    expect(lines).toContain('Custom domain for your website');
+    expect(lines).not.toContain('Website without Reve8 badge');
   });
 
   it('drops admin highlights that duplicate a built-in line', () => {

@@ -1,3 +1,16 @@
+0.25.0
+ - date: 04-11-2026
+ - changes:
+   - feat: admin plans page is an editable plan-by-feature matrix: plans as columns, features as rows; tick flags and type numbers (empty means unlimited, or 0 where the API needs a number) and each change saves on its own; name, tagline and bullet points are rows too, so the per-plan Edit button is gone ("Add plan" still opens the form)
+   - feat: the pricing table switch on the admin plans page is a real toggle switch
+   - feat: pricing cards list "Your own website", custom domain and badge removal; the admin plan form edits the website flags
+   - feat: landing page lists pinned items, floor plan to quote, client feedback and website in "Everything inside" (now twelve tools)
+   - feat: landing page has looping demos for the floor plan (a real plan, rooms found one by one), pinned items (the app's own pin component on a real photo, each pin opening its item) and the studio website (sections assembling, ending on a custom domain)
+   - feat: the pipeline, AI extract and versions mockups animate too; the pipeline keeps a fixed slot per column so nothing resizes while the client card moves
+   - feat: demos run only while on screen, and reduced-motion visitors see the finished state
+   - test: plan matrix cell and text parsing, and website lines on pricing cards
+   - not tried: phone widths and dark mode for the new demos; the floor plan room outlines are approximate
+
 0.24.0
  - date: 03-11-2026
  - changes:

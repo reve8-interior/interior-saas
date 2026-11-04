@@ -16,6 +16,9 @@ export const FLAG_FIELDS = [
   { key: 'branded_export', label: 'Branded exports' },
   { key: 'bulk_materials_import', label: 'Bulk materials import' },
   { key: 'priority_support', label: 'Priority support' },
+  { key: 'website_enabled', label: 'Own website' },
+  { key: 'website_custom_domain', label: 'Website custom domain' },
+  { key: 'website_remove_badge', label: 'Website without Reve8 badge' },
 ] as const;
 
 type LimitKey = (typeof LIMIT_FIELDS)[number]['key'];
@@ -55,6 +58,9 @@ export const EMPTY_PLAN_FORM: PlanFormState = {
   branded_export: false,
   bulk_materials_import: false,
   priority_support: false,
+  website_enabled: false,
+  website_custom_domain: false,
+  website_remove_badge: false,
 };
 
 const text = (n: number | null): string => (n === null ? '' : String(n));
@@ -82,6 +88,9 @@ export function planFormFor(plan: AdminPlan | null): PlanFormState {
     branded_export: plan.branded_export,
     bulk_materials_import: plan.bulk_materials_import,
     priority_support: plan.priority_support,
+    website_enabled: plan.website_enabled,
+    website_custom_domain: plan.website_custom_domain,
+    website_remove_badge: plan.website_remove_badge,
   };
 }
 
@@ -165,6 +174,9 @@ export function planPayload(
       branded_export: form.branded_export,
       bulk_materials_import: form.bulk_materials_import,
       priority_support: form.priority_support,
+      website_enabled: form.website_enabled,
+      website_custom_domain: form.website_custom_domain,
+      website_remove_badge: form.website_remove_badge,
     },
   };
 }

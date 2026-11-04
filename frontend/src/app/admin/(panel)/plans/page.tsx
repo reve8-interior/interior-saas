@@ -1,44 +1,28 @@
 'use client';
 
 import { PlanFormModal } from '@/components/admin/PlanFormModal';
-import { Badge, ConfirmDeleteModal, PageLoader } from '@/components/ui';
+import { PlanMatrix } from '@/components/admin/PlanMatrix';
+import { ConfirmDeleteModal, PageLoader } from '@/components/ui';
+import { Switch } from '@/components/ui/Switch';
 import { isSuperadmin } from '@/lib/auth';
 import { errorMessage } from '@/lib/errors';
 import {
   deletePlan,
-  formatInr,
-  formatLimit,
   getPricingVisibility,
   listAdminPlans,
   setPricingVisibility,
 } from '@/lib/plans';
 import type { AdminPlan } from '@/lib/schemas/plan';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-
-const priceOf = (p: AdminPlan): string =>
-  p.price_monthly_inr === null
-    ? 'Free'
-    : `${formatInr(p.price_monthly_inr)}/mo`;
-
-const HEADERS = [
-  'Plan',
-  'Price',
-  'Team',
-  'Clients',
-  'AI credits',
-  'Pricing page',
-  '',
-];
 
 export default function PlansPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [allowed, setAllowed] = useState(false);
-  const [editing, setEditing] = useState<AdminPlan | null>(null);
   const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<AdminPlan | null>(null);
 
@@ -102,7 +86,7 @@ export default function PlansPage() {
         </button>
       </div>
 
-      <label className="surface flex items-center justify-between gap-4 p-4">
+      <div className="surface flex items-center justify-between gap-4 p-4">
         <span>
           <span className="block text-sm font-medium">
             Show pricing table on landing page
@@ -112,88 +96,20 @@ export default function PlansPage() {
             reach visitors.
           </span>
         </span>
-        <input
-          type="checkbox"
-          role="switch"
-          className="h-5 w-5 shrink-0"
+        <Switch
+          label="Show pricing table on landing page"
           checked={visibility?.show_pricing ?? true}
           disabled={!visibility || visibilityMutation.isPending}
-          onChange={(e) => visibilityMutation.mutate(e.target.checked)}
+          onChange={(next) => visibilityMutation.mutate(next)}
         />
-      </label>
+      </div>
 
       {isLoading && <PageLoader />}
 
-      {plans.length > 0 && (
-        <div className="surface overflow-x-auto">
-          <table className="data-table w-full text-sm">
-            <thead className="table-head">
-              <tr>
-                {HEADERS.map((h) => (
-                  <th key={h} className="px-4 py-3 text-left">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {plans.map((p) => (
-                <tr key={p.id} className="border-t border-line">
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{p.name}</p>
-                    <p className="text-xs text-dark-500 dark:text-dark-400">
-                      {p.slug}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3">{priceOf(p)}</td>
-                  <td className="px-4 py-3">{formatLimit(p.max_users)}</td>
-                  <td className="px-4 py-3">{formatLimit(p.max_clients)}</td>
-                  <td className="px-4 py-3">
-                    {formatLimit(p.ai_credits_monthly)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="inline-flex gap-1.5">
-                      <Badge tone={p.is_public ? 'success' : 'neutral'}>
-                        {p.is_public ? 'Shown' : 'Hidden'}
-                      </Badge>
-                      {p.is_recommended && (
-                        <Badge tone="warning">Recommended</Badge>
-                      )}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      aria-label={`Edit ${p.name}`}
-                      onClick={() => setEditing(p)}
-                      className="btn-ghost p-2"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      aria-label={`Delete ${p.name}`}
-                      onClick={() => setRemoving(p)}
-                      className="btn-ghost p-2"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {plans.length > 0 && <PlanMatrix plans={plans} onDelete={setRemoving} />}
 
       {adding && (
         <PlanFormModal open plan={null} onClose={() => setAdding(false)} />
-      )}
-      {editing && (
-        <PlanFormModal
-          key={editing.id}
-          open
-          plan={editing}
-          onClose={() => setEditing(null)}
-        />
       )}
       {removing && (
         <ConfirmDeleteModal

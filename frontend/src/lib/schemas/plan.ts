@@ -54,5 +54,8 @@ export type PublicPlan = Pick<
   | 'branded_export'
   | 'bulk_materials_import'
   | 'priority_support'
+  | 'website_enabled'
+  | 'website_custom_domain'
+  | 'website_remove_badge'
   | 'highlights'
 >;

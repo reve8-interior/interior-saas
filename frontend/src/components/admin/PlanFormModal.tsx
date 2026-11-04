@@ -165,9 +165,6 @@ export function PlanFormModal({ open, plan, onClose }: Props) {
               />
             </div>
           ))}
-          <p className="text-xs text-dark-500 dark:text-dark-400">
-            Website builder options appear here once that feature ships.
-          </p>
         </fieldset>
 
         <fieldset className={FIELDSET_CLS}>

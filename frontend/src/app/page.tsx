@@ -4,6 +4,11 @@ import {
   QuotationLinkDemo,
 } from '@/components/landing/LinkDemos';
 import {
+  FloorPlanDemo,
+  PinsDemo,
+  WebsiteDemo,
+} from '@/components/landing/FeatureDemos';
+import {
   ExtractMockup,
   PipelineMockup,
   VersionDiffMockup,
@@ -19,12 +24,15 @@ import {
   ClipboardList,
   FileText,
   GitCompare,
+  Globe,
   Images,
   KanbanSquare,
   Link2,
+  MapPin,
   MessageCircle,
   Package,
   PenLine,
+  Ruler,
   Send,
   Sparkles,
   ThumbsUp,
@@ -161,6 +169,26 @@ const MODULES: Feature[] = [
     icon: Link2,
     title: 'Shared links',
     line: 'Quotation, design and portfolio links.',
+  },
+  {
+    icon: MapPin,
+    title: 'Pinned items',
+    line: 'Pin quotation items on design images.',
+  },
+  {
+    icon: Ruler,
+    title: 'Floor plan to quote',
+    line: 'Rooms and sizes become starter rows.',
+  },
+  {
+    icon: ThumbsUp,
+    title: 'Client feedback',
+    line: 'Approvals, questions and change requests.',
+  },
+  {
+    icon: Globe,
+    title: 'Your website',
+    line: 'A public studio site with your projects.',
   },
 ];
 
@@ -395,6 +423,41 @@ export default async function Page() {
             >
               <VersionDiffMockup />
             </FeatureRow>
+            <FeatureRow
+              eyebrow="Floor plan"
+              title="Start the quotation from the floor plan"
+              reverse
+              points={[
+                'Add a floor plan and AI reads the rooms and their sizes.',
+                'Each room becomes starter rows in the quotation.',
+                'You review and edit before anything is added.',
+              ]}
+            >
+              <FloorPlanDemo />
+            </FeatureRow>
+            <FeatureRow
+              eyebrow="Pinned items"
+              title="Show what each piece is, right on the design"
+              points={[
+                'Pin any quotation item on a design image.',
+                'Clients tap a pin to see the material, size and rate.',
+                'No more calls asking which wardrobe is which.',
+              ]}
+            >
+              <PinsDemo />
+            </FeatureRow>
+            <FeatureRow
+              eyebrow="Your website"
+              title="A studio website, without a developer"
+              reverse
+              points={[
+                'Your projects, services and contact details on one page.',
+                'Publish when it is ready and take it down any time.',
+                'Higher plans add your own domain and remove the reve8 badge.',
+              ]}
+            >
+              <WebsiteDemo />
+            </FeatureRow>
           </section>
 
           <section
@@ -425,7 +488,7 @@ export default async function Page() {
           <section className={SECTION}>
             <SectionHead
               eyebrow="Everything inside"
-              title="One portal, eight tools"
+              title="One portal, twelve tools"
             />
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {MODULES.map(({ icon: Icon, title, line }) => (

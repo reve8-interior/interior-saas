@@ -21,6 +21,13 @@ export function planFeatureLines(plan: PublicPlan): string[] {
   if (plan.clean_export) lines.push('Clean exports');
   if (plan.branded_export) lines.push('Your branding on exports');
   if (plan.bulk_materials_import) lines.push('Bulk materials import');
+  if (plan.website_enabled) lines.push('Your own website');
+  if (plan.website_enabled && plan.website_custom_domain) {
+    lines.push('Custom domain for your website');
+  }
+  if (plan.website_enabled && plan.website_remove_badge) {
+    lines.push('Website without Reve8 badge');
+  }
   if (plan.priority_support) lines.push('Priority support');
   // Admin highlights may repeat a built-in line (e.g. "Clean exports"); keep the first.
   const seen = new Set<string>();
