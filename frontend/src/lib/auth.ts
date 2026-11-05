@@ -111,6 +111,24 @@ export function signInAdmin(email: string, password: string) {
   return signInAt('/auth/admin/login', email, password);
 }
 
+/** Consume an emailed invite token and set the first password. */
+export async function acceptInvite(
+  token: string,
+  newPassword: string
+): Promise<void> {
+  const response = await fetch(`${API_URL}/auth/accept-invite`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, new_password: newPassword }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      (error as { detail?: string }).detail || 'Could not accept the invite'
+    );
+  }
+}
+
 export function signOut() {
   clearSession();
 }

@@ -67,6 +67,8 @@ export interface UserMe {
   full_name: string;
   role: 'superadmin' | 'admin' | 'designer' | 'viewer';
   must_change_password: boolean;
+  /** Email is configured, so new accounts get an invite link. */
+  invites_enabled?: boolean;
   business_name: string | null;
   access: AccessStatus;
   ai: AiStatus;

@@ -19,14 +19,15 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Field-level validation for the add/edit member form. */
 export function validateMemberForm(
-  form: { email: string; password: string },
+  form: { email: string; password?: string },
   isNew: boolean
 ): MemberFormErrors {
   const errors: MemberFormErrors = {};
   const email = form.email.trim();
   if (!email) errors.email = 'Email is required';
   else if (!EMAIL_RE.test(email)) errors.email = 'Enter a valid email address';
-  if (isNew && form.password.length < MIN_PASSWORD_LENGTH) {
+  // Blank is fine for a new member: an invite link is emailed instead.
+  if (isNew && form.password && form.password.length < MIN_PASSWORD_LENGTH) {
     errors.password = `Use at least ${MIN_PASSWORD_LENGTH} characters`;
   }
   return errors;

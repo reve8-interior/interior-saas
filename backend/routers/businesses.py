@@ -3,10 +3,11 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from ..core import get_db
+from ..core.config import settings
 from ..core.logging import logger
 from ..core.security import get_password_hash
 from ..models.business import Business
@@ -17,7 +18,8 @@ from ..schemas.business import (
     BusinessUpdate,
     OpenAISettingsUpdate,
 )
-from ..services import audit
+from ..schemas.business_user import ResendInviteResponse
+from ..services import audit, invites
 from ..services.image_quota import uploaded_image_count
 from ..services.plan_limits import (
     effective_limits,
@@ -26,7 +28,7 @@ from ..services.plan_limits import (
 )
 from ..services.secret_box import encrypt_secret
 from ..services.subscription import access_status
-from ..services.team import seats_used
+from ..services.team import reset_password, seats_used
 from .deps import require_superadmin
 
 router = APIRouter()
@@ -126,11 +128,15 @@ def create_business(
         raise HTTPException(
             status_code=409, detail="Admin email already in use"
         )
-    # The admin signs in with a system-generated password unless one is given;
-    # it is returned once so the superadmin can hand it over.
+    # No password given: email the admin an invite link when email is set up.
+    # Otherwise a system-generated password is returned once so the
+    # superadmin can hand it over.
+    invite = bool(
+        admin_email and not body.admin_password and settings.email_enabled
+    )
     temporary_password = (
         (body.admin_password or secrets.token_urlsafe(12))
-        if admin_email
+        if admin_email and not invite
         else None
     )
 
@@ -152,17 +158,27 @@ def create_business(
     )
     db.add(business)
     db.flush()
-    if admin_email and temporary_password:
-        db.add(
-            User(
-                email=admin_email,
-                full_name=body.admin_name,
-                password_hash=get_password_hash(temporary_password),
-                role=UserRole.admin,
-                business_id=business.id,
-                must_change_password=True,
-            )
+    if admin_email:
+        admin = User(
+            email=admin_email,
+            full_name=body.admin_name,
+            password_hash=(
+                get_password_hash(temporary_password)
+                if temporary_password
+                else invites.unusable_password_hash()
+            ),
+            role=UserRole.admin,
+            business_id=business.id,
+            must_change_password=True,
         )
+        db.add(admin)
+        if invite:
+            db.flush()
+            try:
+                invites.issue_invite(admin, name, from_platform=True)
+            except HTTPException:
+                db.rollback()
+                raise
     audit.record(
         db,
         actor=current_user,
@@ -186,7 +202,46 @@ def create_business(
     read = _to_read(business, db)
     if not body.admin_password:
         read.temporary_password = temporary_password
+    read.invite_sent = invite
     return read
+
+
+@router.post(
+    "/{business_id}/resend-invite", response_model=ResendInviteResponse
+)
+def resend_invite(
+    business_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_superadmin),
+):
+    """Re-send the welcome email to the business admin who hasn't set up yet."""
+    _business_or_404(business_id, db)
+    admin = (
+        db.execute(
+            select(User)
+            .where(
+                User.business_id == business_id,
+                User.role == UserRole.admin,
+                User.is_active.is_(True),
+                or_(
+                    User.invite_token_hash.is_not(None),
+                    User.must_change_password.is_(True)
+                    & User.last_login_at.is_(None),
+                ),
+            )
+            .order_by(User.created_at)
+        )
+        .scalars()
+        .first()
+    )
+    if admin is None:
+        raise HTTPException(
+            status_code=409,
+            detail="The admin has already set up their account. Use the "
+            "Users tab to reset a password.",
+        )
+    result = reset_password(business_id, admin, None, db, actor)
+    return ResendInviteResponse(email=admin.email, **result.model_dump())
 
 
 @router.patch("/{business_id}", response_model=BusinessRead)

@@ -36,7 +36,7 @@ export default function BusinessesPage() {
   const [allowed, setAllowed] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<Filter>('active');
 
   useEffect(() => {
     if (!isSuperadmin()) {

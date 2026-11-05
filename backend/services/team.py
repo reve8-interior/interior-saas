@@ -15,6 +15,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from ..core.config import settings
 from ..core.logging import logger
 from ..core.security import get_password_hash
 from ..models.business import Business
@@ -23,11 +24,13 @@ from ..models.client_access import ClientAccess
 from ..models.user import User, UserRole
 from ..schemas.business_user import (
     BusinessUserCreate,
+    BusinessUserCreated,
     BusinessUserRead,
     BusinessUserUpdate,
+    ResetPasswordResponse,
     TeamOverview,
 )
-from . import audit
+from . import audit, invites
 from .plan_limits import effective_limits
 
 
@@ -180,15 +183,28 @@ def create_member(
     body: BusinessUserCreate,
     db: Session,
     actor: User,
-) -> User:
+) -> BusinessUserCreated:
     business = _lock_business(business_id, db)
     ensure_seat_free(business, db)
     email = body.email.lower()
     ensure_email_free(email, db)
+    # No password given: email an invite link, or without email configured
+    # generate one that is shown once.
+    invite = body.password is None and settings.email_enabled
+    generated = (
+        secrets.token_urlsafe(12)
+        if body.password is None and not invite
+        else None
+    )
+    password = body.password or generated
     user = User(
         email=email,
         full_name=body.full_name,
-        password_hash=get_password_hash(body.password),
+        password_hash=(
+            get_password_hash(password)
+            if password
+            else invites.unusable_password_hash()
+        ),
         role=UserRole(body.role),
         business_id=business_id,
         must_change_password=True,
@@ -199,6 +215,8 @@ def create_member(
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="Email already in use")
+    if invite:
+        _send_invite_or_rollback(user, business, actor, db)
     audit.record(
         db,
         actor=actor,
@@ -206,7 +224,7 @@ def create_member(
         action="team.member_added",
         entity_type="user",
         entity_id=user.id,
-        payload={"email": email, "role": body.role},
+        payload={"email": email, "role": body.role, "invited": invite},
     )
     db.commit()
     db.refresh(user)
@@ -216,7 +234,41 @@ def create_member(
         user_id=str(user.id),
         by=str(actor.id),
     )
-    return user
+    created = BusinessUserCreated.model_validate(user)
+    created.invite_sent = invite
+    created.temporary_password = generated
+    return created
+
+
+def _send_invite_or_rollback(
+    user: User, business: Business | None, actor: User, db: Session
+) -> None:
+    """Email the invite; if that fails, undo the pending changes.
+
+    A studio's invite to a member comes from the studio's name, with replies
+    to whoever sent it. When the platform admin (re)invites a business admin
+    it is the platform's welcome email instead.
+    """
+    from_platform = (
+        actor.role == UserRole.superadmin and user.role == UserRole.admin
+    )
+    reply_to = (
+        None
+        if from_platform
+        else business.contact_email
+        if business and actor.role == UserRole.superadmin
+        else actor.email
+    )
+    try:
+        invites.issue_invite(
+            user,
+            business.name if business else None,
+            reply_to,
+            from_platform=from_platform,
+        )
+    except HTTPException:
+        db.rollback()
+        raise
 
 
 def update_member(
@@ -283,11 +335,23 @@ def reset_password(
     password: str | None,
     db: Session,
     actor: User,
-) -> str:
-    """Issue a temporary password; returned once, never logged or audited."""
-    temporary = password or secrets.token_urlsafe(12)
-    user.password_hash = get_password_hash(temporary)
+) -> ResetPasswordResponse:
+    """Email an invite link (no password given, email configured), or issue
+    a temporary password; returned once, never logged or audited."""
+    invite = password is None and settings.email_enabled
+    temporary = None if invite else password or secrets.token_urlsafe(12)
+    # The old password stops working either way.
+    user.password_hash = (
+        get_password_hash(temporary)
+        if temporary
+        else invites.unusable_password_hash()
+    )
     user.must_change_password = True
+    if not invite:
+        user.invite_token_hash = None
+        user.invite_expires_at = None
+    else:
+        _send_invite_or_rollback(user, user.business, actor, db)
     audit.record(
         db,
         actor=actor,
@@ -295,7 +359,11 @@ def reset_password(
         action="team.password_reset",
         entity_type="user",
         entity_id=user.id,
-        payload={"email": user.email, "generated": password is None},
+        payload={
+            "email": user.email,
+            "generated": password is None,
+            "invited": invite,
+        },
     )
     db.commit()
     logger.info(
@@ -304,7 +372,10 @@ def reset_password(
         user_id=str(user.id),
         by=str(actor.id),
     )
-    return temporary
+    return ResetPasswordResponse(
+        invite_sent=invite,
+        temporary_password=None if invite else temporary,
+    )
 
 
 def remove_member(

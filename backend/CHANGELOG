@@ -1,3 +1,19 @@
+0.24.0
+ - date: 05-11-2026
+ - changes:
+   - feat: email invites replace handed-over passwords. Creating a business admin or a team member with no password emails a one-time link (`/accept-invite`) where they confirm their email and set their own password; an invited account can't sign in until then. With no SMTP configured nothing changes: a temporary password is generated and returned once, and an explicit password still works
+   - feat: `POST /auth/accept-invite` (public): consumes the token, sets the password, marks the email verified and clears `must_change_password`. Only a SHA-256 of the token is stored; a link works once, expires after `INVITE_TTL_HOURS` (default 72), and a newer invite replaces the older link. Dead, expired and unknown links all return the same 400
+   - feat: two emails. Platform admin creates a business (or re-sends to its admin): a Reve8 welcome sent as the platform, with product highlights and a footer (company, website, support). A studio admin adds a member: "{studio} invites you to join the team" sent under the studio's name with Reply-To set to the inviter (the business contact when the platform admin did). HTML plus plain text; business names and links are escaped
+   - feat: the sender address stays the verified `SMTP_FROM`; only the display name changes (sending as another domain would fail SPF/DKIM). A platform display name comes from `SMTP_FROM`, e.g. `Reve8 Pvt Ltd <hi@reve8.com>`
+   - feat: `POST /businesses/{id}/resend-invite` (platform admin): re-sends the welcome to the business admin who hasn't set up yet; 409 if they already have, so a working admin's password can't be reset by mistake. Returns the temporary password instead when email isn't configured
+   - feat: team create returns `invite_sent` and `temporary_password` (shown once, never an explicit password); reset-password returns `invite_sent` and `temporary_password`; `password` is optional on team create; members expose `invite_pending`; `/auth/me` returns `invites_enabled`
+   - feat: audit: `team.member_added` and `team.password_reset` record `invited`, and accepting is logged as `auth.invite_accepted` (no tokens in the log)
+   - feat: a mail failure is a 502 with a generic message (no provider details) and no half-created account
+   - config: `SMTP_HOST`, `SMTP_PORT` (587 STARTTLS, 465 implicit TLS), `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_STARTTLS`, `INVITE_TTL_HOURS`; email is on only when both `SMTP_HOST` and `SMTP_FROM` are set. Email footers reuse existing settings: company name and contact address come from `SMTP_FROM` (e.g. `Reve8 Pvt Ltd <hi@reve8.com>`) and the website link from `FRONTEND_URL`
+   - migration 0058: `users.email_verified_at`, `invite_token_hash` (indexed) and `invite_expires_at`, all nullable; run it before deploying this version or login fails on the missing columns
+   - test: SMTP transport (STARTTLS, implicit TLS, login, headers, multipart, failures never leak details), sender-name handling and header-injection safety, both email templates (wording, footer, escaping, links, expiry), token hashing, expiry, single use and re-issue, every create/accept/resend path including disabled and removed members, business create and business-level resend, and `/auth/me`. Tests force SMTP off so they never send real mail
+   - note: sending as a studio's own address would need each studio to verify its own domain with the mail provider; not included
+
 0.23.0
  - date: 04-11-2026
  - changes:

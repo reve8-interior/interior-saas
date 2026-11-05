@@ -13,6 +13,26 @@ describe('generateTempPassword', () => {
 });
 
 describe('validateMemberForm', () => {
+  it('accepts a blank password for a new member (an invite is emailed)', () => {
+    expect(validateMemberForm({ email: 'a@b.co', password: '' }, true)).toEqual(
+      {}
+    );
+    expect(validateMemberForm({ email: 'a@b.co' }, true)).toEqual({});
+  });
+  it('still rejects a typed password that is too short', () => {
+    expect(
+      validateMemberForm({ email: 'a@b.co', password: '1234567' }, true)
+        .password
+    ).toMatch(/8/);
+    expect(
+      validateMemberForm({ email: 'a@b.co', password: '12345678' }, true)
+    ).toEqual({});
+  });
+  it('reports an email problem even when the password is blank', () => {
+    expect(validateMemberForm({ email: '', password: '' }, true).email).toBe(
+      'Email is required'
+    );
+  });
   it('requires a valid email', () => {
     expect(validateMemberForm({ email: ' ', password: '' }, false).email).toBe(
       'Email is required'

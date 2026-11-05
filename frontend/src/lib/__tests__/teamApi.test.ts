@@ -41,6 +41,56 @@ describe('describeAudit', () => {
   });
 });
 
+describe('describeAudit for invites', () => {
+  it('says invited when the add sent an invite', () => {
+    expect(
+      describeAudit(
+        entry('team.member_added', {
+          email: 'a@x.com',
+          role: 'designer',
+          invited: true,
+        })
+      )
+    ).toBe('Invited a@x.com as designer');
+  });
+
+  it('still says added for a hand-over password', () => {
+    expect(
+      describeAudit(
+        entry('team.member_added', {
+          email: 'a@x.com',
+          role: 'viewer',
+          invited: false,
+        })
+      )
+    ).toBe('Added a@x.com as viewer');
+    expect(
+      describeAudit(
+        entry('team.member_added', { email: 'a@x.com', role: 'viewer' })
+      )
+    ).toBe('Added a@x.com as viewer');
+  });
+
+  it('tells a resent invite from a password reset', () => {
+    expect(
+      describeAudit(
+        entry('team.password_reset', { email: 'a@x.com', invited: true })
+      )
+    ).toBe('Sent a new invite to a@x.com');
+    expect(
+      describeAudit(
+        entry('team.password_reset', { email: 'a@x.com', invited: false })
+      )
+    ).toBe('Reset password for a@x.com');
+  });
+
+  it('describes accepting an invite', () => {
+    expect(describeAudit(entry('auth.invite_accepted', {}))).toBe(
+      'Accepted the invite and set a password'
+    );
+  });
+});
+
 describe('team api keys', () => {
   it('keeps each business cache separate', () => {
     expect(businessTeamApi('b1').key).not.toEqual(businessTeamApi('b2').key);

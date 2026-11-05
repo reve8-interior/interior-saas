@@ -24,6 +24,11 @@ class ChangePasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class AcceptInviteRequest(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class ProfileUpdate(BaseModel):
     full_name: str = Field(min_length=1, max_length=255)
 
@@ -52,6 +57,8 @@ class UserMe(BaseModel):
     full_name: str | None
     role: str
     must_change_password: bool = False
+    # Email is configured, so new accounts get an invite link.
+    invites_enabled: bool = False
     business_name: str | None = None
     access: AccessStatus = Field(default_factory=AccessStatus)
     ai: AiStatus = Field(default_factory=AiStatus)

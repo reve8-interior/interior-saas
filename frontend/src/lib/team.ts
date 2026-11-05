@@ -3,7 +3,9 @@ import {
   AuditPage,
   BusinessUser,
   BusinessUserCreate,
+  BusinessUserCreated,
   BusinessUserUpdate,
+  IssuedAccess,
   TeamOverview,
 } from '@/lib/schemas/business';
 
@@ -23,13 +25,10 @@ export interface TeamApi {
   /** React Query key prefix, unique per business. */
   key: string[];
   overview(): Promise<TeamOverview>;
-  add(body: BusinessUserCreate): Promise<BusinessUser>;
+  add(body: BusinessUserCreate): Promise<BusinessUserCreated>;
   update(userId: string, body: BusinessUserUpdate): Promise<BusinessUser>;
-  /** Omit password to have the server generate one; returned once. */
-  resetPassword(
-    userId: string,
-    password?: string
-  ): Promise<{ temporary_password: string }>;
+  /** Omit password to email an invite, or have the server generate one (shown once). */
+  resetPassword(userId: string, password?: string): Promise<IssuedAccess>;
   remove(userId: string): Promise<void>;
   audit(query: AuditQuery): Promise<AuditPage>;
 }
@@ -42,13 +41,10 @@ function resetBody(password?: string) {
 export const ownTeamApi: TeamApi = {
   key: ['team', 'own'],
   overview: () => api.get<TeamOverview>('/team'),
-  add: (body) => api.post<BusinessUser>('/team', body),
+  add: (body) => api.post<BusinessUserCreated>('/team', body),
   update: (id, body) => api.patch<BusinessUser>(`/team/${id}`, body),
   resetPassword: (id, password) =>
-    api.post<{ temporary_password: string }>(
-      `/team/${id}/reset-password`,
-      resetBody(password)
-    ),
+    api.post<IssuedAccess>(`/team/${id}/reset-password`, resetBody(password)),
   remove: (id) => api.delete<void>(`/team/${id}`),
   audit: (q) => api.get<AuditPage>('/team/audit', { params: { ...q } }),
 };
@@ -59,10 +55,10 @@ export function businessTeamApi(businessId: string): TeamApi {
   return {
     key: ['team', businessId],
     overview: () => api.get<TeamOverview>(`${base}/team`),
-    add: (body) => api.post<BusinessUser>(`${base}/users`, body),
+    add: (body) => api.post<BusinessUserCreated>(`${base}/users`, body),
     update: (id, body) => api.patch<BusinessUser>(`${base}/users/${id}`, body),
     resetPassword: (id, password) =>
-      api.post<{ temporary_password: string }>(
+      api.post<IssuedAccess>(
         `${base}/users/${id}/reset-password`,
         resetBody(password)
       ),

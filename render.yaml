@@ -31,3 +31,13 @@ services:
         sync: false # same as FRONTEND_URL (comma-separated for several)
       - key: SECRETS_ENCRYPTION_KEY
         sync: false # Fernet key; encrypts per-business OpenAI keys
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false

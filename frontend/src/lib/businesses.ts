@@ -3,7 +3,18 @@ import {
   Business,
   BusinessCreate,
   BusinessUpdate,
+  IssuedAccess,
 } from '@/lib/schemas/business';
+
+/** Re-send the welcome email to the business admin who hasn't set up yet. */
+export function resendBusinessInvite(
+  id: string
+): Promise<IssuedAccess & { email: string }> {
+  return api.post<IssuedAccess & { email: string }>(
+    `/businesses/${id}/resend-invite`,
+    {}
+  );
+}
 
 export function listBusinesses(): Promise<Business[]> {
   return api.get<Business[]>('/businesses');

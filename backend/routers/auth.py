@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..core import get_db
+from ..core.config import settings
 from ..core.logging import logger
 from ..core.security import (
     create_access_token,
@@ -13,13 +14,14 @@ from ..core.security import (
 )
 from ..models.user import User, UserRole
 from ..schemas.auth import (
+    AcceptInviteRequest,
     ChangePasswordRequest,
     LoginRequest,
     ProfileUpdate,
     TokenResponse,
     UserMe,
 )
-from ..services import audit
+from ..services import audit, invites
 from ..services.ai_access import ai_status
 from ..services.plan_limits import effective_limits, usage_summary
 from ..services.subscription import access_status
@@ -85,6 +87,23 @@ def admin_login(request: LoginRequest, db: Session = Depends(get_db)):
     return _authenticate(request, db, superadmin=True)
 
 
+@router.post("/accept-invite", status_code=204)
+def accept_invite(body: AcceptInviteRequest, db: Session = Depends(get_db)):
+    """Public: the emailed one-time link sets the first password."""
+    user = invites.accept_invite(db, body.token, body.new_password)
+    if user.business_id:
+        audit.record(
+            db,
+            actor=user,
+            business_id=user.business_id,
+            action="auth.invite_accepted",
+            entity_type="user",
+            entity_id=user.id,
+        )
+    db.commit()
+    logger.info("invite_accepted", user_id=str(user.id))
+
+
 @router.get("/me", response_model=UserMe)
 def me(
     db: Session = Depends(get_db),
@@ -102,6 +121,7 @@ def _me(db: Session, user: User) -> UserMe:
         full_name=user.full_name,
         role=user.role,
         must_change_password=user.must_change_password,
+        invites_enabled=settings.email_enabled,
         business_name=user.business.name if user.business else None,
         access=access_status(user.business),
         ai=ai_status(db, business),

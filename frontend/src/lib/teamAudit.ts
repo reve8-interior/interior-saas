@@ -8,7 +8,7 @@ export function describeAudit(e: AuditEntry): string {
   const who = typeof p.email === 'string' ? p.email : 'a member';
   switch (e.action) {
     case 'team.member_added':
-      return `Added ${who} as ${String(p.role)}`;
+      return `${p.invited ? 'Invited' : 'Added'} ${who} as ${String(p.role)}`;
     case 'team.member_removed':
       return `Removed ${who}${
         Number(p.clients_reassigned) > 0
@@ -16,7 +16,9 @@ export function describeAudit(e: AuditEntry): string {
           : ''
       }`;
     case 'team.password_reset':
-      return `Reset password for ${who}`;
+      return p.invited
+        ? `Sent a new invite to ${who}`
+        : `Reset password for ${who}`;
     case 'team.member_updated': {
       const changes = (p.changes ?? {}) as Record<
         string,
@@ -37,6 +39,8 @@ export function describeAudit(e: AuditEntry): string {
       return `Changed client access for ${who} (+${String(p.granted)} / -${String(p.revoked)})`;
     case 'auth.login':
       return 'Signed in';
+    case 'auth.invite_accepted':
+      return 'Accepted the invite and set a password';
     case 'auth.password_changed':
       return 'Changed their password';
     case 'business.created':

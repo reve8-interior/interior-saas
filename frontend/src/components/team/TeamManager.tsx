@@ -1,20 +1,15 @@
 'use client';
 
-import { BusinessUser, TeamRole } from '@/lib/schemas/business';
+import {
+  BusinessUser,
+  BusinessUserCreated,
+  TeamRole,
+} from '@/lib/schemas/business';
 import { MemberClientsEditor } from '@/components/team/MemberClientsEditor';
+import { getMe } from '@/lib/profile';
 import { TeamApi } from '@/lib/team';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Dices,
-  Eye,
-  EyeOff,
-  FolderKey,
-  KeyRound,
-  Pencil,
-  Plus,
-  Power,
-  Trash2,
-} from 'lucide-react';
+import { FolderKey, KeyRound, Pencil, Plus, Power, Trash2 } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/lib/errors';
@@ -27,12 +22,7 @@ import {
 } from '@/components/shared/IssuedCredentialsModal';
 import { LoadingRegion, Skeleton } from '@/components/ui';
 import { RowMenu } from '@/components/ui/RowMenu';
-import {
-  MIN_PASSWORD_LENGTH,
-  generateTempPassword,
-  validateMemberForm,
-  type MemberFormErrors,
-} from '@/lib/teamForm';
+import { validateMemberForm, type MemberFormErrors } from '@/lib/teamForm';
 import { MUTED } from './teamStyles';
 import { SeatMeter } from './SeatMeter';
 import { ActivityLog } from './ActivityLog';
@@ -57,14 +47,12 @@ const ROLES = Object.keys(ROLE_INFO) as TeamRole[];
 interface MemberForm {
   email: string;
   full_name: string;
-  password: string;
   role: TeamRole;
 }
 
 const EMPTY_FORM: MemberForm = {
   email: '',
   full_name: '',
-  password: '',
   role: 'designer',
 };
 
@@ -87,7 +75,6 @@ export function TeamManager({
   const [editing, setEditing] = useState<BusinessUser | 'new' | null>(null);
   const [form, setForm] = useState<MemberForm>(EMPTY_FORM);
   const [errors, setErrors] = useState<MemberFormErrors>({});
-  const [showPassword, setShowPassword] = useState(false);
   const [accessFor, setAccessFor] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<{
     kind: 'reset' | 'remove';
@@ -95,6 +82,7 @@ export function TeamManager({
   } | null>(null);
   const [issued, setIssued] = useState<IssuedCredentials | null>(null);
 
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: getMe });
   const overviewKey = [...api.key, 'overview'];
   const { data, isLoading } = useQuery({
     queryKey: overviewKey,
@@ -114,7 +102,6 @@ export function TeamManager({
       if (editing === 'new') {
         return api.add({
           email: form.email.trim(),
-          password: form.password,
           full_name,
           role: form.role,
         });
@@ -125,10 +112,19 @@ export function TeamManager({
         role: form.role,
       });
     },
-    onSuccess: () => {
-      toast.success(editing === 'new' ? 'Member added' : 'Member updated');
+    onSuccess: (saved) => {
+      const email = form.email.trim();
       if (editing === 'new') {
-        setIssued({ email: form.email.trim(), password: form.password });
+        const created = saved as BusinessUserCreated;
+        if (created.invite_sent) {
+          toast.success(`Invite emailed to ${email}`);
+        } else {
+          toast.success('Member added');
+          if (created.temporary_password)
+            setIssued({ email, password: created.temporary_password });
+        }
+      } else {
+        toast.success('Member updated');
       }
       setEditing(null);
       refresh();
@@ -160,13 +156,12 @@ export function TeamManager({
 
   const resetMutation = useMutation({
     mutationFn: (u: BusinessUser) =>
-      api.resetPassword(u.id).then((r) => ({
-        email: u.email,
-        password: r.temporary_password,
-      })),
-    onSuccess: (result) => {
+      api.resetPassword(u.id).then((r) => ({ email: u.email, ...r })),
+    onSuccess: ({ email, invite_sent, temporary_password }) => {
       setPendingAction(null);
-      setIssued(result);
+      if (invite_sent) toast.success(`Invite emailed to ${email}`);
+      else if (temporary_password)
+        setIssued({ email, password: temporary_password });
       refresh();
     },
     onError: (err) => toast.error(errorMessage(err)),
@@ -185,7 +180,6 @@ export function TeamManager({
   function openNew() {
     setForm(EMPTY_FORM);
     setErrors({});
-    setShowPassword(false);
     setEditing('new');
   }
 
@@ -193,7 +187,6 @@ export function TeamManager({
     setForm({
       email: u.email,
       full_name: u.full_name ?? '',
-      password: '',
       role: u.role,
     });
     setErrors({});
@@ -346,64 +339,11 @@ export function TeamManager({
                   </p>
                 </div>
                 {editing === 'new' && (
-                  <div>
-                    <label htmlFor="member-password" className="field-label">
-                      Temporary password *
-                    </label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          id="member-password"
-                          type={showPassword ? 'text' : 'password'}
-                          className="field !pr-11"
-                          value={form.password}
-                          onChange={(e) =>
-                            setForm((f) => ({ ...f, password: e.target.value }))
-                          }
-                          autoComplete="new-password"
-                          aria-invalid={errors.password ? true : undefined}
-                          aria-describedby="member-password-hint"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((v) => !v)}
-                          aria-label={
-                            showPassword ? 'Hide password' : 'Show password'
-                          }
-                          className="absolute right-0 top-0 flex h-full w-11 items-center justify-center text-dark-500"
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4" aria-hidden />
-                          ) : (
-                            <Eye className="h-4 w-4" aria-hidden />
-                          )}
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        className="btn-secondary"
-                        onClick={() => {
-                          setForm((f) => ({
-                            ...f,
-                            password: generateTempPassword(),
-                          }));
-                          setShowPassword(true);
-                        }}
-                      >
-                        <Dices className="h-4 w-4" aria-hidden /> Generate
-                      </button>
-                    </div>
-                    <p
-                      id="member-password-hint"
-                      className={`mt-1 text-xs ${
-                        errors.password ? 'text-red-600' : MUTED
-                      }`}
-                      role={errors.password ? 'alert' : undefined}
-                    >
-                      {errors.password ??
-                        `At least ${MIN_PASSWORD_LENGTH} characters. They must change it on first sign-in; you will be able to copy it after saving.`}
-                    </p>
-                  </div>
+                  <p className={`text-xs ${MUTED}`}>
+                    We email them a link to confirm their email and set their
+                    own password. If email isn&apos;t set up, a temporary
+                    password is generated and shown once after saving.
+                  </p>
                 )}
                 <div className="flex justify-end gap-2">
                   <button
@@ -418,7 +358,13 @@ export function TeamManager({
                     className="btn-primary"
                     disabled={saveMutation.isPending}
                   >
-                    {saveMutation.isPending ? 'Saving…' : 'Save'}
+                    {saveMutation.isPending
+                      ? editing === 'new' && me?.invites_enabled
+                        ? 'Sending…'
+                        : 'Saving…'
+                      : editing === 'new' && me?.invites_enabled
+                        ? 'Send invite'
+                        : 'Save'}
                   </button>
                 </div>
               </form>
@@ -493,7 +439,9 @@ export function TeamManager({
                         {!u.is_active && ' · disabled'}
                         {u.client_count != null &&
                           ` · ${u.client_count} client${u.client_count === 1 ? '' : 's'}`}
-                        {u.must_change_password && ' · temp password'}
+                        {u.invite_pending
+                          ? ' · invite pending'
+                          : u.must_change_password && ' · temp password'}
                         {' · '}
                         {u.last_login_at
                           ? `last seen ${fmtDateTime(u.last_login_at)}`
@@ -524,7 +472,9 @@ export function TeamManager({
                           ? []
                           : [
                               {
-                                label: 'Reset password',
+                                label: u.invite_pending
+                                  ? 'Resend invite'
+                                  : 'Reset password',
                                 icon: <KeyRound className="h-4 w-4" />,
                                 onSelect: () => confirmReset(u),
                                 disabled: resetMutation.isPending,

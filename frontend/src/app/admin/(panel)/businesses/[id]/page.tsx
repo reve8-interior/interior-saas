@@ -7,9 +7,18 @@ import BusinessDetailTabs, {
 import { BusinessFormModal } from '@/components/admin/BusinessFormModal';
 import { getAdminOverview } from '@/lib/adminMonitor';
 import { ApiError } from '@/lib/api';
-import { listBusinesses, setBusinessActive } from '@/lib/businesses';
+import {
+  listBusinesses,
+  resendBusinessInvite,
+  setBusinessActive,
+} from '@/lib/businesses';
+import {
+  IssuedCredentialsModal,
+  type IssuedCredentials,
+} from '@/components/shared/IssuedCredentialsModal';
+import { errorMessage } from '@/lib/errors';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, Power } from 'lucide-react';
+import { ArrowLeft, Mail, Pencil, Power } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
@@ -25,6 +34,7 @@ function BusinessDetail() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
+  const [issued, setIssued] = useState<IssuedCredentials | null>(null);
 
   const overview = useQuery({
     queryKey: ['admin-overview'],
@@ -45,6 +55,17 @@ function BusinessDetail() {
           ? err.message
           : 'Something went wrong'
       ),
+  });
+
+  const resend = useMutation({
+    mutationFn: () => resendBusinessInvite(id),
+    onSuccess: ({ email, invite_sent, temporary_password }) => {
+      if (invite_sent) toast.success(`Invite emailed to ${email}`);
+      else if (temporary_password)
+        setIssued({ email, password: temporary_password });
+      queryClient.invalidateQueries({ queryKey: ['team'] });
+    },
+    onError: (err) => toast.error(errorMessage(err)),
   });
 
   const requested = searchParams.get('tab') as BusinessTab | null;
@@ -103,6 +124,14 @@ function BusinessDetail() {
               <Pencil className="h-4 w-4" /> Edit
             </button>
             <button
+              onClick={() => resend.mutate()}
+              disabled={resend.isPending}
+              className="btn-secondary"
+            >
+              <Mail className="h-4 w-4" />
+              {resend.isPending ? 'Sending…' : 'Resend invite'}
+            </button>
+            <button
               onClick={() => toggle.mutate(!business.is_active)}
               disabled={toggle.isPending}
               className={business.is_active ? 'btn-danger-soft' : 'btn-success'}
@@ -115,6 +144,11 @@ function BusinessDetail() {
       </div>
 
       <BusinessDetailTabs business={usage} tab={tab} onTab={setTab} />
+
+      <IssuedCredentialsModal
+        credentials={issued}
+        onClose={() => setIssued(null)}
+      />
 
       {business && (
         <BusinessFormModal

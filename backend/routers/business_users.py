@@ -10,6 +10,7 @@ from ..models.user import User
 from ..schemas.business_user import (
     AuditPage,
     BusinessUserCreate,
+    BusinessUserCreated,
     BusinessUserRead,
     BusinessUserUpdate,
     ResetPasswordRequest,
@@ -41,7 +42,7 @@ def team_overview(
 
 
 @router.post(
-    "/{business_id}/users", response_model=BusinessUserRead, status_code=201
+    "/{business_id}/users", response_model=BusinessUserCreated, status_code=201
 )
 def create_user(
     business_id: uuid.UUID,
@@ -79,10 +80,7 @@ def reset_password(
     actor: User = Depends(require_superadmin),
 ):
     user = team.member_or_404(business_id, user_id, db)
-    temporary = team.reset_password(
-        business_id, user, body.password, db, actor
-    )
-    return ResetPasswordResponse(temporary_password=temporary)
+    return team.reset_password(business_id, user, body.password, db, actor)
 
 
 @router.delete("/{business_id}/users/{user_id}", status_code=204)

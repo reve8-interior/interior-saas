@@ -7,16 +7,17 @@ from sqlalchemy.orm import Session
 
 from ..core import get_db
 from ..models.user import User
-from ..schemas.client import MemberClientsRead, MemberClientsUpdate
 from ..schemas.business_user import (
     AuditPage,
     BusinessUserCreate,
+    BusinessUserCreated,
     BusinessUserRead,
     BusinessUserUpdate,
     ResetPasswordRequest,
     ResetPasswordResponse,
     TeamOverview,
 )
+from ..schemas.client import MemberClientsRead, MemberClientsUpdate
 from ..services import audit, client_access, team
 from .deps import require_business_admin
 
@@ -38,7 +39,7 @@ def get_team(
     return team.overview(team.business_or_404(actor.business_id, db), db)
 
 
-@router.post("", response_model=BusinessUserRead, status_code=201)
+@router.post("", response_model=BusinessUserCreated, status_code=201)
 def add_member(
     body: BusinessUserCreate,
     db: Session = Depends(get_db),
@@ -72,10 +73,9 @@ def reset_member_password(
 ):
     user = team.member_or_404(actor.business_id, user_id, db)
     _not_self(actor, user, "reset the password of")
-    temporary = team.reset_password(
+    return team.reset_password(
         actor.business_id, user, body.password, db, actor
     )
-    return ResetPasswordResponse(temporary_password=temporary)
 
 
 @router.delete("/{user_id}", status_code=204)

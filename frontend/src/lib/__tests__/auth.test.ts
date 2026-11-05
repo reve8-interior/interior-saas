@@ -1,4 +1,5 @@
 import {
+  acceptInvite,
   clearSession,
   getAccessToken,
   getSession,
@@ -132,5 +133,61 @@ describe('signIn', () => {
       },
     } as unknown as Response);
     await expect(signIn('a@b.com', 'x')).rejects.toThrow('Invalid credentials');
+  });
+});
+
+describe('acceptInvite', () => {
+  const ok = { ok: true, status: 204, json: async () => ({}) } as Response;
+
+  it('posts the token and new password to the public endpoint', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(ok);
+    await acceptInvite('tok-123', 'my-new-pass-1');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/auth\/accept-invite$/);
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(init!.body as string)).toEqual({
+      token: 'tok-123',
+      new_password: 'my-new-pass-1',
+    });
+  });
+
+  it('sends no Authorization header and stores no session', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(ok);
+    await acceptInvite('t', 'p');
+    const headers = fetchMock.mock.calls[0][1]?.headers as Record<
+      string,
+      string
+    >;
+    expect(Object.keys(headers)).toEqual(['Content-Type']);
+    expect(getSession()).toBeNull();
+  });
+
+  it('surfaces the backend detail for a dead link', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      json: async () => ({
+        detail: 'This invite link is invalid or has expired.',
+      }),
+    } as Response);
+    await expect(acceptInvite('old', 'p')).rejects.toThrow(
+      'This invite link is invalid or has expired.'
+    );
+  });
+
+  it('falls back to a generic message when the error is not JSON', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      json: async () => {
+        throw new Error('bad');
+      },
+    } as unknown as Response);
+    await expect(acceptInvite('t', 'p')).rejects.toThrow(
+      'Could not accept the invite'
+    );
+  });
+
+  it('lets a network failure through to the caller', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('offline'));
+    await expect(acceptInvite('t', 'p')).rejects.toThrow('offline');
   });
 });

@@ -18,6 +18,8 @@ class BusinessUserRead(BaseModel):
     role: str
     is_active: bool
     must_change_password: bool
+    # An emailed invite is waiting to be accepted.
+    invite_pending: bool = False
     last_login_at: datetime | None = None
     created_at: datetime
     # Designers only: clients they lead or were given access to.
@@ -26,7 +28,8 @@ class BusinessUserRead(BaseModel):
 
 class BusinessUserCreate(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
+    # Omit to email an invite link (when email is configured).
+    password: str | None = Field(default=None, min_length=8, max_length=128)
     full_name: str | None = Field(default=None, max_length=255)
     role: BusinessRole = "designer"
 
@@ -40,16 +43,31 @@ class BusinessUserUpdate(BaseModel):
     is_active: bool | None = None
 
 
+class BusinessUserCreated(BusinessUserRead):
+    """Create result: an invite was emailed, or a password is shown once."""
+
+    invite_sent: bool = False
+    temporary_password: str | None = None
+
+
 class ResetPasswordRequest(BaseModel):
-    """Omit password to have a strong one generated."""
+    """Omit password to email an invite link, or (without email) have a
+    strong one generated."""
 
     password: str | None = Field(default=None, min_length=8, max_length=128)
 
 
 class ResetPasswordResponse(BaseModel):
-    """The only time the temporary password is ever shown."""
+    """Either an invite was emailed, or the temporary password is shown once."""
 
-    temporary_password: str
+    invite_sent: bool = False
+    temporary_password: str | None = None
+
+
+class ResendInviteResponse(ResetPasswordResponse):
+    """Which address the invite (or temporary password) was issued for."""
+
+    email: str
 
 
 class TeamOverview(BaseModel):

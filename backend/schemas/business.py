@@ -33,7 +33,8 @@ class BusinessCreate(BaseModel):
     max_clients: int | None = Field(default=None, ge=0, le=100_000)
     max_quotation_versions: int | None = Field(default=None, ge=0, le=1000)
     max_portfolio_designs: int | None = Field(default=None, ge=0, le=100_000)
-    # First login for the business. Leave the password empty to have one generated.
+    # First login for the business. Leave the password empty to email an
+    # invite link (or, without email configured, have one generated).
     admin_email: EmailStr | None = None
     admin_password: str | None = Field(default=None, min_length=8)
     admin_name: str | None = Field(default=None, max_length=255)
@@ -90,6 +91,8 @@ class BusinessRead(BaseModel):
     has_openai_key: bool = False
     # Only set on create, once, when the system generated the admin password.
     temporary_password: str | None = None
+    # Only set on create: the admin was emailed an invite link instead.
+    invite_sent: bool = False
     openai_key_last4: str | None = None
     openai_key_updated_at: datetime | None = None
     openai_chat_model: str | None = None

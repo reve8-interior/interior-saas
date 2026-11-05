@@ -30,6 +30,8 @@ export interface Business {
   has_openai_key: boolean;
   /** Only on the create response: the generated admin password, shown once. */
   temporary_password?: string | null;
+  /** Only on the create response: the admin was emailed an invite link. */
+  invite_sent?: boolean;
   openai_key_last4: string | null;
   openai_key_updated_at: string | null;
   openai_chat_model: string | null;
@@ -81,6 +83,8 @@ export interface BusinessUser {
   role: TeamRole;
   is_active: boolean;
   must_change_password: boolean;
+  /** An emailed invite is waiting to be accepted. */
+  invite_pending?: boolean;
   last_login_at: string | null;
   created_at: string;
   /** Designers only: clients they lead or can access. */
@@ -89,10 +93,19 @@ export interface BusinessUser {
 
 export interface BusinessUserCreate {
   email: string;
-  password: string;
+  /** Omit to email an invite link (or have the server generate a password). */
+  password?: string | null;
   full_name?: string | null;
   role?: TeamRole;
 }
+
+/** Either an invite was emailed, or a password is shown once. */
+export interface IssuedAccess {
+  invite_sent: boolean;
+  temporary_password?: string | null;
+}
+
+export type BusinessUserCreated = BusinessUser & IssuedAccess;
 
 export type BusinessUserUpdate = Partial<
   Pick<BusinessUser, 'email' | 'full_name' | 'role' | 'is_active'>

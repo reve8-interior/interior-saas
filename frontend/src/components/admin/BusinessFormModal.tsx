@@ -1,8 +1,13 @@
 'use client';
 
+import {
+  IssuedCredentialsModal,
+  type IssuedCredentials,
+} from '@/components/shared/IssuedCredentialsModal';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { createBusiness, updateBusiness } from '@/lib/businesses';
 import { listAdminPlans } from '@/lib/plans';
+import { getMe } from '@/lib/profile';
 import type { Plan } from '@/lib/schemas/auth';
 import { Business } from '@/lib/schemas/business';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,8 +15,6 @@ import { FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/lib/errors';
 import { endOfDayIso } from '@/lib/dates';
-import { Copy, Dices } from 'lucide-react';
-import { MIN_PASSWORD_LENGTH, generateTempPassword } from '@/lib/teamForm';
 
 interface FormState {
   name: string;
@@ -19,7 +22,6 @@ interface FormState {
   contact_phone: string;
   admin_name: string;
   admin_email: string;
-  admin_password: string;
   plan: Plan;
   access_date: string; // yyyy-mm-dd; empty = no limit
   warning_days: string;
@@ -58,7 +60,6 @@ const EMPTY_FORM: FormState = {
   max_portfolio_designs: '',
   admin_name: '',
   admin_email: '',
-  admin_password: '',
 };
 
 const FREE_MONTH_OPTIONS = [1, 2, 3, 6, 12];
@@ -122,12 +123,10 @@ interface Props {
 /** Create / edit form. Mount it with a `key` so state resets per target. */
 export function BusinessFormModal({ open, business, onClose }: Props) {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<FormState>(() => ({
-    ...formFor(business),
-    // New businesses start with a generated password the superadmin can copy and share.
-    admin_password: business ? '' : generateTempPassword(),
-  }));
+  const [form, setForm] = useState<FormState>(() => formFor(business));
+  const [issued, setIssued] = useState<IssuedCredentials | null>(null);
   const editing = business !== null;
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: getMe });
   const { data: plans = [] } = useQuery({
     queryKey: ['admin-plans'],
     queryFn: listAdminPlans,
@@ -159,15 +158,26 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
         ...base,
         admin_name: blankToNull(form.admin_name),
         admin_email: blankToNull(form.admin_email),
-        admin_password: form.admin_password,
       });
     },
-    onSuccess: () => {
-      toast.success(editing ? 'Business updated' : 'Business added');
+    onSuccess: (saved) => {
+      const adminEmail = form.admin_email.trim();
+      toast.success(
+        saved.invite_sent
+          ? `Business added. Invite emailed to ${adminEmail}`
+          : editing
+            ? 'Business updated'
+            : 'Business added'
+      );
       queryClient.invalidateQueries({ queryKey: ['businesses'] });
       queryClient.invalidateQueries({ queryKey: ['admin-overview'] });
       // Sidebar business name comes from /auth/me
       queryClient.invalidateQueries({ queryKey: ['me'] });
+      // No email configured: a password was generated, show it once.
+      if (!editing && !saved.invite_sent && saved.temporary_password) {
+        setIssued({ email: adminEmail, password: saved.temporary_password });
+        return;
+      }
       onClose();
     },
     onError: (err) => toast.error(errorMessage(err)),
@@ -205,12 +215,6 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
       toast.error('Admin email is required');
       return;
     }
-    if (!editing && form.admin_password.length < MIN_PASSWORD_LENGTH) {
-      toast.error(
-        `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
-      );
-      return;
-    }
     saveMutation.mutate();
   }
 
@@ -218,222 +222,201 @@ export function BusinessFormModal({ open, business, onClose }: Props) {
     setForm((f) => ({ ...f, [k]: e.target.value }));
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={editing ? 'Edit business' : 'Add business'}
-      maxWidth="4xl"
-    >
-      <form onSubmit={onSubmit} className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="field-label">Business name *</label>
-            <input
-              className="field"
-              value={form.name}
-              onChange={set('name')}
-              maxLength={255}
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="field-label">Phone</label>
-            <input
-              className="field"
-              value={form.contact_phone}
-              onChange={set('contact_phone')}
-              maxLength={50}
-            />
-          </div>
-          {editing ? (
-            <div className="sm:col-span-2">
-              <label className="field-label">Contact email</label>
+    <>
+      <IssuedCredentialsModal
+        credentials={issued}
+        onClose={() => {
+          setIssued(null);
+          onClose();
+        }}
+      />
+      <Modal
+        open={open && issued === null}
+        onClose={onClose}
+        title={editing ? 'Edit business' : 'Add business'}
+        maxWidth="4xl"
+      >
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="field-label">Business name *</label>
               <input
-                type="email"
                 className="field"
-                value={form.contact_email}
-                onChange={set('contact_email')}
+                value={form.name}
+                onChange={set('name')}
+                maxLength={255}
+                autoFocus
               />
             </div>
-          ) : (
-            <>
-              <div>
-                <label className="field-label">Admin name</label>
-                <input
-                  className="field"
-                  value={form.admin_name}
-                  onChange={set('admin_name')}
-                />
-              </div>
-              <div>
-                <label className="field-label">Admin email *</label>
+            <div>
+              <label className="field-label">Phone</label>
+              <input
+                className="field"
+                value={form.contact_phone}
+                onChange={set('contact_phone')}
+                maxLength={50}
+              />
+            </div>
+            {editing ? (
+              <div className="sm:col-span-2">
+                <label className="field-label">Contact email</label>
                 <input
                   type="email"
                   className="field"
-                  value={form.admin_email}
-                  onChange={set('admin_email')}
-                  autoComplete="off"
+                  value={form.contact_email}
+                  onChange={set('contact_email')}
                 />
               </div>
-              <div className="sm:col-span-2">
-                <label className="field-label">Temporary password</label>
-                <div className="flex gap-2">
+            ) : (
+              <>
+                <div>
+                  <label className="field-label">Admin name</label>
                   <input
-                    className="field min-w-0 flex-1 font-mono"
-                    value={form.admin_password}
-                    onChange={set('admin_password')}
-                    autoComplete="off"
-                    spellCheck={false}
+                    className="field"
+                    value={form.admin_name}
+                    onChange={set('admin_name')}
                   />
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() =>
-                      setForm((f) => ({
-                        ...f,
-                        admin_password: generateTempPassword(),
-                      }))
-                    }
-                  >
-                    <Dices className="h-4 w-4" aria-hidden /> Generate
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() =>
-                      navigator.clipboard
-                        .writeText(
-                          `Email: ${form.admin_email.trim()}
-Temporary password: ${form.admin_password}`
-                        )
-                        .then(() => toast.success('Copied email and password'))
-                        .catch(() => toast.error('Copy failed'))
-                    }
-                  >
-                    <Copy className="h-4 w-4" aria-hidden /> Copy
-                  </button>
                 </div>
-                <p className="mt-1 text-xs text-muted">
+                <div>
+                  <label className="field-label">Admin email *</label>
+                  <input
+                    type="email"
+                    className="field"
+                    value={form.admin_email}
+                    onChange={set('admin_email')}
+                    autoComplete="off"
+                  />
+                </div>
+                <p className="text-xs text-muted sm:col-span-2">
                   The admin signs in with this email (also the business&apos;s
-                  contact email) and must change the password at first login.
-                  Copy it before adding; it can&apos;t be shown again.
+                  contact email). We email them a link to confirm it and set
+                  their own password. If email isn&apos;t set up, a temporary
+                  password is generated and shown once after adding.
                 </p>
-              </div>
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
 
-        <fieldset className="space-y-3 rounded-xl bg-surface-2 p-3 dark:border-line">
-          <legend className="px-1 text-xs font-medium text-dark-500 dark:text-dark-400">
-            Plan &amp; access
-          </legend>
-          <div>
-            <label className="field-label">Plan</label>
-            <select
-              className="field"
-              value={form.plan}
-              onChange={(e) => setForm((f) => ({ ...f, plan: e.target.value }))}
-            >
-              {planOptions.map((p) => (
-                <option key={p.slug} value={p.slug}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <fieldset className="space-y-3 rounded-xl bg-surface-2 p-3 dark:border-line">
+            <legend className="px-1 text-xs font-medium text-dark-500 dark:text-dark-400">
+              Plan &amp; access
+            </legend>
             <div>
-              <label className="field-label">Access until</label>
-              <input
-                type="date"
+              <label className="field-label">Plan</label>
+              <select
                 className="field"
-                value={form.access_date}
-                onChange={set('access_date')}
-              />
-            </div>
-            <div>
-              <label className="field-label">Warn when days left ≤</label>
-              <input
-                type="number"
-                min={0}
-                max={365}
-                className="field"
-                value={form.warning_days}
-                onChange={set('warning_days')}
-              />
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {FREE_MONTH_OPTIONS.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() =>
-                  setForm((f) => ({ ...f, access_date: monthsFromToday(m) }))
+                value={form.plan}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, plan: e.target.value }))
                 }
-                className="rounded-control border border-line px-3 py-1.5 text-xs text-dark-700 hover:bg-primary-50/70 dark:border-line dark:text-dark-300 dark:hover:bg-white/[0.06]"
               >
-                {m} mo from today
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, access_date: '' }))}
-              className="rounded-control border border-line px-3 py-1.5 text-xs text-dark-700 hover:bg-primary-50/70 dark:border-line dark:text-dark-300 dark:hover:bg-white/[0.06]"
-            >
-              No limit
-            </button>
-          </div>
-          <p className="text-xs text-dark-500 dark:text-dark-400">
-            After this date the business is blocked from clients, board, meeting
-            notes and quotations until you extend it.
-          </p>
-        </fieldset>
-
-        <fieldset className="space-y-3 rounded-xl bg-surface-2 p-3 dark:border-line">
-          <legend className="px-1 text-xs font-medium text-dark-500 dark:text-dark-400">
-            Limit overrides
-          </legend>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {OVERRIDES.map(({ key, label, min }) => (
-              <div key={key}>
-                <label className="field-label">{label}</label>
+                {planOptions.map((p) => (
+                  <option key={p.slug} value={p.slug}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label className="field-label">Access until</label>
+                <input
+                  type="date"
+                  className="field"
+                  value={form.access_date}
+                  onChange={set('access_date')}
+                />
+              </div>
+              <div>
+                <label className="field-label">Warn when days left ≤</label>
                 <input
                   type="number"
-                  min={min}
+                  min={0}
+                  max={365}
                   className="field"
-                  placeholder={planValue(business, key)}
-                  value={form[key]}
-                  onChange={set(key)}
+                  value={form.warning_days}
+                  onChange={set('warning_days')}
                 />
               </div>
-            ))}
-            <div>
-              <label className="field-label">Bonus AI credits / month</label>
-              <input
-                type="number"
-                min={0}
-                className="field"
-                value={form.ai_credit_bonus}
-                onChange={set('ai_credit_bonus')}
-              />
             </div>
-          </div>
-          <p className="text-xs text-dark-500 dark:text-dark-400">
-            Leave a field empty to follow the plan (shown as the placeholder).
-            {business
-              ? ` In use now: ${business.seats_used} team seat${business.seats_used === 1 ? '' : 's'}, ${business.image_count} uploaded image${business.image_count === 1 ? '' : 's'}.`
-              : ''}
-          </p>
-        </fieldset>
+            <div className="flex flex-wrap gap-2">
+              {FREE_MONTH_OPTIONS.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() =>
+                    setForm((f) => ({ ...f, access_date: monthsFromToday(m) }))
+                  }
+                  className="rounded-control border border-line px-3 py-1.5 text-xs text-dark-700 hover:bg-primary-50/70 dark:border-line dark:text-dark-300 dark:hover:bg-white/[0.06]"
+                >
+                  {m} mo from today
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, access_date: '' }))}
+                className="rounded-control border border-line px-3 py-1.5 text-xs text-dark-700 hover:bg-primary-50/70 dark:border-line dark:text-dark-300 dark:hover:bg-white/[0.06]"
+              >
+                No limit
+              </button>
+            </div>
+            <p className="text-xs text-dark-500 dark:text-dark-400">
+              After this date the business is blocked from clients, board,
+              meeting notes and quotations until you extend it.
+            </p>
+          </fieldset>
 
-        <ModalFooter
-          type="submit"
-          onCancel={onClose}
-          confirmLabel={editing ? 'Save changes' : 'Add business'}
-          loading={saveMutation.isPending}
-        />
-      </form>
-    </Modal>
+          <fieldset className="space-y-3 rounded-xl bg-surface-2 p-3 dark:border-line">
+            <legend className="px-1 text-xs font-medium text-dark-500 dark:text-dark-400">
+              Limit overrides
+            </legend>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {OVERRIDES.map(({ key, label, min }) => (
+                <div key={key}>
+                  <label className="field-label">{label}</label>
+                  <input
+                    type="number"
+                    min={min}
+                    className="field"
+                    placeholder={planValue(business, key)}
+                    value={form[key]}
+                    onChange={set(key)}
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="field-label">Bonus AI credits / month</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="field"
+                  value={form.ai_credit_bonus}
+                  onChange={set('ai_credit_bonus')}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-dark-500 dark:text-dark-400">
+              Leave a field empty to follow the plan (shown as the placeholder).
+              {business
+                ? ` In use now: ${business.seats_used} team seat${business.seats_used === 1 ? '' : 's'}, ${business.image_count} uploaded image${business.image_count === 1 ? '' : 's'}.`
+                : ''}
+            </p>
+          </fieldset>
+
+          <ModalFooter
+            type="submit"
+            onCancel={onClose}
+            confirmLabel={
+              editing
+                ? 'Save changes'
+                : me?.invites_enabled
+                  ? 'Add business & send invite'
+                  : 'Add business'
+            }
+            loading={saveMutation.isPending}
+          />
+        </form>
+      </Modal>
+    </>
   );
 }

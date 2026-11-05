@@ -1,3 +1,14 @@
+0.26.0
+ - date: 05-11-2026
+ - changes:
+   - feat: `/accept-invite` page: opened from the emailed link, the person confirms their email and sets a password (with confirmation), then goes to sign in; incomplete or expired links show a clear message and nothing is submitted for a short or mismatched password
+   - feat: adding a business or a team member no longer asks for a password. With email configured the buttons read "Add business & send invite" and "Send invite" and the person is emailed a link; without it a generated password is shown once, as before
+   - feat: "Resend invite" on a member who hasn't accepted (replaces "Reset password" for them), shown as "invite pending" instead of "temp password"
+   - feat: admin business page: a "Resend invite" button re-sends the welcome email to the business admin who hasn't set up yet, and says so if they already have
+   - feat: admin business list opens on the Active filter
+   - feat: the activity log reads "Invited", "Sent a new invite to" and "Accepted the invite and set a password"
+   - test: accept-invite page (validation, success, expired link, progress, retry), add-member and add-business forms (no password field, button labels, invite vs generated password, validation, errors), the business Resend invite button, team and resend API calls, `acceptInvite`, form validation and activity descriptions
+
 0.25.0
  - date: 04-11-2026
  - changes:

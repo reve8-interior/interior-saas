@@ -8,6 +8,7 @@ recreated. The role must be able to CREATE ROLE (superuser in CI).
 import os
 import uuid
 from collections.abc import Generator
+from typing import NamedTuple
 
 import pytest
 from fastapi.testclient import TestClient
@@ -18,6 +19,7 @@ from backend import (
     models,  # noqa: F401  # registers every table on Base.metadata
 )
 from backend.core import get_db
+from backend.core.config import settings
 from backend.core.database import scope_session
 from backend.core.security import create_access_token, get_password_hash
 from backend.main import app
@@ -26,7 +28,7 @@ from backend.models.business import Business
 from backend.models.client import Client
 from backend.models.user import User, UserRole
 from backend.rls import apply_rls
-from backend.services import rate_limit
+from backend.services import invites, rate_limit
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
@@ -50,6 +52,53 @@ def tables() -> Generator[None, None, None]:
         apply_rls(conn)
     yield
     Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_email(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Never send real mail from tests, whatever .env.dev has configured."""
+    monkeypatch.setattr(settings, "smtp_host", "")
+    monkeypatch.setattr(settings, "smtp_from", "")
+
+
+class Sent(NamedTuple):
+    """One captured invite email (indexable like the old (to, subject, body))."""
+
+    to: str
+    subject: str
+    body: str
+    html: str | None
+    from_name: str | None
+    reply_to: str | None
+
+
+@pytest.fixture
+def outbox(monkeypatch: pytest.MonkeyPatch) -> list[Sent]:
+    """Switch email on and capture what would have been sent."""
+    sent: list[Sent] = []
+    monkeypatch.setattr(settings, "smtp_host", "smtp.test")
+    monkeypatch.setattr(
+        settings, "smtp_from", "Reve8 Pvt Ltd <noreply@test.com>"
+    )
+
+    def fake_send(
+        to: str,
+        subject: str,
+        body: str,
+        *,
+        html: str | None = None,
+        from_name: str | None = None,
+        reply_to: str | None = None,
+    ) -> None:
+        sent.append(Sent(to, subject, body, html, from_name, reply_to))
+
+    monkeypatch.setattr(invites, "send_email", fake_send)
+    return sent
+
+
+def invite_token(outbox: list[Sent]) -> str:
+    """The one-time token in the most recent captured invite."""
+    return outbox[-1].body.split("token=")[1].split()[0]
 
 
 @pytest.fixture(autouse=True)

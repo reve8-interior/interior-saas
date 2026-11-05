@@ -92,6 +92,21 @@ class Settings(BaseSettings):
         default="", alias="SECRETS_ENCRYPTION_KEY"
     )
 
+    # Outgoing email (invite links). Leave SMTP_HOST empty to switch invites
+    # off; admins then hand over temporary passwords as before.
+    smtp_host: str = Field(default="", alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="SMTP_PORT")
+    smtp_user: str = Field(default="", alias="SMTP_USER")
+    smtp_password: str = Field(default="", alias="SMTP_PASSWORD")
+    smtp_from: str = Field(default="", alias="SMTP_FROM")
+    # STARTTLS on the SMTP connection; turn off only for a local mail catcher.
+    smtp_starttls: bool = Field(default=True, alias="SMTP_STARTTLS")
+    invite_ttl_hours: int = Field(default=72, alias="INVITE_TTL_HOURS")
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.smtp_host and self.smtp_from)
+
     class Config:
         env_file = _ENV_FILE
         env_file_encoding = "utf-8"

@@ -38,11 +38,28 @@ class User(Base, TimestampMixin):
     last_login_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Set when the person proves they own the address by opening an invite.
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # SHA-256 of the emailed one-time invite token; the token itself is never
+    # stored.
+    invite_token_hash: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
+    invite_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     business_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("businesses.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
+
+    @property
+    def invite_pending(self) -> bool:
+        """An invite was emailed and has not been accepted yet."""
+        return self.invite_token_hash is not None
 
     business: Mapped["Business | None"] = relationship(  # type: ignore[name-defined]
         "Business", back_populates="users"
