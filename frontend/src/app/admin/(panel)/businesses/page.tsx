@@ -50,6 +50,7 @@ export default function BusinessesPage() {
     queryKey: ['businesses'],
     queryFn: listBusinesses,
     enabled: allowed,
+    refetchOnWindowFocus: true,
   });
 
   if (!allowed) return null;

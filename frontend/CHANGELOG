@@ -1,3 +1,15 @@
+0.27.0
+ - date: 06-11-2026
+ - changes:
+   - feat: "Plan & billing" in the sidebar for admins, and a billing page to choose, pay for, change and cancel a plan with Razorpay checkout
+   - feat: change plan from the billing page: subscribers see "Upgrade to" and "Downgrade to" instead of "Choose"; a dialog shows what happens and what is due before anything is charged (upgrade starts now, downgrade at the end of the period); a switch that is scheduled shows a banner with a "Keep {plan}" link
+   - feat: the billing-period toggle is hidden once subscribed, since a change keeps the current billing cycle
+   - feat: a plan you have already paid for can't be bought again; the button says when renewal opens
+   - feat: receipts: a list on the billing page and a printable receipt with "Print / Save as PDF" (proof of payment, not a GST invoice)
+   - fix: the plan updates right after paying, without waiting for the webhook
+   - fix: the plan shown to a designer refreshes on focus and every 15 seconds, and the admin business pages refresh on focus, so an admin's plan change shows up without a reload
+   - test: billing page, plan actions, change-plan dialog, scheduled switch banner, receipts list and dialog, and the billing helpers
+
 0.26.0
  - date: 05-11-2026
  - changes:

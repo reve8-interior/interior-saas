@@ -12,6 +12,8 @@ from .feedback import Feedback
 from .final_summary import FinalSummary
 from .margin import MarginConfig
 from .material import MaterialRate
+from .payment import Payment
+from .payment_event import PaymentEvent
 from .plan import Plan
 from .portfolio_share import PortfolioShare
 from .project import Project
@@ -40,6 +42,8 @@ __all__ = [
     "Design",
     "DesignHotspot",
     "ShareLink",
+    "Payment",
+    "PaymentEvent",
     "Plan",
     "PortfolioShare",
     "Project",

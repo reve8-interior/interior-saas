@@ -102,6 +102,8 @@ class PlanRead(PlanFields):
 
     id: UUID
     slug: str
+    razorpay_plan_id_monthly: str | None = None
+    razorpay_plan_price_inr: int | None = None
     created_at: datetime | None = None
 
 

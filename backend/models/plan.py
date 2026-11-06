@@ -73,6 +73,11 @@ class Plan(Base, TimestampMixin):
         Boolean, nullable=False, default=False, server_default="false"
     )
 
+    # Monthly plan id in Razorpay, and the price it was created at (Razorpay
+    # plans are immutable, so a price change needs a new one).
+    razorpay_plan_id_monthly: Mapped[str | None] = mapped_column(String(64))
+    razorpay_plan_price_inr: Mapped[int | None] = mapped_column(Integer)
+
     # Marketing bullets for the pricing card.
     highlights: Mapped[list] = mapped_column(
         JSONB, nullable=False, default=list, server_default="[]"

@@ -124,6 +124,8 @@ describe('planPayload', () => {
       website_custom_domain: false,
       website_remove_badge: false,
       highlights: ['Email support'],
+      razorpay_plan_id_monthly: null,
+      razorpay_plan_price_inr: null,
     } satisfies AdminPlan;
     const result = planPayload(planFormFor(plan), true);
     expect(result).toMatchObject({

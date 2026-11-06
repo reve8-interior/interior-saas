@@ -1,5 +1,7 @@
 'use client';
 
+import { Badge } from '@/components/ui';
+import { syncPlanToRazorpay } from '@/lib/billing';
 import { errorMessage } from '@/lib/errors';
 import {
   BooleanRow,
@@ -140,6 +142,19 @@ export function PlanMatrix({ plans, onDelete }: Props) {
     },
   });
 
+  const syncMutation = useMutation({
+    mutationFn: (plan: AdminPlan) => syncPlanToRazorpay(plan.id),
+    onSuccess: (result) => {
+      toast.success(
+        result.created
+          ? 'Created the Razorpay plan'
+          : 'Already in sync with Razorpay'
+      );
+      queryClient.invalidateQueries({ queryKey: ['admin-plans'] });
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  });
+
   const save = (plan: AdminPlan, changes: PlanUpdate) =>
     saveMutation.mutate({ plan, changes });
   const busy = saveMutation.isPending;
@@ -168,6 +183,18 @@ export function PlanMatrix({ plans, onDelete }: Props) {
           </tr>
         </thead>
         <tbody>
+          <tr className="border-t border-line">
+            <td className="px-4 py-2">Razorpay plan</td>
+            {plans.map((p) => (
+              <td key={p.id} className="px-4 py-2 text-center">
+                <RazorpaySync
+                  plan={p}
+                  disabled={syncMutation.isPending}
+                  onSync={() => syncMutation.mutate(p)}
+                />
+              </td>
+            ))}
+          </tr>
           {MATRIX_SECTIONS.map((section) => (
             <SectionRows
               key={section.title}
@@ -180,6 +207,34 @@ export function PlanMatrix({ plans, onDelete }: Props) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** Whether the plan's monthly price exists on Razorpay, with a button to push it. */
+function RazorpaySync({
+  plan,
+  disabled,
+  onSync,
+}: {
+  plan: AdminPlan;
+  disabled: boolean;
+  onSync: () => void;
+}) {
+  if (plan.price_monthly_inr === null) {
+    return <span className="text-dark-400">—</span>;
+  }
+  const synced =
+    plan.razorpay_plan_id_monthly &&
+    plan.razorpay_plan_price_inr === plan.price_monthly_inr;
+  return (
+    <span className="inline-flex items-center gap-2">
+      <Badge tone={synced ? 'success' : 'warning'}>
+        {synced ? 'Synced' : 'Not synced'}
+      </Badge>
+      <button className="btn-ghost btn-sm" disabled={disabled} onClick={onSync}>
+        Sync
+      </button>
+    </span>
   );
 }
 

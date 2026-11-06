@@ -30,6 +30,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   BookOpen,
   Columns,
+  CreditCard,
   Globe,
   Images,
   LinkSimple,
@@ -92,6 +93,12 @@ const WEBSITE_ITEM = {
   icon: Globe,
 };
 
+const BILLING_ITEM = {
+  name: 'Plan & billing',
+  href: '/dashboard/billing',
+  icon: CreditCard,
+};
+
 const TEAM_ITEM = { name: 'Team', href: '/dashboard/team', icon: UserGear };
 
 const CLIENT_PAGE = /^\/dashboard\/clients\/([^/]+)(?:\/|$)/;
@@ -114,6 +121,7 @@ function getPageTitle(pathname: string): string {
   if (pathname === '/dashboard/shared') return 'Shared links';
   if (pathname === '/dashboard/guide') return 'Guide';
   if (pathname === '/dashboard/team') return 'Team';
+  if (pathname === '/dashboard/billing') return 'Plan & billing';
   if (pathname === '/dashboard/settings') return 'Settings';
   if (pathname.startsWith('/dashboard/settings/columns'))
     return 'Quotation Columns';
@@ -140,6 +148,9 @@ export default function CRMLayout({ children }: { children: ReactNode }) {
   const { data: me, isLoading: meLoading } = useQuery({
     queryKey: ['me'],
     queryFn: getMe,
+    // A plan the platform admin changes (or a payment) shows up without a reload.
+    staleTime: 15 * 1000,
+    refetchOnWindowFocus: true,
   });
 
   // Customer questions still unanswered; the Inbox link shows the count.
@@ -157,7 +168,9 @@ export default function CRMLayout({ children }: { children: ReactNode }) {
     return navigationSections.map((section) => ({
       ...section,
       items: [
-        ...(isAdmin && section.title === 'Manage' ? [TEAM_ITEM] : []),
+        ...(isAdmin && section.title === 'Manage'
+          ? [TEAM_ITEM, BILLING_ITEM]
+          : []),
         ...section.items.flatMap((item) => {
           if (item.href === '/dashboard/inbox')
             return [{ ...item, badge: inboxOpen }];

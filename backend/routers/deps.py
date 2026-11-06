@@ -110,3 +110,12 @@ def require_business_admin(
     if current_user.role != UserRole.admin or current_user.business_id is None:
         raise HTTPException(status_code=403, detail="Admin access required")
     return current_user
+
+
+def require_billing_admin(
+    current_user: User = Depends(get_user_allow_expired),
+) -> User:
+    """A tenant admin, even when access has expired: they must be able to pay."""
+    if current_user.role != UserRole.admin or current_user.business_id is None:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return current_user

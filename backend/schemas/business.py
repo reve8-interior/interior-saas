@@ -74,6 +74,9 @@ class BusinessRead(BaseModel):
     plan: str = "free"
     plan_name: str = "Free"
     ai_credit_bonus: int = 0
+    billing_cycle: str | None = None
+    subscription_status: str = "none"
+    current_period_end: datetime | None = None
     # Overrides set on this business (null = follows the plan).
     max_users: int | None = None
     max_images: int | None = None

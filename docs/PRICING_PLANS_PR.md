@@ -11,7 +11,9 @@ Done on `feat/pricing-plans`:
 - One admin-set chat model per business; the user-facing tier picker is gone (migration 0049).
 - Tenant usage meters (settings) and an upgrade nudge when a limit is at 80%+.
 
-Not started: Razorpay (checkout, webhooks, billing page), clean/branded export gating, audio credits.
+- Razorpay: monthly subscriptions, yearly one-time orders, signed webhook, Billing page, admin plan sync, optional first-month offer (migration 0050).
+
+Not started: clean/branded export gating, audio credits, automatic drop to Free after a lapsed period.
 
 ## Goals
 

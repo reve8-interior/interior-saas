@@ -18,13 +18,21 @@ export function meterPercent(used: number, limit: number | null): number {
   return Math.min(Math.round((used / limit) * 100), 100);
 }
 
-/** Every meter the business has, with AI credits first when AI is on. */
+/** Active clients always lead the list. */
+const LEADING_KEY = 'clients';
+
+const clientsFirst = (meters: UsageMeter[]): UsageMeter[] => [
+  ...meters.filter((m) => m.key === LEADING_KEY),
+  ...meters.filter((m) => m.key !== LEADING_KEY),
+];
+
+/** Every meter the business has: active clients first, then AI credits when AI is on. */
 export function usageMeters(
   usage: UsageMeter[],
   ai: AiStatus | undefined
 ): UsageMeter[] {
   if (!ai?.enabled || ai.monthly_limit === null || ai.remaining === null) {
-    return usage;
+    return clientsFirst(usage);
   }
   const credits: UsageMeter = {
     key: 'ai_credits',
@@ -32,7 +40,7 @@ export function usageMeters(
     used: ai.monthly_limit - ai.remaining,
     limit: ai.monthly_limit,
   };
-  return [credits, ...usage];
+  return clientsFirst([credits, ...usage]);
 }
 
 /** The meters that are at or near their limit, fullest first. */

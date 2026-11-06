@@ -108,6 +108,12 @@ def list_businesses(
         read = BusinessRead.model_validate(business)
         read.user_count = counts.get(business.id, 0)
         read.seats_used = active_counts.get(business.id, 0)
+        # The plan chip and access countdown on the admin list need these.
+        read.limits = effective_limits(db, business)
+        read.plan_name = read.limits.plan_name
+        status = access_status(business)
+        read.days_left = status.days_left
+        read.access_expired = status.expired
         result.append(read)
     return result
 
@@ -244,6 +250,29 @@ def resend_invite(
     return ResendInviteResponse(email=admin.email, **result.model_dump())
 
 
+def _refuse_plan_change_under_subscription(
+    business: Business, new_plan: str
+) -> None:
+    """A live monthly subscription renews the plan it was bought for.
+
+    Changing the plan here would be undone by the next renewal and leave the
+    customer paying for something else, so the subscription goes first.
+    """
+    if (
+        new_plan != business.plan
+        and business.billing_cycle == "monthly"
+        and business.subscription_status in ("active", "pending")
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This business pays by monthly subscription, so the plan "
+                "would revert at the next renewal. Ask them to change or "
+                "cancel the subscription on their billing page first."
+            ),
+        )
+
+
 @router.patch("/{business_id}", response_model=BusinessRead)
 def update_business(
     business_id: uuid.UUID,
@@ -265,6 +294,7 @@ def update_business(
             )
     if "plan" in changes:
         ensure_plan_exists(db, changes["plan"])
+        _refuse_plan_change_under_subscription(business, changes["plan"])
     diff = {
         field: {"from": _plain(getattr(business, field)), "to": _plain(value)}
         for field, value in changes.items()

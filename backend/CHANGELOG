@@ -1,3 +1,18 @@
+0.25.0
+ - date: 06-11-2026
+ - changes:
+   - feat: Razorpay billing: monthly subscriptions and yearly orders, with the signed webhook (`/api/v1/webhooks/razorpay`) as the source of truth. Events are idempotent (unique event id), applied under a row lock, ignored when older than the last applied one, and amounts are checked against the plan price
+   - feat: no paying twice: a live monthly subscription or a paid-up yearly plan can't be bought again (409 with the date renewal opens); yearly renewal opens 7 days before the end
+   - feat: payment receipts (proof of payment, not a GST invoice): `GET /billing/receipts` and `/billing/receipts/{payment_id}`, numbered `RV8-{year}-{seq}`, one per captured payment, never twice for the same payment. Issuer name and address come from `RECEIPT_ISSUER_NAME` and `RECEIPT_ISSUER_ADDRESS`
+   - feat: change plan like a subscription product: `GET /billing/change-plan/quote` and `POST /billing/change-plan`. Upgrade is immediate (yearly: pay the prorated difference, end date unchanged; monthly: new subscription starts today and the old one is cancelled once it charges). Downgrade takes effect at the period end (monthly: a scheduled subscription; yearly: remembered and applied on renewal). A cancelled monthly plan can be resumed. The old subscription is always cancelled by the new one, never edited, because Razorpay can't update a UPI subscription
+   - feat: the plan follows the payment straight away: after the checkout signature is verified, `/billing/verify` reads the payment, subscription or order from Razorpay's API and applies it through the same code as the webhook, so a late or unreachable webhook no longer leaves the customer on Free; the webhook arriving later changes nothing
+   - feat: `billing status` also returns `can_buy`, `renewal_opens_at`, `can_change_plan`, `pending_plan`, `pending_plan_name` and `pending_change_on`; admin-granted plans show their expiry as the period end
+   - fix: a platform admin can't change the plan of a business under a live monthly subscription (409), so the admin screen and billing can't disagree
+   - config: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `RECEIPT_ISSUER_NAME`, `RECEIPT_ISSUER_ADDRESS`. Webhook events to enable: `subscription.*` (including `subscription.authenticated`), `order.paid` and `payment.failed`
+   - migration 0059 to 0062: billing columns, payment events, `payments` table with its receipt sequence and row-level security, and `pending_plan_slug`, `pending_subscription_id` and `pending_kind` on businesses; run `alembic upgrade head` before deploying this version
+   - test: webhook signature, idempotency, stale and out-of-order events, amount checks, receipts, every plan-change path (upgrade, downgrade, resume, keep, refusals), and confirming a checkout without the webhook (monthly, yearly, unpaid, underpaid, other business, Razorpay outage)
+   - note: refunds are only logged, receipts aren't emailed, and GST invoices aren't built; the plan-change and confirm-from-Razorpay flows haven't been run against Razorpay's API yet, only against mocks
+
 0.24.0
  - date: 05-11-2026
  - changes:

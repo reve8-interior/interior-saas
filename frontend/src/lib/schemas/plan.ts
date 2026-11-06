@@ -29,6 +29,8 @@ export interface PlanFields {
 export interface AdminPlan extends PlanFields {
   id: string;
   slug: string;
+  razorpay_plan_id_monthly: string | null;
+  razorpay_plan_price_inr: number | null;
 }
 
 export type PlanCreate = Partial<PlanFields> & { slug: string; name: string };

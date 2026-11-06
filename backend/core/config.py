@@ -107,6 +107,30 @@ class Settings(BaseSettings):
     def email_enabled(self) -> bool:
         return bool(self.smtp_host and self.smtp_from)
 
+    # Razorpay (payments). Leave empty to switch checkout off.
+    razorpay_key_id: str = Field(default="", alias="RAZORPAY_KEY_ID")
+    razorpay_key_secret: str = Field(default="", alias="RAZORPAY_KEY_SECRET")
+    razorpay_webhook_secret: str = Field(
+        default="", alias="RAZORPAY_WEBHOOK_SECRET"
+    )
+    # Optional Razorpay Offer (created in the dashboard) applied to the first
+    # cycle of every new monthly subscription, e.g. 50% off the first month.
+    razorpay_first_month_offer_id: str = Field(
+        default="", alias="RAZORPAY_FIRST_MONTH_OFFER_ID"
+    )
+
+    # Printed on payment receipts (not a tax invoice; no GST is charged).
+    receipt_issuer_name: str = Field(
+        default="Reve8", alias="RECEIPT_ISSUER_NAME"
+    )
+    receipt_issuer_address: str = Field(
+        default="", alias="RECEIPT_ISSUER_ADDRESS"
+    )
+
+    @property
+    def razorpay_enabled(self) -> bool:
+        return bool(self.razorpay_key_id and self.razorpay_key_secret)
+
     class Config:
         env_file = _ENV_FILE
         env_file_encoding = "utf-8"

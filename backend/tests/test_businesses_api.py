@@ -386,3 +386,78 @@ def test_create_rejects_out_of_range_override(api, db):
         json={"name": "Bad Limits", "max_image_mb": 0},
     )
     assert r.status_code == 422
+
+
+def test_list_shows_the_real_plan_name_and_access_countdown(api, db):
+    from datetime import UTC, datetime, timedelta
+
+    from backend.services.plan_limits import seed_plans
+
+    seed_plans(db)
+    admin = superadmin(db)
+    make_business(
+        db,
+        name="Paid Studio",
+        plan="studio",
+        access_expires_at=datetime.now(UTC) + timedelta(days=100),
+    )
+    make_business(
+        db,
+        name="Lapsed Co",
+        plan="solo",
+        access_expires_at=datetime.now(UTC) - timedelta(days=1),
+    )
+    make_business(db, name="Free Co")
+    rows = {
+        b["name"]: b
+        for b in api.get("/api/v1/businesses", headers=admin).json()
+    }
+    assert rows["Paid Studio"]["plan_name"] == "Studio"
+    assert rows["Paid Studio"]["limits"]["plan"] == "studio"
+    assert rows["Paid Studio"]["days_left"] in (99, 100)
+    assert rows["Paid Studio"]["access_expired"] is False
+    assert rows["Lapsed Co"]["plan_name"] == "Solo"
+    assert rows["Lapsed Co"]["access_expired"] is True
+    assert rows["Free Co"]["plan_name"] == "Free"
+    assert rows["Free Co"]["days_left"] is None
+
+
+def test_plan_cannot_be_changed_under_a_live_monthly_subscription(api, db):
+    h = superadmin(db)
+    biz = make_business(
+        db,
+        "Paying",
+        plan="solo",
+        billing_cycle="monthly",
+        subscription_status="active",
+    )
+    r = api.patch(f"{URL}/{biz.id}", headers=h, json={"plan": "studio"})
+    assert r.status_code == 409
+    assert "monthly subscription" in r.json()["detail"]
+    # Other edits, and re-saving the same plan, are still fine.
+    assert (
+        api.patch(
+            f"{URL}/{biz.id}", headers=h, json={"plan": "solo"}
+        ).status_code
+        == 200
+    )
+    assert (
+        api.patch(
+            f"{URL}/{biz.id}", headers=h, json={"name": "Renamed"}
+        ).status_code
+        == 200
+    )
+
+
+def test_plan_can_be_changed_when_nothing_is_subscribed(api, db):
+    h = superadmin(db)
+    for i, state in enumerate(
+        (
+            {},
+            {"billing_cycle": "monthly", "subscription_status": "cancelled"},
+            {"billing_cycle": "yearly", "subscription_status": "active"},
+        )
+    ):
+        biz = make_business(db, f"Free {i}", **state)
+        r = api.patch(f"{URL}/{biz.id}", headers=h, json={"plan": "solo"})
+        assert r.status_code == 200, state

@@ -50,6 +50,27 @@ class Business(Base, TimestampMixin):
     max_portfolio_designs: Mapped[int | None] = mapped_column(
         Integer, nullable=True
     )
+    # Razorpay billing state, written only by billing.apply_event and the
+    # checkout flow. subscription_status: none|created|active|pending|
+    # halted|cancelled|completed.
+    razorpay_subscription_id: Mapped[str | None] = mapped_column(String(64))
+    billing_cycle: Mapped[str | None] = mapped_column(String(10))
+    subscription_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="none", server_default="none"
+    )
+    current_period_end: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
+    # A plan change that has been paid for or authorised but not yet taken
+    # over: the new subscription (monthly) and the plan it will switch to.
+    # pending_kind: "upgrade" starts now; "scheduled" starts at period end.
+    pending_plan_slug: Mapped[str | None] = mapped_column(String(32))
+    pending_subscription_id: Mapped[str | None] = mapped_column(String(64))
+    pending_kind: Mapped[str | None] = mapped_column(String(10))
+    # Provider timestamp of the newest webhook applied; older ones are stale.
+    last_billing_event_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
     # Goodwill AI credits on top of the plan's monthly allowance.
     ai_credit_bonus: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"

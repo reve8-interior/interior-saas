@@ -8,6 +8,7 @@ import { usageMeters } from '@/lib/usage';
 import { changePassword, getMe, updateProfile } from '@/lib/profile';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Clock, Moon, Sun } from 'lucide-react';
+import Link from 'next/link';
 import { FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/lib/errors';
@@ -321,6 +322,11 @@ function PlanCard() {
           </div>
         )}
       </div>
+      {me.role === 'admin' && (
+        <Link href="/dashboard/billing" className="btn-primary w-fit">
+          Manage plan
+        </Link>
+      )}
       <div className="space-y-3 border-t border-line pt-4">
         <p className="field-label !mb-0">Usage</p>
         <UsageMeters meters={usageMeters(me.usage, me.ai)} />

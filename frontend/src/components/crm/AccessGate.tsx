@@ -87,11 +87,8 @@ export function AccessGate({ access, meters = [], children }: Props) {
               )
               .join(' · ')}
             .{' '}
-            <Link
-              href="/dashboard/settings"
-              className="font-semibold underline"
-            >
-              See plan and usage
+            <Link href="/dashboard/billing" className="font-semibold underline">
+              Upgrade your plan
             </Link>
           </span>
         </div>

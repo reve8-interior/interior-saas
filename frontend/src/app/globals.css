@@ -878,3 +878,22 @@ select {
     transform: scale(1);
   }
 }
+
+/* Print only the open receipt, whatever page it was opened from. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #receipt-print,
+  #receipt-print * {
+    visibility: visible;
+  }
+  #receipt-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    color: #111;
+    background: #fff;
+  }
+}

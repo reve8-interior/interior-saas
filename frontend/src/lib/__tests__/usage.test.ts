@@ -37,14 +37,46 @@ describe('meterPercent', () => {
 describe('usageMeters', () => {
   const usage = [meter('clients', 1, 3)];
 
-  it('puts AI credits first when AI is on and capped', () => {
+  it('adds AI credits right after active clients when AI is on and capped', () => {
     const result = usageMeters(usage, {
       enabled: true,
       monthly_limit: 10,
       remaining: 4,
     });
-    expect(result[0]).toMatchObject({ key: 'ai_credits', used: 6, limit: 10 });
+    expect(result[0].key).toBe('clients');
+    expect(result[1]).toMatchObject({ key: 'ai_credits', used: 6, limit: 10 });
     expect(result).toHaveLength(2);
+  });
+
+  it('always leads with active clients, keeping the rest in order', () => {
+    const mixed = [
+      meter('users', 1, 3),
+      meter('images', 2, 50),
+      meter('clients', 1, 3),
+      meter('portfolio', 0, 5),
+    ];
+    const off = { enabled: false, monthly_limit: null, remaining: null };
+    expect(usageMeters(mixed, off).map((m) => m.key)).toEqual([
+      'clients',
+      'users',
+      'images',
+      'portfolio',
+    ]);
+    const on = { enabled: true, monthly_limit: 10, remaining: 4 };
+    expect(usageMeters(mixed, on).map((m) => m.key)).toEqual([
+      'clients',
+      'ai_credits',
+      'users',
+      'images',
+      'portfolio',
+    ]);
+  });
+
+  it('does not mutate the list it is given', () => {
+    const input = [meter('users', 1, 3), meter('clients', 1, 3)];
+    const keys = input.map((m) => m.key);
+    usageMeters(input, undefined);
+    expect(input.map((m) => m.key)).toEqual(keys);
   });
 
   it('leaves the list alone when AI is off or uncapped', () => {

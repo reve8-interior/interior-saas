@@ -40,7 +40,11 @@ function BusinessDetail() {
     queryKey: ['admin-overview'],
     queryFn: getAdminOverview,
   });
-  const list = useQuery({ queryKey: ['businesses'], queryFn: listBusinesses });
+  const list = useQuery({
+    queryKey: ['businesses'],
+    queryFn: listBusinesses,
+    refetchOnWindowFocus: true,
+  });
 
   const toggle = useMutation({
     mutationFn: (active: boolean) => setBusinessActive(id, active),

@@ -171,16 +171,16 @@ def usage_summary(db: Session, business: Business) -> list[UsageMeter]:
     limits = effective_limits(db, business)
     return [
         UsageMeter(
-            key="users",
-            label="Team members",
-            used=seats_used(business.id, db),
-            limit=limits.max_users,
-        ),
-        UsageMeter(
             key="clients",
             label="Active clients",
             used=active_client_count(business.id, db),
             limit=limits.max_clients,
+        ),
+        UsageMeter(
+            key="users",
+            label="Team members",
+            used=seats_used(business.id, db),
+            limit=limits.max_users,
         ),
         UsageMeter(
             key="images",

@@ -7,6 +7,7 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
+from typing import cast
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -34,7 +35,7 @@ from .checkpoint_ai_support import (
     material_hints,
     write_audit_log,
 )
-from .extraction_postprocess import normalize_extraction
+from .extraction_postprocess import RawExtraction, normalize_extraction
 from .quotation_context import build_scope_context
 from .transcription import transcribe_audio
 
@@ -192,7 +193,7 @@ async def extract_checkpoint_from_input(
     # names snapped onto the quotation's own, units normalized,
     # duplicates folded. Corrections surface as `warnings`.
     normalized = normalize_extraction(
-        extraction, scope, existing_items, transcript
+        cast(RawExtraction, extraction), scope, existing_items, transcript
     )
     summaries = {str(li.id): item_summary(li) for li in existing_items}
     hints = material_hints(normalized.line_items, db)

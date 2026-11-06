@@ -6,3 +6,8 @@ exclude = ["*.ipynb"]
 "tests/conftest.py" = ["E402"]
 "models/*.py" = ["F821"]
 "*/__init__.py" = ["F401"]
+# Fixtures imported from test_billing are redefined by name as test params.
+"tests/test_billing_edge_cases.py" = ["F811"]
+"tests/test_billing_receipts.py" = ["F811"]
+"tests/test_billing_reconcile.py" = ["F811"]
+"tests/test_plan_change.py" = ["F811"]

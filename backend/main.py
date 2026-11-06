@@ -26,6 +26,7 @@ from .core.config import settings  # noqa: E402
 from .routers import (  # noqa: E402
     admin_monitor,
     auth,
+    billing,
     business_users,
     businesses,
     checkpoint_ai,
@@ -202,6 +203,15 @@ def health_check():
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(plans.public_router, prefix="/api/v1/plans", tags=["Plans"])
+app.include_router(billing.router, prefix="/api/v1/billing", tags=["Billing"])
+app.include_router(
+    billing.webhook_router, prefix="/api/v1/webhooks", tags=["Webhooks"]
+)
+app.include_router(
+    billing.admin_router,
+    prefix="/api/v1/admin/plans",
+    tags=["Admin Plans"],
+)
 app.include_router(
     plans.admin_router, prefix="/api/v1/admin/plans", tags=["Admin Plans"]
 )

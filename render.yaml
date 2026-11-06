@@ -41,3 +41,15 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      - key: RAZORPAY_FIRST_MONTH_OFFER_ID
+        sync: false
+      - key: RECEIPT_ISSUER_NAME
+        value: Reve8
+      - key: RECEIPT_ISSUER_ADDRESS
+        sync: false

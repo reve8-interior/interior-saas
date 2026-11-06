@@ -193,6 +193,18 @@ def test_me_returns_limits_and_usage(api, db):
     }
 
 
+def test_active_clients_lead_the_usage_list(api, db):
+    _, user = _admin_in(db, plan="free")
+    body = api.get("/api/v1/auth/me", headers=auth(user)).json()
+    assert [m["key"] for m in body["usage"]][0] == "clients"
+    assert {m["key"] for m in body["usage"]} == {
+        "clients",
+        "users",
+        "images",
+        "portfolio",
+    }
+
+
 # --- public + admin API ------------------------------------------------------
 
 
