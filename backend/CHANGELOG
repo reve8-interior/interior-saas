@@ -1,3 +1,11 @@
+0.25.1
+ - date: 06-11-2026
+ - changes:
+   - fix: tenant sessions could not read or seed the plan catalogue on Supabase (row-level security was on for `plans` with no policy), so checkout failed with a row-level security error; `plans` now has a policy
+   - fix: the landing-page pricing switch no longer empties the portal's billing page: signed-in admins get their plans from `GET /billing/plans`, which ignores the switch (the public `/plans` still honours it)
+   - migration 0063: row-level security policy on `plans`; run `alembic upgrade head` before deploying this version
+   - test: a business session can read and seed the plan catalogue; portal plans stay listed when pricing is switched off and need a signed-in billing admin
+
 0.25.0
  - date: 06-11-2026
  - changes:

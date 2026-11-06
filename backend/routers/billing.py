@@ -4,6 +4,7 @@ import json
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..core import get_db
@@ -22,7 +23,9 @@ from ..schemas.billing import (
     VerifyRequest,
     VerifyResponse,
 )
+from ..schemas.plan import PublicPlan
 from ..services import billing, plan_change
+from ..services.plan_limits import seed_plans
 from ..services.razorpay_client import (
     RazorpayClient,
     get_razorpay,
@@ -36,6 +39,24 @@ MAX_WEBHOOK_BYTES = 256 * 1024
 router = APIRouter()
 webhook_router = APIRouter()
 admin_router = APIRouter()
+
+
+@router.get("/plans", response_model=list[PublicPlan])
+def list_plans(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_billing_admin),
+):
+    """Plans a signed-in admin can choose from.
+
+    Unlike the public `/plans`, this ignores the landing-page pricing switch:
+    that switch only hides the pricing table on the marketing site.
+    """
+    seed_plans(db)
+    return db.scalars(
+        select(Plan)
+        .where(Plan.is_public.is_(True))
+        .order_by(Plan.sort_order, Plan.price_monthly_inr)
+    ).all()
 
 
 @router.get("/status", response_model=BillingStatus)

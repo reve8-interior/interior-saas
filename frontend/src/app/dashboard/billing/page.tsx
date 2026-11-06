@@ -67,7 +67,7 @@ export default function BillingPage() {
   });
   const { data: plans = [] } = useQuery({
     queryKey: ['public-plans'],
-    queryFn: () => api.get<PublicPlan[]>('/plans'),
+    queryFn: () => api.get<PublicPlan[]>('/billing/plans'),
   });
 
   const refresh = () => {

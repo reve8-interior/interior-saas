@@ -269,3 +269,15 @@ def test_rescoping_switches_business_without_leaking_rows(db, two_businesses):
         assert names(db) == ["A1", "A2"]
         as_business(db, b.id)
         assert names(db) == ["B1"]
+
+
+def test_a_business_session_can_read_and_seed_the_plan_catalogue(db):
+    """Supabase enables RLS on plans; without a policy tenants saw nothing."""
+    from backend.models.plan import Plan
+    from backend.services.plan_limits import seed_plans
+
+    biz = make_business(db, "Plans")
+    as_business(db, biz.id)
+    seed_plans(db)
+    slugs = set(db.scalars(select(Plan.slug)).all())
+    assert {"free", "solo", "studio", "studio_pro"} <= slugs

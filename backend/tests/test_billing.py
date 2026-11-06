@@ -577,3 +577,20 @@ def test_sync_rejects_the_free_plan_and_non_superadmins(api, db, rzp):
         headers=auth(tenant_admin),
     )
     assert r.status_code == 403
+
+
+def test_the_landing_page_pricing_switch_does_not_hide_portal_plans(api, db):
+    from backend.services.landing_settings import set_show_pricing
+
+    biz, user = tenant(db)
+    as_owner(db)
+    set_show_pricing(db, False)
+    db.flush()
+    assert api.get("/api/v1/plans").json() == []
+    r = api.get("/api/v1/billing/plans", headers=auth(user))
+    assert r.status_code == 200
+    assert {"solo", "studio"} <= {p["slug"] for p in r.json()}
+
+
+def test_portal_plans_need_a_billing_admin(api, db):
+    assert api.get("/api/v1/billing/plans").status_code == 401

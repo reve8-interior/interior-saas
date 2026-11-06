@@ -54,6 +54,9 @@ _POLICIES: dict[str, str] = {
     "users": _BUSINESS_PREDICATE,
     "businesses": f"id = {BUSINESS_ID_DEFAULT}",
     "app_settings": "true",
+    # The plan catalogue is shared: tenants read it and may seed missing
+    # built-ins; only the superadmin routes edit it.
+    "plans": "true",
     # Public slugs: any business reads/writes them so claims can detect
     # collisions; the public site resolves them unscoped.
     "slug_aliases": "true",
