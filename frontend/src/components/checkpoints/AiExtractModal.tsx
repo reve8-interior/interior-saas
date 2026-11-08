@@ -4,6 +4,7 @@ import {
   blankItem,
   insertAt,
   removeAt,
+  setActionAt,
   toQuotationPayload,
   updateExtraAt,
   updateItemAt,
@@ -13,6 +14,7 @@ import { ExtractionProgress } from '@/components/shared/ExtractionProgress';
 import {
   type ConfirmLineItem,
   type ExtractionResponse,
+  type ItemAction,
   extractFromFile,
   extractFromText,
   saveFromExtraction,
@@ -120,6 +122,10 @@ export function AiExtractModal({
     value: string | number | null
   ) {
     setEditedItems((prev) => updateItemAt(prev, idx, field, value));
+  }
+
+  function changeAction(idx: number, action: ItemAction) {
+    setEditedItems((prev) => setActionAt(prev, idx, action));
   }
 
   function updateItemExtra(
@@ -337,6 +343,7 @@ export function AiExtractModal({
               onBudgetChange={setBudget}
               onAddItem={addItem}
               onRemoveItem={removeItem}
+              onChangeAction={changeAction}
               onUpdateItem={updateItem}
               onUpdateItemExtra={updateItemExtra}
             />

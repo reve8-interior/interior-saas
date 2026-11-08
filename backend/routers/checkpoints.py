@@ -20,6 +20,7 @@ from ..schemas.checkpoint import (
     FinalSummaryRead,
 )
 from ..services.client_access import get_client_or_404
+from ..services.floorplan_storage import delete_floorplan_image
 from .deps import get_current_user
 
 router = APIRouter()
@@ -165,8 +166,11 @@ def delete_checkpoint(
             timestamp=datetime.now(timezone.utc),
         )
     )
+    plan_path = checkpoint.source_image_path
     db.delete(checkpoint)
     db.commit()
+    # After the commit: a failed delete must not undo the user's action.
+    delete_floorplan_image(plan_path)
 
 
 def _draft_or_404(db: Session, checkpoint_id: str) -> Checkpoint:

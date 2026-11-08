@@ -15,6 +15,8 @@ export interface FloorPlanRoom {
 }
 
 export interface FloorPlanExtractResponse {
+  /** Where the plan is stored; send it back when saving the draft. */
+  source_image_path: string;
   audit_log_id: string;
   rooms: FloorPlanRoom[];
   existing_rooms: string[];

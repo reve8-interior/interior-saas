@@ -18,7 +18,7 @@ from ..services.storage import (
 router = APIRouter()
 
 # Longest a browser or CDN may reuse an image without asking again.
-_ALLOWED_PREFIXES = ("designs/", "branding/")
+_ALLOWED_PREFIXES = ("designs/", "branding/", "floorplans/")
 _MAX_CACHE_SECONDS = 24 * 60 * 60
 
 

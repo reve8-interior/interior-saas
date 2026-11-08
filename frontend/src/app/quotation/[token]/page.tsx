@@ -1,6 +1,7 @@
 'use client';
 
 import { CustomerResponseBar } from '@/components/shared/CustomerResponseBar';
+import { LineQuestionButton } from '@/components/shared/LineQuestionButton';
 import { LoadingRegion, PageHeaderSkeleton, Skeleton } from '@/components/ui';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
@@ -14,6 +15,7 @@ import {
 import { HotspotDetail } from '@/components/designs/HotspotDetail';
 import { HotspotImage } from '@/components/designs/HotspotImage';
 import { fmtRate } from '@/lib/format';
+import { lineLabel } from '@/lib/quotationMessages';
 import { getSharedQuotation } from '@/lib/quotationVersions';
 import { useSharedLink } from '@/lib/hooks/useSharedLink';
 import type { SharedQuotationRoom } from '@/lib/schemas/quotationVersion';
@@ -23,6 +25,7 @@ const TH_CLS = 'px-3 py-2 text-left type-label';
 const TD_CLS = 'px-3 py-2 text-sm tabular-nums text-text';
 
 interface RoomSectionProps {
+  token: string;
   room: SharedQuotationRoom;
   showPrices: boolean;
   open: boolean;
@@ -34,6 +37,7 @@ interface RoomSectionProps {
 
 /** One room: click the header to reveal its lines and attached images. */
 function RoomSection({
+  token,
   room,
   showPrices,
   open,
@@ -116,9 +120,15 @@ function RoomSection({
           <ul className="divide-y divide-line sm:hidden">
             {room.items.map((item, i) => (
               <li key={i} className="py-3">
-                <p className="text-sm font-medium text-text">
-                  {item.description}
-                </p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-medium text-text">
+                    {item.description}
+                  </p>
+                  <LineQuestionButton
+                    token={token}
+                    label={lineLabel(room.room, item.description)}
+                  />
+                </div>
                 <p className="mt-0.5 text-xs text-muted">
                   {[
                     item.raw_dimension,
@@ -147,6 +157,9 @@ function RoomSection({
                   <th className={TH_CLS}>Time</th>
                   {showPrices && <th className={TH_CLS}>Rate</th>}
                   {showPrices && <th className={TH_CLS}>Amount</th>}
+                  <th className="w-10 print:hidden">
+                    <span className="sr-only">Ask a question</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -168,6 +181,12 @@ function RoomSection({
                         {item.amount !== null ? fmtRate(item.amount) : '—'}
                       </td>
                     )}
+                    <td className="px-1 print:hidden">
+                      <LineQuestionButton
+                        token={token}
+                        label={lineLabel(room.room, item.description)}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -269,6 +288,7 @@ export default function SharedQuotationPage() {
       {view.rooms.map((room) => (
         <RoomSection
           key={room.room}
+          token={token}
           room={room}
           showPrices={view.show_prices}
           open={openRooms.has(room.room)}

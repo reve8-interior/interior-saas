@@ -192,3 +192,29 @@ def test_other_business_cannot_read_or_resolve_messages(api, studio):
         json={"resolved": True},
     )
     assert other.status_code == 404
+
+
+def test_line_question_lights_the_bell_until_resolved(api, studio):
+    admin, _, client, _ = studio
+    _, token = _share(api, admin, client)
+    api.post(
+        f"/api/v1/quotation-share/{token}/respond",
+        json={
+            "kind": "question",
+            "name": "Mrs Rao",
+            "message": "Which finish?",
+            "item_label": "Hall · TV unit",
+        },
+    )
+    items = api.get(URL, headers=auth(admin)).json()
+    assert [i["kind"] for i in items] == ["customer_question"]
+
+    [message] = api.get(
+        f"/api/v1/clients/{client.id}/quotation/messages", headers=auth(admin)
+    ).json()
+    api.patch(
+        f"/api/v1/quotation-messages/{message['id']}",
+        headers=auth(admin),
+        json={"resolved": True},
+    )
+    assert api.get(URL, headers=auth(admin)).json() == []

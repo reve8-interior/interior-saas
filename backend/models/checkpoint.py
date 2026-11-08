@@ -45,6 +45,9 @@ class Checkpoint(Base, TimestampMixin):
     )
     raw_conversation: Mapped[str | None] = mapped_column(Text)
     audio_transcript: Mapped[str | None] = mapped_column(Text)
+    # Storage key of the floor plan this meeting's rows were drafted from.
+    # Counts toward the business's image allowance.
+    source_image_path: Mapped[str | None] = mapped_column(Text)
     added_to_quotation: Mapped[bool] = mapped_column(
         default=False, nullable=False, server_default="false"
     )

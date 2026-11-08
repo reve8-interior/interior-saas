@@ -16,6 +16,7 @@ export function ReplyActions({
   canEdit = true,
   showVersionLink = true,
   emphasis = true,
+  itemLabel = null,
 }: {
   clientId: string;
   versionId: string | null;
@@ -27,45 +28,64 @@ export function ReplyActions({
   showVersionLink?: boolean;
   /** Style the first contact action as the primary button. */
   emphasis?: boolean;
+  /** "Room · line" the question was about; Edit quotation jumps to it. */
+  itemLabel?: string | null;
 }) {
   const phone = (contact?.phone ?? '').replace(/\D/g, '');
   const email = contact?.email ?? '';
   const base = `/dashboard/clients/${clientId}`;
   const reach = emphasis ? 'btn-primary' : 'btn-secondary';
+  const editHref = itemLabel
+    ? `${base}/quotation?line=${encodeURIComponent(itemLabel)}`
+    : `${base}/quotation`;
   return (
     <div className="flex flex-wrap gap-2">
-      {/* One way to reach them: WhatsApp when there is a phone, else email. */}
+      {/* Icon-only to stay compact; each carries a label for hover and screen readers. */}
       {phone ? (
         <a
           href={`https://wa.me/${phone}`}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${reach} btn-sm`}
+          aria-label="WhatsApp"
+          title="WhatsApp"
+          className={`${reach} btn-sm px-2.5`}
         >
           <MessageCircle className="h-4 w-4" aria-hidden />
-          WhatsApp
         </a>
       ) : (
         email && (
-          <a href={`mailto:${email}`} className={`${reach} btn-sm`}>
+          <a
+            href={`mailto:${email}`}
+            aria-label="Email"
+            title="Email"
+            className={`${reach} btn-sm px-2.5`}
+          >
             <Mail className="h-4 w-4" aria-hidden />
-            Email
           </a>
         )
       )}
       {canEdit && (
-        <Link href={`${base}/quotation`} className="btn-secondary btn-sm">
+        <Link
+          href={editHref}
+          aria-label={
+            itemLabel ? `Edit quotation: ${itemLabel}` : 'Edit quotation'
+          }
+          title={
+            itemLabel ? 'Edit this line in the quotation' : 'Edit quotation'
+          }
+          className="btn-secondary btn-sm px-2.5"
+        >
           <Pencil className="h-4 w-4" aria-hidden />
-          Edit quotation
         </Link>
       )}
       {showVersionLink && versionId && (
         <Link
           href={`${base}/versions?view=1&version=${versionId}`}
-          className="btn-secondary btn-sm"
+          aria-label={`View v${versionNumber}`}
+          title={`View v${versionNumber}`}
+          className="btn-secondary btn-sm px-2.5"
         >
           <Eye className="h-4 w-4" aria-hidden />
-          View v{versionNumber}
         </Link>
       )}
     </div>

@@ -10,6 +10,8 @@ export interface Checkpoint {
   structured_diff: Record<string, unknown>;
   raw_conversation: string | null;
   audio_transcript: string | null;
+  /** Signed link to the floor plan the rows were drafted from. */
+  source_image_url?: string | null;
   status: string;
   source: string;
   added_to_quotation: boolean;

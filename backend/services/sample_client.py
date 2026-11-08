@@ -422,11 +422,19 @@ def _build_sample(db: Session, user: User, stored: list[str]) -> Client:
 
 
 def image_paths(db: Session, client_id: uuid.UUID) -> list[str]:
-    """Storage keys of the client's design images, read before it is deleted."""
-    paths = db.execute(
+    """Storage keys of the client's design images and floor plans.
+
+    Read before the client is deleted, while the rows still exist.
+    """
+    designs = db.execute(
         select(Design.storage_path).where(Design.client_id == client_id)
     ).scalars()
-    return [p for p in paths if p]
+    plans = db.execute(
+        select(Checkpoint.source_image_path).where(
+            Checkpoint.client_id == client_id
+        )
+    ).scalars()
+    return [p for p in (*designs, *plans) if p]
 
 
 def delete_stored_images(paths: list[str]) -> None:

@@ -58,3 +58,50 @@ def test_other_business_sees_nothing(api, studio):
     _, token = _share(api, admin_a, client)
     _respond(api, token, kind="question", name="Rao", message="Finish?")
     assert api.get(URL, headers=auth(admin_b)).json() == []
+
+
+def test_line_question_carries_its_line_into_the_inbox(api, studio):
+    admin, _, client, _ = studio
+    _, token = _share(api, admin, client)
+    _respond(
+        api,
+        token,
+        kind="question",
+        name="Rao",
+        message="Which finish?",
+        item_label="Hall · TV unit",
+    )
+
+    [item] = api.get(URL, headers=auth(admin)).json()
+    assert item["item_label"] == "Hall · TV unit"
+    assert item["resolved_at"] is None
+
+
+def test_whole_quotation_messages_have_no_line(api, studio):
+    admin, _, client, _ = studio
+    _, token = _share(api, admin, client)
+    _respond(api, token, kind="question", name="Rao", message="Finish?")
+
+    [item] = api.get(URL, headers=auth(admin)).json()
+    assert item["item_label"] is None
+
+
+def test_line_question_can_be_resolved_like_any_other(api, studio):
+    admin, _, client, _ = studio
+    _, token = _share(api, admin, client)
+    _respond(
+        api,
+        token,
+        kind="question",
+        name="Rao",
+        message="Which finish?",
+        item_label="Hall · TV unit",
+    )
+    [item] = api.get(URL, headers=auth(admin)).json()
+    resolved = api.patch(
+        f"/api/v1/quotation-messages/{item['id']}",
+        headers=auth(admin),
+        json={"resolved": True},
+    ).json()
+    assert resolved["item_label"] == "Hall · TV unit"
+    assert resolved["resolved_at"] is not None

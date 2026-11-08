@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from ..agents.floorplan_agent import run_floorplan_extraction
 from ..agents.prompts.floorplan_extraction import FLOORPLAN_PROMPT_VERSION
+from ..models.business import Business
 from ..models.checkpoint import Checkpoint, CheckpointSource
 from ..models.quotation import Quotation
 from ..models.quotation_line_item import (
@@ -31,6 +32,8 @@ from .ai_access import (
     resolve_openai_access,
 )
 from .floorplan_draft import PendingRow, room_warnings
+from .floorplan_storage import store_floorplan_image
+from .image_quota import MB, effective_max_bytes, ensure_can_upload
 from .room_matching import match_rooms
 from .storage import sniff_image_ext
 
@@ -86,20 +89,32 @@ def rate_book(db: Session) -> list[tuple[str, str, float]]:
 
 
 async def extract_floorplan(
-    db: Session, *, current_user: User, client_id: str, image: bytes
+    db: Session,
+    *,
+    current_user: User,
+    client_id: str,
+    business: Business | None,
+    image: bytes,
 ) -> FloorPlanExtractResponse:
-    """Read rooms from a plan image; errors are generic, never provider text."""
+    """Read rooms from a plan image; errors are generic, never provider text.
+
+    A readable plan is kept in storage and counts toward the business's
+    image allowance once a meeting is saved from it.
+    """
     access = resolve_openai_access(current_user)
     enforce_extraction_quota(db, current_user)
+    ensure_can_upload(business, db)
 
     ext = sniff_image_ext(image)
     if ext not in _MEDIA_TYPES:
         raise HTTPException(
             status_code=415, detail="Only JPEG, PNG or WebP images"
         )
-    if len(image) > MAX_PLAN_BYTES:
+    max_bytes = min(MAX_PLAN_BYTES, effective_max_bytes(business, db))
+    if len(image) > max_bytes:
         raise HTTPException(
-            status_code=413, detail="Plan image must be 8 MB or smaller"
+            status_code=413,
+            detail=f"Plan image must be {max_bytes // MB} MB or smaller",
         )
 
     raw_hash = hashlib.sha256(image).hexdigest()
@@ -159,6 +174,7 @@ async def extract_floorplan(
             detail="That doesn't look like a readable floor plan.",
         )
     return FloorPlanExtractResponse(
+        source_image_path=store_floorplan_image(client_id, image, ext),
         audit_log_id=str(log.id),
         rooms=rooms,
         existing_rooms=existing_rooms,

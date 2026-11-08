@@ -2,9 +2,12 @@
 
 import type { LineItemColumnDef } from '@/lib/lineItemColumns';
 import { columnLabel, missingRequiredFields } from '@/lib/lineItemColumns';
+import { Trash2 } from 'lucide-react';
+import type { ItemAction } from '@/lib/checkpoints';
 import { LineItemData } from './types';
 import {
   ActionBadge,
+  ActionSelect,
   ItemCard,
   ItemCell,
   STICKY,
@@ -26,6 +29,10 @@ interface ItemsGridProps {
     isCustom: boolean
   ) => void;
   onVerify: (idx: number, verified: boolean) => void;
+  /** Drops a row; omit to hide the remove buttons. */
+  onRemove?: (idx: number) => void;
+  /** Lets the action be changed; omit to keep it a label. */
+  onActionChange?: (idx: number, action: ItemAction) => void;
 }
 
 /** Extracted rows: stacked cards on phones, an editable table on desktop. */
@@ -36,6 +43,8 @@ export function ItemsGrid({
   locked,
   onChangeField,
   onVerify,
+  onRemove,
+  onActionChange,
 }: ItemsGridProps) {
   return (
     <>
@@ -51,6 +60,12 @@ export function ItemsGrid({
             cols={enabledCols}
             allCols={columns}
             onVerify={(v) => onVerify(idx, v)}
+            onRemove={onRemove && !locked ? () => onRemove(idx) : undefined}
+            onActionChange={
+              onActionChange && !locked
+                ? (a) => onActionChange(idx, a)
+                : undefined
+            }
             onChange={(key, value, isCustom) =>
               onChangeField(idx, key, value, isCustom)
             }
@@ -65,24 +80,27 @@ export function ItemsGrid({
           <table className="data-table w-max [&_td]:!py-0.5">
             <thead>
               <tr>
-                {['Verified', 'Action', ...enabledCols.map(columnLabel)].map(
-                  (h, i) => (
-                    <th
-                      key={i}
-                      className={
-                        i === 0
-                          ? `w-16 min-w-16`
-                          : i === 1
-                            ? `w-24 min-w-24`
-                            : enabledCols[i - 2]?.key === 'room'
-                              ? `${STICKY} left-0`
-                              : ''
-                      }
-                    >
-                      {h}
-                    </th>
-                  )
-                )}
+                {[
+                  'Verified',
+                  'Action',
+                  ...enabledCols.map(columnLabel),
+                  '',
+                ].map((h, i) => (
+                  <th
+                    key={i}
+                    className={
+                      i === 0
+                        ? `w-16 min-w-16`
+                        : i === 1
+                          ? `w-24 min-w-24`
+                          : enabledCols[i - 2]?.key === 'room'
+                            ? `${STICKY} left-0`
+                            : ''
+                    }
+                  >
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-line dark:divide-line">
@@ -110,11 +128,20 @@ export function ItemsGrid({
                       />
                     </td>
                     <td className={`w-24 min-w-24 px-2 py-1`}>
-                      <ActionBadge
-                        action={item.action}
-                        targetSummary={item.target_summary}
-                        agreedPrice={item.agreed_price}
-                      />
+                      {onActionChange && !locked ? (
+                        <ActionSelect
+                          action={item.action}
+                          targetSummary={item.target_summary}
+                          index={idx}
+                          onChange={(a) => onActionChange(idx, a)}
+                        />
+                      ) : (
+                        <ActionBadge
+                          action={item.action}
+                          targetSummary={item.target_summary}
+                          agreedPrice={item.agreed_price}
+                        />
+                      )}
                     </td>
                     {enabledCols.map((col) => (
                       <td
@@ -130,6 +157,18 @@ export function ItemsGrid({
                         />
                       </td>
                     ))}
+                    <td className="px-2 py-1">
+                      {onRemove && (
+                        <button
+                          type="button"
+                          onClick={() => onRemove(idx)}
+                          aria-label={`Remove row ${idx + 1}`}
+                          className="icon-btn icon-btn-danger"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}

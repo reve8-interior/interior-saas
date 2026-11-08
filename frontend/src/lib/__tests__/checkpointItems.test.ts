@@ -4,6 +4,7 @@ import {
   blankItem,
   insertAt,
   removeAt,
+  setActionAt,
   findMissingItems,
   minutesBullets,
   parseStoredItems,
@@ -223,5 +224,49 @@ describe('generic row helpers', () => {
 
   it('blankItem accepts overrides', () => {
     expect(blankItem({ unit: 'nos' }).unit).toBe('nos');
+  });
+});
+
+describe('setActionAt', () => {
+  const linked = item({
+    room: 'Hall',
+    action: 'update',
+    target_item_id: 'li-1',
+    target_summary: 'Hall - Sofa',
+  });
+  const rows = [item({ room: 'A' }), linked, item({ room: 'C' })];
+
+  it('changes only the indexed row', () => {
+    const next = setActionAt(rows, 0, 'remove');
+    expect(next.map((r) => r.action)).toEqual(['remove', 'update', 'add']);
+  });
+
+  it('keeps the link when switching between update and remove', () => {
+    const next = setActionAt(rows, 1, 'remove');
+    expect(next[1].action).toBe('remove');
+    expect(next[1].target_item_id).toBe('li-1');
+    expect(next[1].target_summary).toBe('Hall - Sofa');
+  });
+
+  it('drops the link when the row becomes new work', () => {
+    const next = setActionAt(rows, 1, 'add');
+    expect(next[1].action).toBe('add');
+    expect(next[1].target_item_id).toBeNull();
+    expect(next[1].target_summary).toBeNull();
+  });
+
+  it('leaves the other fields of the row alone', () => {
+    const next = setActionAt(rows, 1, 'add');
+    expect(next[1].room).toBe('Hall');
+    expect(next[1].description).toBe(linked.description);
+  });
+
+  it('does not change the original list', () => {
+    setActionAt(rows, 1, 'add');
+    expect(rows[1].action).toBe('update');
+  });
+
+  it('ignores an out-of-range index', () => {
+    expect(setActionAt(rows, 9, 'remove')).toEqual(rows);
   });
 });

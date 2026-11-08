@@ -8,6 +8,8 @@ export interface QuotationMessage {
   kind: 'approved' | 'question';
   name: string;
   message: string | null;
+  /** "Room · line" when the question is about one line of the quotation. */
+  item_label: string | null;
   created_at: string;
   resolved_at: string | null;
   resolved_by_name: string | null;
@@ -42,4 +44,26 @@ export function isOpenQuestion(m: QuotationMessage): boolean {
 
 export function openQuestionCount(messages: QuotationMessage[]): number {
   return messages.filter(isOpenQuestion).length;
+}
+
+/** How a line is named in a question: the customer's page and the designer's search agree on this. */
+export function lineLabel(room: string, description: string): string {
+  return `${room} · ${description}`;
+}
+
+/** The live line a question was about, or null when it was renamed, removed or is ambiguous. */
+export function findLineIdByLabel(
+  rooms: {
+    room: string;
+    items: { id: string; description: string; status: string }[];
+  }[],
+  label: string
+): string | null {
+  const matches = rooms
+    .flatMap((r) => r.items.map((i) => ({ room: r.room, item: i })))
+    .filter(
+      ({ room, item }) =>
+        item.status !== 'removed' && lineLabel(room, item.description) === label
+    );
+  return matches.length === 1 ? matches[0].item.id : null;
 }

@@ -35,6 +35,8 @@ class QuotationMessage(Base):
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     message: Mapped[str | None] = mapped_column(String(2000))
+    # "Room · line" when the question is about one line of the quotation.
+    item_label: Mapped[str | None] = mapped_column(String(300))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )

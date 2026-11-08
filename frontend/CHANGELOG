@@ -1,3 +1,35 @@
+0.29.2
+ - date: 08-11-2026
+ - changes:
+   - refactor: the "Room · line" label is built in one place (`lineLabel`) and the quotation page finds the asked line with `findLineIdByLabel`; a renamed, removed or ambiguous line opens the quotation without jumping instead of landing on the wrong one
+   - test: the shared quotation page offers an ask button per line next to the whole-quotation actions; the ask dialog (validation, sends the line label, remembers the name, keeps the text when sending fails); reply actions (icon-only with names, the line link, email fallback, hidden actions); the client page shows only open questions, the line they are about, the inbox link and resolves; the inbox (one row per customer, open filter, url selection, newest-first and the toggle, resolve, reopen, resolve all, back); finding a line by its label
+   - note: the 0.29.1 entry above also moved the inbox sort here from the Designs page; the Designs page is unchanged
+
+0.29.1
+ - date: 08-11-2026
+ - changes:
+   - feat: "Edit quotation" on a question about one line opens the quotation scrolled to that line (it flashes), instead of the top of the quotation
+   - feat: WhatsApp, Email, Edit quotation, View version and Mark resolved/Reopen are icon buttons (labelled on hover and for screen readers)
+   - feat: the inbox conversation has a Newest/Oldest toggle for message order (newest first by default)
+   - feat: in the inbox, the reply icons and resolve icon sit beside the message text instead of on separate rows
+
+0.29.0
+ - date: 08-11-2026
+ - changes:
+   - feat: on a shared quotation every line has an "ask" button; the question reaches the designer tagged with the room and line (deploy the backend first)
+   - feat: the Inbox is a two-pane view like WhatsApp: customers on the left (open count, last message), the chosen customer's conversation on the right, with Mark resolved, Mark all resolved and the reply actions. On a phone it shows one pane at a time. `?client=` opens a customer directly
+   - feat: the client page's messages section now lists only open questions, with an "Open in inbox" link to that customer's conversation
+   - test: grouping messages by customer and the inbox link
+
+0.28.0
+ - date: 08-11-2026
+ - changes:
+   - feat: a meeting drafted from a floor plan keeps the plan: the meeting card has a "Floor plan" tab showing the image, which opens larger in a new tab (deploy the backend first)
+   - feat: the floor plan upload says it counts toward the image limit once saved, and sends the stored plan back when the draft is saved
+   - feat: rows extracted from notes or a floor plan can be removed from a meeting that isn't on the quotation yet (trash button on each row, with Undo that restores the row where it was); editing cells and "+ Add row" were already there. Before, only the notes review step could remove a row
+   - feat: a row's action (New, Update, Remove) can be changed on a meeting that isn't on the quotation yet, and in the notes review step, when the AI picked the wrong one. Choosing New drops the link to an existing quotation line; Update and Remove keep it
+   - test: the floor plan modal sends the stored plan when saving, the card's Floor plan tab appears only when a plan was kept, removing, undoing and adding rows on a meeting, and changing a row's action (the dropdown, the review step, and that New drops the link)
+
 0.27.1
  - date: 06-11-2026
  - changes:

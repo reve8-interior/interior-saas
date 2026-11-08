@@ -1,5 +1,6 @@
 'use client';
 
+import { findLineIdByLabel } from '@/lib/quotationMessages';
 import { RoomSection } from '@/components/quotation/RoomSection';
 import { BlockSkeleton, ErrorState } from '@/components/ui';
 import {
@@ -131,21 +132,27 @@ export default function QuotationPage() {
     [quotation]
   );
 
-  // ?item=<line id> (from a design's hotspot): open its room, scroll to the row, flash it.
-  // Read after mount: the server render has no query string, and a ref would keep that null.
-  const focusItem = useRef<string | null>(null);
+  // ?item=<line id> (from a design's hotspot) or ?line=<"Room · description"> (from a
+  // customer's question): open its room, scroll to the row, flash it.
+  // Read after mount: the server render has no query string.
+  const focusDone = useRef(false);
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [focusLine, setFocusLine] = useState<string | null>(null);
   useEffect(() => {
-    const item = new URLSearchParams(window.location.search).get('item');
-    focusItem.current = item;
-    setFocusId(item);
+    const params = new URLSearchParams(window.location.search);
+    setFocusId(params.get('item'));
+    setFocusLine(params.get('line'));
   }, []);
+  const targetId =
+    focusId ??
+    (focusLine && quotation
+      ? findLineIdByLabel(quotation.rooms, focusLine)
+      : null);
   const focusRoom = quotation?.rooms.find((r) =>
-    r.items.some((i) => i.id === focusId)
+    r.items.some((i) => i.id === targetId)
   )?.room;
   useEffect(() => {
-    const itemId = focusItem.current;
-    if (!itemId || !focusRoom) return;
+    if (!targetId || !focusRoom || focusDone.current) return;
     if (collapsedRooms.has(focusRoom)) {
       setCollapsedRooms((prev) => {
         const next = new Set(prev);
@@ -156,13 +163,13 @@ export default function QuotationPage() {
     }
     // Phone cards and the desktop table both carry the id; only one is visible.
     const row = [
-      ...document.querySelectorAll<HTMLElement>(`[data-line-id="${itemId}"]`),
+      ...document.querySelectorAll<HTMLElement>(`[data-line-id="${targetId}"]`),
     ].find((el) => el.offsetParent !== null);
     if (!row) return;
-    focusItem.current = null;
+    focusDone.current = true;
     row.scrollIntoView({ block: 'center', behavior: 'smooth' });
     row.classList.add('line-flash');
-  }, [focusId, focusRoom, collapsedRooms]);
+  }, [targetId, focusRoom, collapsedRooms]);
 
   const invalidate = () =>
     qc.invalidateQueries({ queryKey: ['quotation', id] });

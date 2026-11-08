@@ -11,6 +11,7 @@ const setup = (itemCount = 1) => {
     onBudgetChange: vi.fn(),
     onAddItem: vi.fn(),
     onRemoveItem: vi.fn(),
+    onChangeAction: vi.fn(),
     onUpdateItem: vi.fn(),
     onUpdateItemExtra: vi.fn(),
   };
@@ -67,5 +68,15 @@ describe('ExtractReview', () => {
     const { onRemoveItem } = setup(2);
     fireEvent.click(screen.getAllByLabelText('Remove row 2')[0]);
     expect(onRemoveItem).toHaveBeenCalledWith(1);
+  });
+});
+
+describe('ExtractReview action', () => {
+  it('lets the designer change what a row does', () => {
+    const { onChangeAction } = setup(2);
+    fireEvent.change(screen.getAllByLabelText('Action for row 2')[0], {
+      target: { value: 'update' },
+    });
+    expect(onChangeAction).toHaveBeenCalledWith(1, 'update');
   });
 });

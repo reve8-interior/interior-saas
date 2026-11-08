@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from ..core.config import settings
 from ..models.business import Business
+from ..models.checkpoint import Checkpoint
+from ..models.client import Client
 from ..models.design import Design
 from .plan_limits import effective_limits
 
@@ -23,15 +25,22 @@ def effective_max_bytes(business: Business | None, db: Session) -> int:
 
 
 def uploaded_image_count(business_id: object, db: Session) -> int:
-    return (
-        db.scalar(
-            select(func.count(Design.id)).where(
-                Design.business_id == business_id,
-                Design.storage_path.is_not(None),
-            )
+    """Designs plus floor plans kept on meetings: both are stored images."""
+    designs = db.scalar(
+        select(func.count(Design.id)).where(
+            Design.business_id == business_id,
+            Design.storage_path.is_not(None),
         )
-        or 0
     )
+    floor_plans = db.scalar(
+        select(func.count(Checkpoint.id))
+        .join(Client, Checkpoint.client_id == Client.id)
+        .where(
+            Client.business_id == business_id,
+            Checkpoint.source_image_path.is_not(None),
+        )
+    )
+    return (designs or 0) + (floor_plans or 0)
 
 
 def ensure_can_upload(business: Business | None, db: Session) -> None:

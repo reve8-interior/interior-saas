@@ -49,6 +49,7 @@ export function FloorPlanModal({ clientId, onClose, onSaved }: Props) {
   const [rooms, setRooms] = useState<FloorPlanRoom[]>([]);
   const [existingRooms, setExistingRooms] = useState<string[]>([]);
   const [auditLogId, setAuditLogId] = useState<string | null>(null);
+  const [sourceImagePath, setSourceImagePath] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -69,6 +70,7 @@ export function FloorPlanModal({ clientId, onClose, onSaved }: Props) {
       setExistingRooms(res.existing_rooms);
       setWarnings(res.warnings);
       setAuditLogId(res.audit_log_id);
+      setSourceImagePath(res.source_image_path);
     } catch (err) {
       toast.error(errorMessage(err, 'Could not read the plan'));
       setFile(null);
@@ -126,6 +128,7 @@ export function FloorPlanModal({ clientId, onClose, onSaved }: Props) {
       raw_transcript: result.summary_text,
       line_items: rows,
       audit_log_id: auditLogId,
+      source_image_path: sourceImagePath,
       create_quotation: false,
       allow_incomplete: true,
     });
@@ -154,7 +157,8 @@ export function FloorPlanModal({ clientId, onClose, onSaved }: Props) {
       {!file ? (
         <label className="block text-sm">
           <span className="mb-2 block text-dark-600 dark:text-dark-300">
-            Upload a floor plan image (JPEG, PNG or WebP). Uses one AI credit.
+            Upload a floor plan image (JPEG, PNG or WebP). Uses one AI credit
+            and counts toward your image limit once saved.
           </span>
           <input
             type="file"

@@ -589,3 +589,133 @@ def test_quotation_lines_name_the_design_they_came_from(api, studio, db):
     assert line["source_design_id"] == str(design.id)
     assert line["source_design_title"] == "Kitchen render"
     assert line["source_hotspot_id"]
+
+
+def test_line_questions_skip_cooldown_and_keep_the_label(api, studio):
+    admin, _, client, _ = studio
+    _, _, token = _public_token(api, admin, client)
+    url = f"/api/v1/quotation-share/{token}/respond"
+
+    def ask(label: str):
+        return api.post(
+            url,
+            json={
+                "kind": "question",
+                "name": "Mrs Rao",
+                "message": "Which finish?",
+                "item_label": label,
+            },
+        )
+
+    assert ask("Kitchen · Modular cabinet").status_code == 204
+    assert ask("Hall · TV unit").status_code == 204
+    # A line question never touches the link's own answer or its cooldown.
+    assert (
+        api.get(f"/api/v1/quotation-share/{token}").json()["responded_kind"]
+        is None
+    )
+    assert (
+        api.post(url, json={"kind": "approved", "name": "Mrs Rao"}).status_code
+        == 204
+    )
+
+    messages = api.get(
+        f"/api/v1/clients/{client.id}/quotation/messages",
+        headers=auth(admin),
+    ).json()
+    labels = sorted(m["item_label"] or "" for m in messages)
+    assert labels == ["", "Hall · TV unit", "Kitchen · Modular cabinet"]
+
+
+def test_line_label_needs_a_question(api, studio):
+    admin, _, client, _ = studio
+    _, _, token = _public_token(api, admin, client)
+    res = api.post(
+        f"/api/v1/quotation-share/{token}/respond",
+        json={"kind": "approved", "name": "Mrs Rao", "item_label": "Hall"},
+    )
+    assert res.status_code == 422
+
+
+def _ask_line(api, token, label, text="Which finish?"):
+    return api.post(
+        f"/api/v1/quotation-share/{token}/respond",
+        json={
+            "kind": "question",
+            "name": "Mrs Rao",
+            "message": text,
+            "item_label": label,
+        },
+    )
+
+
+def test_line_questions_are_capped_per_link_per_hour(api, studio):
+    from backend.routers import quotation_versions
+
+    admin, _, client, _ = studio
+    _, _, token = _public_token(api, admin, client)
+    cap = quotation_versions._LINE_QUESTIONS_PER_HOUR
+
+    for i in range(cap):
+        assert _ask_line(api, token, f"Hall · Line {i}").status_code == 204
+    assert _ask_line(api, token, "Hall · One too many").status_code == 429
+
+
+def test_line_cap_does_not_block_the_whole_quotation_answer(api, studio):
+    from backend.routers import quotation_versions
+
+    admin, _, client, _ = studio
+    _, _, token = _public_token(api, admin, client)
+    for i in range(quotation_versions._LINE_QUESTIONS_PER_HOUR):
+        _ask_line(api, token, f"Hall · Line {i}")
+
+    res = api.post(
+        f"/api/v1/quotation-share/{token}/respond",
+        json={"kind": "approved", "name": "Mrs Rao"},
+    )
+    assert res.status_code == 204
+
+
+def test_blank_line_label_is_a_whole_quotation_question(api, studio):
+    admin, _, client, _ = studio
+    _, _, token = _public_token(api, admin, client)
+    assert _ask_line(api, token, "   ").status_code == 204
+
+    [message] = api.get(
+        f"/api/v1/clients/{client.id}/quotation/messages",
+        headers=auth(admin),
+    ).json()
+    assert message["item_label"] is None
+    # It counted as the link's own answer, so the cooldown now applies.
+    assert _ask_line(api, token, "").status_code == 429
+
+
+def test_line_label_is_trimmed_and_length_limited(api, studio):
+    admin, _, client, _ = studio
+    _, _, token = _public_token(api, admin, client)
+    assert _ask_line(api, token, "  Hall · TV unit  ").status_code == 204
+    assert _ask_line(api, token, "x" * 301).status_code == 422
+
+    [message] = api.get(
+        f"/api/v1/clients/{client.id}/quotation/messages",
+        headers=auth(admin),
+    ).json()
+    assert message["item_label"] == "Hall · TV unit"
+
+
+def test_line_question_needs_text(api, studio):
+    admin, _, client, _ = studio
+    _, _, token = _public_token(api, admin, client)
+    assert (
+        _ask_line(api, token, "Hall · TV unit", text="  ").status_code == 422
+    )
+
+
+def test_line_question_on_a_revoked_link_is_refused(api, studio):
+    admin, _, client, _ = studio
+    version, share, token = _public_token(api, admin, client)
+    api.delete(
+        f"/api/v1/quotation-versions/{version['id']}/shares/{share['id']}",
+        headers=auth(admin),
+    )
+    assert _ask_line(api, token, "Hall · TV unit").status_code == 404

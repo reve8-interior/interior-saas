@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from ..core import get_db
+from ..models.business import Business
 from ..models.user import User
 from ..schemas.floorplan import (
     FloorPlanDraftRequest,
@@ -25,11 +26,13 @@ from ..schemas.floorplan import (
 from ..services.client_access import get_client_or_404
 from ..services.floorplan_draft import draft_items
 from ..services.floorplan_extraction import (
+    MAX_PLAN_BYTES,
     extract_floorplan,
     pending_rows,
     quoted_items,
     rate_book,
 )
+from ..services.image_quota import effective_max_bytes
 from .deps import get_current_user
 
 router = APIRouter()
@@ -46,12 +49,20 @@ async def extract_floor_plan(
     current_user: User = Depends(get_current_user),
 ):
     """Read rooms and dimensions off an uploaded floor-plan image."""
-    get_client_or_404(client_id, db, current_user)
+    client = get_client_or_404(client_id, db, current_user)
+    business = (
+        db.get(Business, client.business_id) if client.business_id else None
+    )
+    limit = effective_max_bytes(business, db)
+    # Read one byte past the cap so an oversized upload is caught without
+    # buffering all of it.
+    image = await file.read(min(MAX_PLAN_BYTES, limit) + 1)
     return await extract_floorplan(
         db,
         current_user=current_user,
-        client_id=client_id,
-        image=await file.read(),
+        client_id=str(client.id),
+        business=business,
+        image=image,
     )
 
 

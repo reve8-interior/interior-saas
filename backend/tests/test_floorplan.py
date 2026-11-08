@@ -2,9 +2,11 @@ import io
 import uuid
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from sqlalchemy import select
 
 from backend.agents.floorplan_agent import FloorPlanExtraction, FloorPlanRoom
+from backend.core.config import settings
 from backend.models.agent_audit_log import AgentAuditLog
 from backend.models.quotation_line_item import (
     QuotationItemStatus,
@@ -20,6 +22,7 @@ from backend.services.floorplan_draft import (
 )
 from backend.services.room_matching import match_rooms
 from backend.services.secret_box import encrypt_secret
+from backend.services.storage import get_storage
 
 from .conftest import (
     as_business,
@@ -32,6 +35,16 @@ from .conftest import (
 
 AGENT = "backend.services.floorplan_extraction.run_floorplan_extraction"
 PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 64
+
+
+@pytest.fixture(autouse=True)
+def _tmp_storage(tmp_path, monkeypatch):
+    """Extracted plans are stored; keep them out of the real uploads dir."""
+    monkeypatch.setattr(settings, "storage_backend", "local")
+    monkeypatch.setattr(settings, "storage_local_dir", str(tmp_path))
+    get_storage.cache_clear()
+    yield
+    get_storage.cache_clear()
 
 
 def room(name="Master Bedroom", length=12.0, width=10.0):

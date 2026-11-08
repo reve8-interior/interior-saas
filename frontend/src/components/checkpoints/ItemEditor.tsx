@@ -91,6 +91,46 @@ export function ActionBadge({
   );
 }
 
+const ACTION_HINT: Record<ItemAction, string> = {
+  add: 'Adds a new row to the quotation',
+  update: 'Changes a row that is already on the quotation',
+  remove: 'Takes a row off the quotation',
+};
+
+/** The action as a choice, for rows that can still be changed. */
+export function ActionSelect({
+  action,
+  targetSummary,
+  index,
+  onChange,
+}: {
+  action: ItemAction;
+  targetSummary: string | null;
+  index: number;
+  onChange: (action: ItemAction) => void;
+}) {
+  const { cls } = ACTION_STYLES[action] ?? ACTION_STYLES.add;
+  return (
+    <select
+      value={action}
+      onChange={(e) => onChange(e.target.value as ItemAction)}
+      aria-label={`Action for row ${index + 1}`}
+      title={
+        targetSummary
+          ? `Currently on the quotation: ${targetSummary}`
+          : ACTION_HINT[action]
+      }
+      className={`badge cursor-pointer border-0 py-1 pr-6 ${cls}`}
+    >
+      {(Object.keys(ACTION_STYLES) as ItemAction[]).map((a) => (
+        <option key={a} value={a}>
+          {ACTION_STYLES[a].label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 /** Bulleted panel for agent notes and pipeline corrections. */
 export function NotePanel({
   title,
@@ -244,6 +284,7 @@ export function ItemCard({
   onChange,
   onVerify,
   onRemove,
+  onActionChange,
 }: {
   item: CardItem;
   index: number;
@@ -256,6 +297,8 @@ export function ItemCard({
   ) => void;
   onVerify?: (verified: boolean) => void;
   onRemove?: () => void;
+  /** Makes the action a choice instead of a label. */
+  onActionChange?: (action: ItemAction) => void;
 }) {
   const missing =
     item.action !== 'remove' && missingRequiredFields(item, allCols).length > 0;
@@ -277,11 +320,20 @@ export function ItemCard({
             Verified
           </label>
         )}
-        <ActionBadge
-          action={item.action}
-          targetSummary={item.target_summary}
-          agreedPrice={item.agreed_price}
-        />
+        {onActionChange ? (
+          <ActionSelect
+            action={item.action}
+            targetSummary={item.target_summary}
+            index={index}
+            onChange={onActionChange}
+          />
+        ) : (
+          <ActionBadge
+            action={item.action}
+            targetSummary={item.target_summary}
+            agreedPrice={item.agreed_price}
+          />
+        )}
         <span className="ml-auto text-xs font-medium text-dark-500 dark:text-dark-400">
           Row {index + 1}
         </span>

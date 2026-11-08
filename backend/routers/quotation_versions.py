@@ -43,6 +43,7 @@ from ..schemas.share import SharedDesign
 from ..services import share_links
 from ..services.client_access import get_client_or_404, restrict_to_accessible
 from ..services.plan_limits import ensure_can_add_version
+from ..services.portfolio import design_thumb_url, design_view_url
 from ..services.quotation_version import (
     AttachmentError,
     EmptyQuotationError,
@@ -61,7 +62,6 @@ from ..services.quotation_version_xlsx import (
     parse_version_xlsx,
 )
 from .deps import get_current_user
-from ..services.portfolio import design_thumb_url, design_view_url
 from .quotations import _latest_quotation
 from .share import _shared_hotspot
 
@@ -137,6 +137,9 @@ def save_version(
 
 _MAX_IMPORT_BYTES = 5 * 1024 * 1024
 _RESPONSE_COOLDOWN_SECONDS = 60
+# Line questions skip the cooldown (a customer may ask about several lines in
+# a row) but are capped per link so the endpoint can't be flooded.
+_LINE_QUESTIONS_PER_HOUR = 20
 
 
 @router.post(
@@ -571,24 +574,42 @@ def respond_to_shared_quotation(
         or share_links.is_expired(share.expires_at)
     ):
         raise HTTPException(status_code=404, detail="Link not available")
-    # One answer per link per minute: bounds spam without extra infrastructure.
-    if share.responded_at and (
-        datetime.now(timezone.utc) - share.responded_at
-    ) < timedelta(seconds=_RESPONSE_COOLDOWN_SECONDS):
-        raise HTTPException(
-            status_code=429, detail="Please wait a moment before sending again"
-        )
+    now = datetime.now(timezone.utc)
     version = db.get(QuotationVersion, share.version_id)
     if not version:
         raise HTTPException(status_code=404, detail="Link not available")
-    now = datetime.now(timezone.utc)
     name = body.name.strip()
     text = (body.message or "").strip() or None
-    share.response_kind = body.kind
-    share.response_name = name
-    share.response_message = text
-    share.responded_at = now
-    # The link keeps only the latest answer; the message list keeps them all.
+    item_label = (body.item_label or "").strip() or None
+    if item_label:
+        recent = db.scalar(
+            select(func.count())
+            .select_from(QuotationMessage)
+            .where(
+                QuotationMessage.version_id == version.id,
+                QuotationMessage.item_label.is_not(None),
+                QuotationMessage.created_at > now - timedelta(hours=1),
+            )
+        )
+        if (recent or 0) >= _LINE_QUESTIONS_PER_HOUR:
+            raise HTTPException(
+                status_code=429,
+                detail="Please wait a moment before sending again",
+            )
+    else:
+        # One whole-quotation answer per link per minute.
+        if share.responded_at and (now - share.responded_at) < timedelta(
+            seconds=_RESPONSE_COOLDOWN_SECONDS
+        ):
+            raise HTTPException(
+                status_code=429,
+                detail="Please wait a moment before sending again",
+            )
+        # The link keeps only the latest answer; the message list keeps all.
+        share.response_kind = body.kind
+        share.response_name = name
+        share.response_message = text
+        share.responded_at = now
     db.add(
         QuotationMessage(
             quotation_id=version.quotation_id,
@@ -597,6 +618,7 @@ def respond_to_shared_quotation(
             kind=body.kind,
             name=name,
             message=text,
+            item_label=item_label,
             created_at=now,
         )
     )
@@ -614,6 +636,7 @@ def _message_to_read(
         kind=message.kind,
         name=message.name,
         message=message.message,
+        item_label=message.item_label,
         created_at=message.created_at,
         resolved_at=message.resolved_at,
         resolved_by_name=resolver,

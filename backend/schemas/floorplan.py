@@ -16,6 +16,9 @@ class FloorPlanRoomOut(BaseModel):
 
 
 class FloorPlanExtractResponse(BaseModel):
+    # Where the plan was stored; sent back when the draft is saved so the
+    # meeting keeps the image it came from.
+    source_image_path: str
     audit_log_id: str
     rooms: list[FloorPlanRoomOut]
     existing_rooms: list[str] = Field(default_factory=list)

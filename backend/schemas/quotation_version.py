@@ -89,11 +89,15 @@ class QuotationShareResponse(BaseModel):
     kind: Literal["approved", "question"]
     name: str = Field(min_length=1, max_length=120)
     message: str | None = Field(default=None, max_length=2000)
+    # Set when the question is about one line ("Room · description").
+    item_label: str | None = Field(default=None, max_length=300)
 
     @model_validator(mode="after")
     def question_needs_text(self) -> "QuotationShareResponse":
         if self.kind == "question" and not (self.message or "").strip():
             raise ValueError("Please write your question")
+        if self.item_label and self.kind != "question":
+            raise ValueError("Only a question can be about one line")
         return self
 
 
@@ -106,6 +110,7 @@ class QuotationMessageRead(BaseModel):
     kind: Literal["approved", "question"]
     name: str
     message: str | None
+    item_label: str | None = None
     created_at: datetime
     resolved_at: datetime | None = None
     resolved_by_name: str | None = None

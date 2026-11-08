@@ -3,12 +3,14 @@
 import {
   type ConfirmLineItem,
   type ExtractionResponse,
+  type ItemAction,
 } from '@/lib/checkpoints';
 import { columnLabel, missingRequiredFields } from '@/lib/lineItemColumns';
 import { Trash2 } from 'lucide-react';
 import { INPUT_CLS } from '@/lib/constants';
 import {
   ActionBadge,
+  ActionSelect,
   ItemCard,
   ItemCell,
   NotePanel,
@@ -27,6 +29,8 @@ interface ExtractReviewProps {
   onBudgetChange: (value: string) => void;
   onAddItem: () => void;
   onRemoveItem: (idx: number) => void;
+  /** Lets the designer change what a row does to the quotation. */
+  onChangeAction?: (idx: number, action: ItemAction) => void;
   onUpdateItem: (
     idx: number,
     field: keyof ConfirmLineItem,
@@ -50,6 +54,7 @@ export function ExtractReview({
   onBudgetChange,
   onAddItem,
   onRemoveItem,
+  onChangeAction,
   onUpdateItem,
   onUpdateItemExtra,
 }: ExtractReviewProps) {
@@ -121,6 +126,9 @@ export function ExtractReview({
               cols={enabledCols}
               allCols={columns}
               onRemove={() => onRemoveItem(idx)}
+              onActionChange={
+                onChangeAction ? (a) => onChangeAction(idx, a) : undefined
+              }
               onChange={(key, value, isCustom) =>
                 isCustom
                   ? onUpdateItemExtra(idx, key, value)
@@ -164,10 +172,19 @@ export function ExtractReview({
                     className={missing ? 'bg-red-50 dark:bg-red-900/10' : ''}
                   >
                     <td className={`w-24 min-w-24 px-2 py-1`}>
-                      <ActionBadge
-                        action={item.action}
-                        targetSummary={item.target_summary}
-                      />
+                      {onChangeAction ? (
+                        <ActionSelect
+                          action={item.action}
+                          targetSummary={item.target_summary}
+                          index={idx}
+                          onChange={(a) => onChangeAction(idx, a)}
+                        />
+                      ) : (
+                        <ActionBadge
+                          action={item.action}
+                          targetSummary={item.target_summary}
+                        />
+                      )}
                     </td>
                     {enabledCols.map((col) => (
                       <td

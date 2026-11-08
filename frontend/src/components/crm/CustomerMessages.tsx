@@ -1,8 +1,14 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, MessageCircleQuestion, ThumbsUp } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import {
+  CheckCircle2,
+  MessageCircleQuestion,
+  RotateCcw,
+  ThumbsUp,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { ReplyActions } from '@/components/quotation/ReplyActions';
 import { api } from '@/lib/api';
@@ -10,26 +16,24 @@ import { ATTENTION_KEY } from '@/lib/attention';
 import type { Client } from '@/lib/schemas/client';
 import { CARD_CLS } from '@/lib/constants';
 import { timeAgo } from '@/lib/dates';
-import { INBOX_KEY } from '@/lib/inbox';
+import { INBOX_KEY, inboxClientHref } from '@/lib/inbox';
 import { errorMessage } from '@/lib/errors';
 import {
   CUSTOMER_MESSAGES_ID as SECTION_ID,
   isOpenQuestion,
   listQuotationMessages,
-  openQuestionCount,
   quotationMessagesKey,
   resolveQuotationMessage,
   type QuotationMessage,
 } from '@/lib/quotationMessages';
 
 /**
- * Everything customers sent from the shared quotation link, newest first with
- * open questions on top. A question keeps the Inbox badge lit until resolved.
- * Renders nothing until a customer has written, so it never shows empty.
+ * Only the questions still waiting on the designer. Answered questions and
+ * approvals live in the inbox, one link away. Renders nothing when there is
+ * nothing to answer, so it never shows empty.
  */
 export function CustomerMessages({ clientId }: { clientId: string }) {
   const qc = useQueryClient();
-  const [showEarlier, setShowEarlier] = useState(false);
   const { data: messages = [] } = useQuery({
     queryKey: quotationMessagesKey(clientId),
     queryFn: () => listQuotationMessages(clientId),
@@ -51,22 +55,19 @@ export function CustomerMessages({ clientId }: { clientId: string }) {
     queryFn: () => api.get<Client>(`/clients/${clientId}`),
   });
 
-  // Arriving from the inbox or a link badge: bring the thread into view.
-  const hasMessages = messages.length > 0;
+  const open = messages.filter(isOpenQuestion);
+
+  // Arriving from a link badge: bring the questions into view.
+  const hasOpen = open.length > 0;
   useEffect(() => {
-    if (hasMessages && window.location.hash === `#${SECTION_ID}`) {
+    if (hasOpen && window.location.hash === `#${SECTION_ID}`) {
       document
         .getElementById(SECTION_ID)
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [hasMessages]);
+  }, [hasOpen]);
 
-  if (messages.length === 0) return null;
-  const open = openQuestionCount(messages);
-  // Open questions stay in view; answered ones and approvals fold away.
-  const current = messages.filter(isOpenQuestion);
-  const earlier = messages.filter((m) => !isOpenQuestion(m));
-  const shown = showEarlier || current.length === 0 ? messages : current;
+  if (!hasOpen) return null;
 
   return (
     <section
@@ -76,26 +77,23 @@ export function CustomerMessages({ clientId }: { clientId: string }) {
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h2 id="customer-messages-heading" className="type-label">
-          Customer messages
+          Open questions
         </h2>
-        <span className="text-xs tabular-nums text-dark-500 dark:text-dark-400">
-          {messages.length}
+        <span
+          role="status"
+          className="rounded-control bg-red-600 px-2 py-0.5 text-xs font-semibold text-white"
+        >
+          {open.length} open
         </span>
-        {open > 0 ? (
-          <span
-            role="status"
-            className="rounded-control bg-red-600 px-2 py-0.5 text-xs font-semibold text-white"
-          >
-            {open} open
-          </span>
-        ) : (
-          <span className="text-xs font-medium text-green-700 dark:text-green-400">
-            All resolved
-          </span>
-        )}
+        <Link
+          href={inboxClientHref(clientId)}
+          className="link-action ml-auto text-sm"
+        >
+          Open in inbox
+        </Link>
       </div>
       <ul className="divide-y divide-line">
-        {shown.map((m) => (
+        {open.map((m) => (
           <MessageRow
             key={m.id}
             message={m}
@@ -106,16 +104,6 @@ export function CustomerMessages({ clientId }: { clientId: string }) {
           />
         ))}
       </ul>
-      {current.length > 0 && earlier.length > 0 && (
-        <button
-          type="button"
-          aria-expanded={showEarlier}
-          onClick={() => setShowEarlier((v) => !v)}
-          className="link-action mt-3"
-        >
-          {showEarlier ? 'Hide earlier' : `Show ${earlier.length} earlier`}
-        </button>
-      )}
     </section>
   );
 }
@@ -154,6 +142,11 @@ function MessageRow({
             {timeAgo(m.created_at)}
           </span>
         </p>
+        {m.item_label && (
+          <p className="mt-1 text-xs font-medium text-accent-text">
+            About: {m.item_label}
+          </p>
+        )}
         {m.message && (
           <p className="mt-1 whitespace-pre-wrap break-words text-sm text-dark-700 dark:text-dark-200">
             {m.message}
@@ -173,6 +166,7 @@ function MessageRow({
               versionId={m.version_id}
               versionNumber={m.version_number}
               contact={contact}
+              itemLabel={m.item_label}
             />
           </div>
         )}
@@ -182,9 +176,15 @@ function MessageRow({
           type="button"
           disabled={busy}
           onClick={() => onToggle(open)}
-          className={`${open ? 'btn-secondary' : 'link-action'} btn-sm shrink-0 self-start`}
+          aria-label={open ? 'Mark resolved' : 'Reopen'}
+          title={open ? 'Mark resolved' : 'Reopen'}
+          className="btn-secondary btn-sm shrink-0 self-start px-2.5"
         >
-          {open ? 'Mark resolved' : 'Reopen'}
+          {open ? (
+            <CheckCircle2 className="h-4 w-4" aria-hidden />
+          ) : (
+            <RotateCcw className="h-4 w-4" aria-hidden />
+          )}
         </button>
       )}
     </li>

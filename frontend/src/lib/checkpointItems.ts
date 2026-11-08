@@ -87,6 +87,26 @@ export function updateItemAt<T extends object>(
   );
 }
 
+/**
+ * Changes what a row does to the quotation. A new row has no existing line
+ * to point at, so choosing "New" drops the link; update and remove keep it
+ * (without one, the quotation is searched by room and description).
+ */
+export function setActionAt<
+  T extends {
+    action: ItemAction;
+    target_item_id?: string | null;
+    target_summary?: string | null;
+  },
+>(items: T[], idx: number, action: ItemAction): T[] {
+  return items.map((item, i) => {
+    if (i !== idx) return item;
+    return action === 'add'
+      ? { ...item, action, target_item_id: null, target_summary: null }
+      : { ...item, action };
+  });
+}
+
 export function updateExtraAt<
   T extends { extra?: Record<string, string | number | null> | null },
 >(items: T[], idx: number, key: string, value: string | number | null): T[] {

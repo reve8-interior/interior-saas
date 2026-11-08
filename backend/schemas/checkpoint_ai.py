@@ -112,6 +112,8 @@ class FromExtractionRequest(BaseModel):
     # The extraction run these rows came from; links the designer's final
     # rows to what the AI proposed (see docs/AI_EVAL_PLAN.md).
     audit_log_id: str | None = None
+    # Floor plan the rows were drafted from (from the extract response).
+    source_image_path: str | None = None
     # kept for API compat; ignored — we always upsert
     create_quotation: bool = True
     # Starter drafts (floor plan) leave rates and custom columns blank on

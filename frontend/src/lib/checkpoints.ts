@@ -192,6 +192,8 @@ export interface FromExtractionRequest {
   questions?: ExtractionQuestion[];
   /** The extraction run these rows came from, for evaluation. */
   audit_log_id?: string | null;
+  /** Floor plan the rows were drafted from, kept with the meeting. */
+  source_image_path?: string | null;
   create_quotation: boolean;
   /** Starter drafts: blanks are filled in the review; adding still enforces them. */
   allow_incomplete?: boolean;

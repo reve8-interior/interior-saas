@@ -1,3 +1,25 @@
+0.27.0
+ - date: 08-11-2026
+ - changes:
+   - feat: a customer can ask about one line of a shared quotation: `POST /quotation-share/{token}/respond` takes an optional `item_label` ("Room · line", questions only, 422 otherwise); it is stored on the message and returned as `item_label` by the client messages and `GET /dashboard/inbox`
+   - feat: line questions skip the one-per-minute limit (capped at 20 per link per hour) and leave the link's own approve/ask answer untouched
+   - migration 0065: `item_label` on `quotation_messages`; run `alembic upgrade head` before deploying this version
+   - test: line questions keep their label and don't trip the cooldown; a label on an approval is refused; the 20-per-hour cap (and that it doesn't block the whole-quotation answer); a blank label counts as a whole-quotation question; labels are trimmed and limited to 300 characters; a line question needs text and is refused on a revoked link; the label shows in the inbox and survives resolving; a line question lights the bell until resolved
+
+0.26.0
+ - date: 08-11-2026
+ - changes:
+   - feat: the floor plan a meeting was drafted from is kept: `POST /clients/{id}/quotation/floor-plan/extract` now stores a readable plan in the image bucket (`floorplans/{client_id}/...`, with a thumbnail and a shared-page copy) and returns `source_image_path`; saving the draft (`POST /checkpoints/from-extraction`) takes it as `source_image_path` and keeps it on the checkpoint
+   - feat: stored plans count toward the plan's image allowance (`max_images`) together with design images, so they show in the usage meter and the business image count. A plan counts once a meeting is saved from it
+   - feat: extract is refused with 403 once the image allowance is used (before an AI credit is spent) and with 413 above the plan's per-image size (`max_image_mb`, never above 8 MB)
+   - feat: `GET /clients/{id}/checkpoints` returns `source_image_url`, a short-lived signed link to the plan; the stored key is never returned. The media route now serves `floorplans/`
+   - feat: deleting a draft meeting, or the sample client, removes its stored plan files
+   - fix: a plan key is checked against the client before it is saved (422 for another client's folder, a design path or a malformed key)
+   - migration 0064: `source_image_path` on `checkpoints`; run `alembic upgrade head` before deploying this version
+   - test: key validation, storing and deleting, the image allowance (designs and plans, per business, usage meter), extract refusals storing nothing, saving, signed serving, meeting and sample-client deletion
+   - note: a plan that is read but never saved stays in storage and is not counted; a cleanup job isn't built. Plans of real (deactivated) clients stay and keep counting
+
+
 0.25.1
  - date: 06-11-2026
  - changes:

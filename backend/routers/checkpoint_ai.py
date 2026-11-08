@@ -65,6 +65,7 @@ from ..services.column_settings import (
     get_line_item_columns,
     missing_required_problems,
 )
+from ..services.floorplan_storage import validate_floorplan_path
 from .deps import get_current_user, require_superadmin
 
 router = APIRouter()
@@ -136,7 +137,10 @@ def save_from_extraction(
     reach it only via the explicit verify → add flow (update-items),
     which records who added it and when.
     """
-    get_client_or_404(client_id, db, current_user)
+    client = get_client_or_404(client_id, db, current_user)
+    source_image_path = validate_floorplan_path(
+        body.source_image_path, str(client.id)
+    )
 
     # Validate all mandatory columns (user-configurable) before the DB.
     # A removal carries no measurements — it only names what to drop.
@@ -171,6 +175,7 @@ def save_from_extraction(
         },
         raw_conversation=body.raw_transcript,
         audio_transcript=body.audio_transcript,
+        source_image_path=source_image_path,
         source=CheckpointSource.ai_extract,
         status="draft",
     )

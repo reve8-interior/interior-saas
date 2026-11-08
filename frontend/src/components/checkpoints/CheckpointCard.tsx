@@ -7,6 +7,7 @@ import { ExtractionProgress } from '@/components/shared/ExtractionProgress';
 import {
   type ExtractionQuestion,
   type ExtractionRecord,
+  type ItemAction,
   deleteCheckpoint,
   extractFromText,
   undoQuotationAdd,
@@ -21,8 +22,11 @@ import {
   addDisabledReason as addDisabledReasonFor,
   blankItem,
   findMissingItems,
+  insertAt,
   minutesBullets,
   parseStoredItems,
+  removeAt,
+  setActionAt,
   setAllVerified,
   summarizeVerified,
   toQuotationPayload,
@@ -58,7 +62,7 @@ export function CheckpointCard({
   const [open, setOpen] = useState(!cp.added_to_quotation);
   const [showRerun, setShowRerun] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    'minutes' | 'extract' | 'notes' | 'transcript'
+    'minutes' | 'extract' | 'notes' | 'transcript' | 'plan'
   >('extract');
   const [notesDraft, setNotesDraft] = useState(cp.raw_conversation ?? '');
   const [minutes, setMinutes] = useState(cp.summary_text);
@@ -194,6 +198,23 @@ export function CheckpointCard({
     commitItems((prev) => [...prev, blankItem()]);
   }
 
+  function changeAction(idx: number, action: ItemAction) {
+    commitItems((prev) => setActionAt(prev, idx, action));
+  }
+
+  /** Drops a row from the draft; Undo puts it back where it was. */
+  function removeItem(idx: number) {
+    const removed = itemsRef.current[idx];
+    if (!removed) return;
+    commitItems((prev) => removeAt(prev, idx));
+    toast(`Row ${idx + 1} removed`, {
+      action: {
+        label: 'Undo',
+        onClick: () => commitItems((prev) => insertAt(prev, idx, removed)),
+      },
+    });
+  }
+
   function updateItem(
     idx: number,
     field: keyof LineItemData,
@@ -326,7 +347,7 @@ export function CheckpointCard({
   const bullets = minutes ? minutesBullets(minutes) : [];
 
   const TAB_LABELS: {
-    key: 'minutes' | 'extract' | 'notes' | 'transcript';
+    key: 'minutes' | 'extract' | 'notes' | 'transcript' | 'plan';
     label: string;
   }[] = [
     {
@@ -334,6 +355,9 @@ export function CheckpointCard({
       label: `Rows${hasItems ? ` (${items.length})` : ''}`,
     },
     { key: 'minutes', label: 'Minutes' },
+    ...(cp.source_image_url
+      ? [{ key: 'plan' as const, label: 'Floor plan' }]
+      : []),
     ...(draft
       ? [{ key: 'notes' as const, label: 'Notes' }]
       : rawText
@@ -473,6 +497,23 @@ export function CheckpointCard({
               </div>
             )}
 
+            {/* Floor plan the rows were drafted from */}
+            {activeTab === 'plan' && cp.source_image_url && (
+              <a
+                href={cp.source_image_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block pt-2"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- signed storage URL */}
+                <img
+                  src={cp.source_image_url}
+                  alt={`Floor plan for meeting #${number}`}
+                  className="max-h-[60vh] w-full rounded-lg border border-line bg-white object-contain"
+                />
+              </a>
+            )}
+
             {/* Raw Transcript tab */}
             {activeTab === 'transcript' && (
               <p className="whitespace-pre-wrap pt-2 text-xs text-dark-600 dark:text-dark-300">
@@ -591,6 +632,8 @@ export function CheckpointCard({
                           : updateItem(idx, key as keyof LineItemData, value)
                       }
                       onVerify={(idx, v) => updateItem(idx, 'verified', v)}
+                      onRemove={removeItem}
+                      onActionChange={changeAction}
                     />
 
                     {showRerun && !cp.added_to_quotation && (

@@ -2,7 +2,9 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
+
+from ..services.storage import signed_view_url
 
 
 class CheckpointCreate(BaseModel):
@@ -26,12 +28,21 @@ class CheckpointRead(BaseModel):
     source: str
     raw_conversation: str | None
     audio_transcript: str | None
+    source_image_path: str | None = Field(default=None, exclude=True)
     added_to_quotation: bool
     created_at: datetime
     applied_at: datetime | None = None
     applied_by_name: str | None = None
 
     model_config = {"from_attributes": True}
+
+    @computed_field
+    @property
+    def source_image_url(self) -> str | None:
+        """Short-lived signed link to the floor plan this meeting came from."""
+        if not self.source_image_path:
+            return None
+        return signed_view_url(self.source_image_path)
 
 
 class CheckpointNotesUpdate(BaseModel):

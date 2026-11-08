@@ -179,7 +179,12 @@ export async function getSharedQuotation(
 /** Public endpoint: the customer approves or asks a question. */
 export function respondToSharedQuotation(
   token: string,
-  body: { kind: ShareResponseKind; name: string; message: string | null }
+  body: {
+    kind: ShareResponseKind;
+    name: string;
+    message: string | null;
+    item_label?: string | null;
+  }
 ): Promise<void> {
   return api.post<void>(
     `/quotation-share/${encodeURIComponent(token)}/respond`,

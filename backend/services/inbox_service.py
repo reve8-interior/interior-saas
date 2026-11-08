@@ -36,6 +36,7 @@ def list_inbox(db: Session, user: User) -> list[InboxMessage]:
             kind=m.kind,
             name=m.name,
             message=m.message,
+            item_label=m.item_label,
             created_at=m.created_at,
             resolved_at=m.resolved_at,
             resolved_by_name=resolver,
