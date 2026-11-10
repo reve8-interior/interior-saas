@@ -1,4 +1,4 @@
-import { getAccessToken } from '@/lib/auth';
+import { clearSession, getAccessToken } from '@/lib/auth';
 import { API_URL } from '@/lib/config';
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -70,6 +70,14 @@ export async function apiRequest<T = unknown>(
   });
 
   if (!response.ok) {
+    // Rejected stored session (expired / secret rotated): drop it and re-login once.
+    if (response.status === 401 && token && !options.authToken) {
+      clearSession();
+      if (typeof window !== 'undefined') {
+        const onAdmin = window.location.pathname.startsWith('/admin');
+        window.location.assign(onAdmin ? '/admin/login' : '/login');
+      }
+    }
     const errorPayload = await response.json().catch(() => undefined);
     throw new ApiError(
       errorMessage(errorPayload, `API Error: ${response.statusText}`),

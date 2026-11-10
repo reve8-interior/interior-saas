@@ -26,10 +26,9 @@ export function UsageMeters({ meters }: { meters: UsageMeter[] }) {
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span>{m.label}</span>
               <span className="font-semibold tabular-nums">
-                {m.used.toLocaleString('en-IN')}
                 {m.limit === null
-                  ? ' · Unlimited'
-                  : ` of ${m.limit.toLocaleString('en-IN')}`}
+                  ? `${m.used.toLocaleString('en-IN')} · Unlimited`
+                  : `${m.used.toLocaleString('en-IN')} used, ${m.limit.toLocaleString('en-IN')} allowed`}
               </span>
             </div>
             {m.limit !== null && (

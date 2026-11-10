@@ -8,7 +8,6 @@ from ..core import get_db
 from ..core.database import scope_session
 from ..core.security import decode_access_token
 from ..models.user import User, UserRole
-from ..services.subscription import is_expired
 
 
 def get_token(authorization: str | None = Header(default=None)) -> str:
@@ -74,16 +73,6 @@ def get_current_user(
         )
     if user.must_change_password:
         raise HTTPException(status_code=403, detail="Password change required")
-    if (
-        user.role != UserRole.superadmin
-        and user.business
-        and is_expired(user.business)
-    ):
-        raise HTTPException(
-            status_code=402,
-            detail="Your access has expired. Contact your administrator "
-            "to renew.",
-        )
     return user
 
 

@@ -146,3 +146,5 @@ class PortfolioDesignRead(DesignRead):
     """A design plus its owner, for the designer's portfolio manager."""
 
     client_name: str
+    # Over the plan's portfolio limit: hidden from the public until upgraded.
+    locked: bool = False

@@ -1,6 +1,6 @@
 'use client';
 
-import { FileText, Image, Sparkles, User } from 'lucide-react';
+import { FileText, Image, Lock, Sparkles, User } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
@@ -138,6 +138,29 @@ export default function ClientWorkspaceLayout({
       attentionNoun: waiting === 1 ? 'item to review' : 'items to review',
     },
   ];
+  if (client?.locked) {
+    return (
+      <div className="surface mx-auto mt-10 max-w-md p-8 text-center">
+        <Lock className="mx-auto mb-3 h-10 w-10 text-amber-500" aria-hidden />
+        <h2 className="mb-2 text-lg font-extrabold tracking-tight">
+          {client.name} is locked
+        </h2>
+        <p className="text-sm text-dark-500 dark:text-dark-400">
+          Your plan allows fewer clients than you have. Your data is safe.
+          Upgrade to open this client again, or archive another client to free a
+          spot.
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Link href="/dashboard/billing" className="btn-primary">
+            Upgrade to unlock
+          </Link>
+          <Link href="/dashboard/clients" className="btn-secondary">
+            Back to clients
+          </Link>
+        </div>
+      </div>
+    );
+  }
   return (
     <div>
       {client?.is_sample && (

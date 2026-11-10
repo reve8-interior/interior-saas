@@ -122,6 +122,8 @@ export interface SharedDesign {
 /** A design with its owner, for the designer's portfolio manager. */
 export interface PortfolioDesign extends Design {
   client_name: string;
+  /** Over the plan's portfolio limit: hidden from public pages. */
+  locked?: boolean;
 }
 
 export interface PortfolioShare {

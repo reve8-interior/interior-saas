@@ -416,7 +416,7 @@ def test_list_shows_the_real_plan_name_and_access_countdown(api, db):
     assert rows["Paid Studio"]["limits"]["plan"] == "studio"
     assert rows["Paid Studio"]["days_left"] in (99, 100)
     assert rows["Paid Studio"]["access_expired"] is False
-    assert rows["Lapsed Co"]["plan_name"] == "Solo"
+    assert rows["Lapsed Co"]["plan_name"] == "Free"
     assert rows["Lapsed Co"]["access_expired"] is True
     assert rows["Free Co"]["plan_name"] == "Free"
     assert rows["Free Co"]["days_left"] is None

@@ -1,13 +1,8 @@
 'use client';
 
-import { Button } from '@/components/ui/Button';
-import { signOut } from '@/lib/auth';
-import { MARKETING_URL } from '@/lib/constants';
 import { AccessStatus, UsageMeter } from '@/lib/schemas/auth';
 import { meterState, meterWarnings } from '@/lib/usage';
-import { useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
-import { AlertTriangle, Lock } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { ReactNode } from 'react';
 
@@ -18,59 +13,35 @@ interface Props {
   children: ReactNode;
 }
 
-/** Shows the payment countdown banner, or blocks the portal once expired. */
+/** Shows the plan-ending countdown, or the moved-to-Free notice once a paid plan lapses. */
 export function AccessGate({ access, meters = [], children }: Props) {
-  const qc = useQueryClient();
-  const router = useRouter();
-  if (access?.expired) {
-    return (
-      <div className="surface mx-auto mt-16 max-w-md !border-red-200 p-8 text-center dark:!border-red-500/30">
-        <Lock className="mx-auto mb-3 h-10 w-10 text-red-500" />
-        <h2 className="mb-2 text-lg font-extrabold tracking-tight">
-          Access expired
-        </h2>
-        <p className="text-sm text-dark-500 dark:text-dark-400">
-          Your access period has ended. Clients, board, meeting notes and
-          quotations are locked until your administrator renews your plan. Your
-          data is safe.
-        </p>
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => qc.invalidateQueries({ queryKey: ['me'] })}
-          >
-            Already renewed? Check again
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              signOut();
-              window.location.assign(MARKETING_URL);
-            }}
-          >
-            Sign out
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   const showBanner =
     access?.days_left != null && access.days_left <= access.warning_days;
   const warnings = meterWarnings(meters);
 
   return (
     <>
-      {showBanner && (
+      {access?.expired && (
+        <div className="mb-4 flex items-start gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Your paid plan has ended, so you are now on the Free plan. Only Free
+            limits apply now. Upgrade to unlock the remaining clients, designs,
+            portfolio designs, website and more. Your data is safe.{' '}
+            <Link href="/dashboard/billing" className="font-semibold underline">
+              Upgrade now
+            </Link>
+          </span>
+        </div>
+      )}
+      {showBanner && !access?.expired && (
         <div className="mb-4 flex items-center gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span>
             {access.days_left === 0
-              ? 'Last day of access — payment is due today.'
-              : `${access.days_left} day${access.days_left === 1 ? '' : 's'} left to make your payment.`}{' '}
-            After that, the portal will be locked.
+              ? 'Last day of your plan — renew today to keep everything.'
+              : `${access.days_left} day${access.days_left === 1 ? '' : 's'} left on your plan.`}{' '}
+            After that you move to the Free plan.
           </span>
         </div>
       )}

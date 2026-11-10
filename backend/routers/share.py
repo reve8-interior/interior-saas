@@ -20,19 +20,23 @@ from ..schemas.share import (
     SharedDesign,
     SharedHotspot,
     SharedItem,
+    SharedLinkRow,
     SharedView,
     ShareLinkCreate,
     ShareLinkRead,
-    SharedLinkRow,
 )
 from ..services import share_links
-from ..services.shared_links_overview import list_shared_links
 from ..services.client_access import get_client_or_404, restrict_to_accessible
+from ..services.plan_limits import (
+    PORTFOLIO_LOCKED_DETAIL,
+    locked_portfolio_ids,
+)
 from ..services.portfolio import (
     design_thumb_url,
     design_view_url,
     portfolio_designs_q,
 )
+from ..services.shared_links_overview import list_shared_links
 from .deps import get_current_user
 
 router = APIRouter()
@@ -210,7 +214,9 @@ def _own_business(db: Session, user: User) -> Business:
 def _portfolio_view(
     db: Session, business: Business, design_ids: list[str] | None = None
 ) -> PortfolioView:
-    q = portfolio_designs_q(business.id)
+    q = portfolio_designs_q(business.id).where(
+        Design.id.notin_(locked_portfolio_ids(business, db))
+    )
     if design_ids is not None:
         q = q.where(Design.id.in_([uuid.UUID(d) for d in design_ids]))
     designs = db.execute(q).scalars().all()
@@ -279,6 +285,8 @@ def create_portfolio_share(
     q = restrict_to_accessible(q, current_user)
     if set(db.execute(q).scalars().all()) != wanted:
         raise HTTPException(status_code=404, detail="Design not found")
+    if wanted & locked_portfolio_ids(business, db):
+        raise HTTPException(status_code=403, detail=PORTFOLIO_LOCKED_DETAIL)
 
     share = PortfolioShare(
         business_id=business.id,

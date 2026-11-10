@@ -79,6 +79,33 @@ export function matchesFilter(
   }
 }
 
+export interface ClientLinkGroup {
+  key: string;
+  name: string;
+  links: SharedLink[];
+}
+
+/** Label for links not tied to a customer (the portfolio). */
+export const NO_CLIENT_LABEL = 'Not for a specific customer';
+
+/** Links bucketed by customer, A-Z, with customer-less links last. */
+export function groupByClient(links: SharedLink[]): ClientLinkGroup[] {
+  const groups = new Map<string, ClientLinkGroup>();
+  for (const link of links) {
+    const key = link.client_id ?? 'none';
+    const group = groups.get(key) ?? {
+      key,
+      name: link.client_name ?? NO_CLIENT_LABEL,
+      links: [],
+    };
+    group.links.push(link);
+    groups.set(key, group);
+  }
+  return [...groups.values()].sort((a, b) =>
+    a.key === 'none' ? 1 : b.key === 'none' ? -1 : a.name.localeCompare(b.name)
+  );
+}
+
 /** Stop a link: each kind has its own endpoint. */
 export function stopLink(link: SharedLink): Promise<void> {
   switch (link.kind) {

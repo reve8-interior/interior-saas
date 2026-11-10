@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 from ..models.business import Business
 from ..schemas.auth import AccessStatus
+from .plan_catalog import FREE_SLUG
 
 SECONDS_PER_DAY = 86400
 
@@ -19,8 +20,8 @@ def days_left(business: Business, now: datetime | None = None) -> int | None:
 
 
 def is_expired(business: Business, now: datetime | None = None) -> bool:
-    """True once the paid/free window has passed."""
-    if business.access_expires_at is None:
+    """True once a paid plan's window has passed. Free never expires."""
+    if business.plan == FREE_SLUG or business.access_expires_at is None:
         return False
     return (now or datetime.now(UTC)) >= business.access_expires_at
 
@@ -29,7 +30,7 @@ def access_status(business: Business | None) -> AccessStatus:
     """Countdown state shown to tenant users."""
     if business is None:
         return AccessStatus()
-    if business.access_expires_at is None:
+    if business.plan == FREE_SLUG or business.access_expires_at is None:
         return AccessStatus(plan=business.plan)
     return AccessStatus(
         plan=business.plan,

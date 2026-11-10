@@ -455,11 +455,13 @@ def test_only_the_business_admin_can_pay(api, db, rzp):
 
 def test_an_expired_business_can_still_pay(api, db, rzp):
     _, user = tenant(
-        db, access_expires_at=datetime.now(UTC) - timedelta(days=1)
+        db,
+        plan="solo",
+        access_expires_at=datetime.now(UTC) - timedelta(days=1),
     )
-    # Other tenant routes are locked...
-    assert api.get("/api/v1/clients", headers=auth(user)).status_code == 402
-    # ...but billing must stay open so they can renew.
+    # A lapsed plan drops to Free but the portal stays usable...
+    assert api.get("/api/v1/clients", headers=auth(user)).status_code == 200
+    # ...and billing stays open so they can renew.
     r = api.post(
         "/api/v1/billing/checkout",
         headers=auth(user),

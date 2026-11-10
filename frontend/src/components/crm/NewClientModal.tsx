@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
-import { api } from '@/lib/api';
+import { ApiError, api } from '@/lib/api';
 import { EMPTY_CLIENT_FORM, clientPayload } from '@/lib/clientForm';
 import { INPUT_CLS } from '@/lib/constants';
 import { useMutation } from '@tanstack/react-query';
@@ -28,7 +28,14 @@ export function NewClientModal({
       // Straight into the new client's workspace: the next step is always there.
       router.push(`/dashboard/clients/${id}`);
     },
-    onError: () => toast.error('Failed to create client'),
+    onError: (err) => {
+      // 403 = plan limit; the backend message explains it and how to upgrade.
+      if (err instanceof ApiError && err.status === 403) {
+        toast.error(err.message, { duration: 10000 });
+      } else {
+        toast.error('Failed to create client');
+      }
+    },
   });
 
   const set =

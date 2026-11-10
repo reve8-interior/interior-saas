@@ -349,6 +349,11 @@ export default function ClientsPage() {
                     <p className="truncate font-medium text-dark-900 dark:text-white">
                       {client.name}
                     </p>
+                    {client.locked && (
+                      <span className="badge bg-amber-100 font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                        Locked · Upgrade to unlock
+                      </span>
+                    )}
                     <p className="mt-0.5 truncate text-xs text-dark-500 dark:text-dark-400">
                       {client.contact_info?.phone ||
                         client.contact_info?.email ||
@@ -455,13 +460,20 @@ export default function ClientsPage() {
                           {client.name}
                         </span>
                       ) : (
-                        <Link
-                          href={`/dashboard/clients/${client.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="font-medium text-dark-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
-                        >
-                          {client.name}
-                        </Link>
+                        <>
+                          <Link
+                            href={`/dashboard/clients/${client.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="font-medium text-dark-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
+                          >
+                            {client.name}
+                          </Link>
+                          {client.locked && (
+                            <span className="badge ml-2 bg-amber-100 font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                              Locked · Upgrade to unlock
+                            </span>
+                          )}
+                        </>
                       )}
                     </td>
                     <td

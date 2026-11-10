@@ -9,6 +9,7 @@ import { BusinessFormModal } from '@/components/admin/BusinessFormModal';
 import { isSuperadmin } from '@/lib/auth';
 import { listBusinesses } from '@/lib/businesses';
 import { Business } from '@/lib/schemas/business';
+import { meterState } from '@/lib/usage';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, Plus, Search } from 'lucide-react';
 import Link from 'next/link';
@@ -27,6 +28,32 @@ const FILTERS: { id: Filter; label: string }[] = [
 
 const needsAttention = (b: Business) =>
   accessTone(b) === 'warn' || accessTone(b) === 'expired';
+
+const TONE_CLS = {
+  unlimited: '',
+  ok: '',
+  near: 'font-semibold text-amber-600 dark:text-amber-400',
+  full: 'font-semibold text-red-600 dark:text-red-400',
+} as const;
+
+/** Metered limits shown as columns, in this order. */
+const LIMIT_COLS = [
+  { key: 'clients', label: 'Clients' },
+  { key: 'users', label: 'Users' },
+  { key: 'images', label: 'Images' },
+  { key: 'portfolio', label: 'Portfolio' },
+] as const;
+
+/** Compact "used/limit" (∞ when unlimited), coloured near/at the cap. */
+function Limit({ b, k }: { b: Business; k: string }) {
+  const m = b.usage.find((u) => u.key === k);
+  if (!m) return <span>—</span>;
+  return (
+    <span className={`tabular-nums ${TONE_CLS[meterState(m.used, m.limit)]}`}>
+      {m.used}/{m.limit ?? '∞'}
+    </span>
+  );
+}
 
 const contactOf = (b: Business) =>
   [b.contact_email, b.contact_phone].filter(Boolean).join(' · ') || '—';
@@ -131,7 +158,13 @@ export default function BusinessesPage() {
                     </p>
                     <div className="flex flex-wrap items-center gap-x-3 text-xs text-dark-500 dark:text-dark-400">
                       <AccessBadge b={b} />
-                      <span>{b.user_count} users</span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-3 text-xs text-dark-500 dark:text-dark-400">
+                      {LIMIT_COLS.map((c) => (
+                        <span key={c.key}>
+                          {c.label} <Limit b={b} k={c.key} />
+                        </span>
+                      ))}
                     </div>
                   </div>
                   <ChevronRight className="h-5 w-5 shrink-0 text-dark-400" />
@@ -145,13 +178,18 @@ export default function BusinessesPage() {
             <table className="data-table w-full text-sm">
               <thead className="table-head">
                 <tr>
-                  {['Business', 'Contact', 'Users', 'Access', 'Status', ''].map(
-                    (h) => (
-                      <th key={h} className="px-4 py-3 text-left">
-                        {h}
-                      </th>
-                    )
-                  )}
+                  {[
+                    'Business',
+                    'Contact',
+                    ...LIMIT_COLS.map((c) => c.label),
+                    'Access',
+                    'Status',
+                    '',
+                  ].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -173,7 +211,11 @@ export default function BusinessesPage() {
                     <td className="px-4 py-3 text-dark-500 dark:text-dark-400">
                       {contactOf(b)}
                     </td>
-                    <td className="px-4 py-3">{b.user_count}</td>
+                    {LIMIT_COLS.map((c) => (
+                      <td key={c.key} className="px-4 py-3">
+                        <Limit b={b} k={c.key} />
+                      </td>
+                    ))}
                     <td className="px-4 py-3">
                       <AccessBadge b={b} />
                     </td>

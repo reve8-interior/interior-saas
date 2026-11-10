@@ -1,3 +1,20 @@
+0.28.0
+ - date: 10-11-2026
+ - changes:
+   - feat: the Free plan never expires: an access end date on a Free business is ignored (no countdown, never "expired")
+   - feat: a paid plan that lapses falls back to Free instead of locking the portal: the 402 "access expired" refusal is gone, and `effective_limits` returns the Free plan's limits (admin overrides and the AI credit bonus are ignored until it is renewed). The website falls back to the plain gallery
+   - feat: clients over the plan's limit are locked, oldest first stay open: `GET /clients` and `GET /clients/{id}` return `locked`; every other route for a locked client answers 403 with an upgrade message. Reading it and archiving/reactivating it still work, and archiving another client frees a spot. Nothing is changed in the data, so upgrading unlocks them
+   - feat: portfolio designs over the plan's limit are locked, first in portfolio order stay open: `GET /portfolio-designs` returns `locked`; locked designs are left out of the shared portfolio links and the public gallery, and a share that includes one is refused with 403
+   - change: the admin business list shows the plan a lapsed business actually has (Free), with its Expired badge
+   - test: expiry rules (Free never expires, boundary instant, retired `pro` alias), fallback limits and overrides, website mode, client and portfolio locking (limit 0, archived items, same-time ties, reorder, upgrade/renewal, roles, other businesses), shares and the public gallery
+   - note: uploaded images over the limit are not locked, and share links of a locked client's designs and quotations keep working for the customer
+
+0.27.1
+ - date: 10-11-2026
+ - changes:
+   - fix: plan-limit messages name the limit and point to the Billing page; `GET /businesses` returns per-business limits for the admin usage view
+   - test: limit messages and boundaries (under, at, over, zero) for clients, quotation versions and portfolio; Free vs Studio, legacy pro slug, per-business override, lapsed plan; `POST /clients` 403 message; admin usage is superadmin-only with correct per-business counts, unlimited as null, empty business
+
 0.27.0
  - date: 08-11-2026
  - changes:

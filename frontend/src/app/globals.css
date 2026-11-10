@@ -881,19 +881,28 @@ select {
 
 /* Print only the open receipt, whatever page it was opened from. */
 @media print {
-  body * {
-    visibility: hidden;
+  /* Drop everything beside the receipt (display:none, so no blank pages) and
+     un-clip its ancestors (the modal scrolls/clips, which cut it to one row). */
+  *:has(#receipt-print) > *:not(:has(#receipt-print)):not(#receipt-print) {
+    display: none !important;
   }
-  #receipt-print,
-  #receipt-print * {
-    visibility: visible;
+  *:has(#receipt-print) {
+    position: static !important;
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    max-width: none !important;
+    transform: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    backdrop-filter: none !important;
+    background: #fff !important;
   }
   #receipt-print {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
     color: #111;
-    background: #fff;
+    padding: 24px;
   }
 }

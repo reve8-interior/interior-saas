@@ -153,7 +153,7 @@ def _expires_in(business, **delta):
 
 
 def test_me_reports_days_left(api, db):
-    business = make_business(db)
+    business = make_business(db, plan="solo")
     _expires_in(business, days=5, hours=1)
     user = make_user(db, business=business)
     access = api.get("/api/v1/auth/me", headers=auth(user)).json()["access"]
@@ -161,15 +161,24 @@ def test_me_reports_days_left(api, db):
     assert access["expired"] is False
 
 
-def test_expired_business_blocked_but_can_read_me(api, db):
-    business = make_business(db)
+def test_lapsed_paid_plan_falls_back_to_free(api, db):
+    business = make_business(db, plan="solo")
     _expires_in(business, days=-1)
     user = make_user(db, business=business)
     headers = auth(user)
-    me = api.get("/api/v1/auth/me", headers=headers)
-    assert me.status_code == 200
-    assert me.json()["access"]["expired"] is True
-    assert api.get("/api/v1/clients", headers=headers).status_code == 402
+    me = api.get("/api/v1/auth/me", headers=headers).json()
+    assert me["access"]["expired"] is True
+    assert me["limits"]["plan"] == "free"
+    assert api.get("/api/v1/clients", headers=headers).status_code == 200
+
+
+def test_free_plan_never_expires(api, db):
+    business = make_business(db, plan="free")
+    _expires_in(business, days=-1)
+    user = make_user(db, business=business)
+    access = api.get("/api/v1/auth/me", headers=auth(user)).json()["access"]
+    assert access["expired"] is False
+    assert access["days_left"] is None
 
 
 def test_no_expiry_means_unlimited(api, db):

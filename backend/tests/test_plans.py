@@ -2,6 +2,10 @@
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
+from fastapi import HTTPException
+from pydantic import ValidationError
+
 from backend.models.plan import Plan
 from backend.models.user import UserRole
 from backend.schemas.plan import PlanCreate, PlanUpdate
@@ -13,10 +17,6 @@ from backend.services.plan_limits import (
     seed_plans,
 )
 from backend.services.site_access import site_mode
-
-import pytest
-from fastapi import HTTPException
-from pydantic import ValidationError
 
 from .conftest import (
     as_business,
@@ -330,3 +330,81 @@ def test_assigning_an_unknown_plan_to_a_business_is_rejected(api, db):
         json={"plan": "ghost"},
     )
     assert r.status_code == 422
+
+
+def test_clients_over_the_limit_are_locked_oldest_stay_open(api, db):
+    _, user = _admin_in(db, plan="free", max_clients=1)
+    first = make_client_row(db, "first")
+    second = make_client_row(db, "second")
+    headers = auth(user)
+
+    rows = {
+        c["name"]: c["locked"]
+        for c in api.get("/api/v1/clients", headers=headers).json()
+    }
+    assert rows == {"first": False, "second": True}
+    assert (
+        api.get(f"/api/v1/clients/{first.id}", headers=headers).status_code
+        == 200
+    )
+    # Opening the locked client's workspace data is refused with an upgrade hint.
+    blocked = api.get(f"/api/v1/clients/{second.id}/designs", headers=headers)
+    assert blocked.status_code in (403, 404)
+    # Its own record can still be read and archived, which frees a slot.
+    got = api.get(f"/api/v1/clients/{second.id}", headers=headers).json()
+    assert got["locked"] is True
+    off = api.patch(f"/api/v1/clients/{first.id}/deactivate", headers=headers)
+    assert off.status_code == 200
+    assert (
+        api.get(f"/api/v1/clients/{second.id}", headers=headers).json()[
+            "locked"
+        ]
+        is False
+    )
+
+
+def test_lapsed_paid_plan_locks_extra_clients(api, db):
+    from datetime import UTC, datetime, timedelta
+
+    _, user = _admin_in(
+        db,
+        plan="solo",
+        access_expires_at=datetime.now(UTC) - timedelta(days=1),
+    )
+    for i in range(5):
+        make_client_row(db, f"c{i}")
+    rows = api.get("/api/v1/clients", headers=auth(user)).json()
+    assert sum(c["locked"] for c in rows) == 2  # Free allows 3
+
+
+def test_portfolio_designs_over_the_limit_are_locked_and_hidden(api, db):
+    from backend.models.design import Design, DesignSource
+
+    biz, user = _admin_in(db, plan="free", max_portfolio_designs=1)
+    client = make_client_row(db, "c")
+    ds = []
+    for i in range(2):
+        d = Design(
+            client_id=client.id,
+            business_id=biz.id,
+            source=DesignSource.designer_uploaded,
+            title=f"d{i}",
+            in_portfolio=True,
+            portfolio_position=i,
+        )
+        db.add(d)
+        ds.append(d)
+    db.flush()
+    headers = auth(user)
+
+    rows = api.get("/api/v1/portfolio-designs", headers=headers).json()
+    assert [(r["title"], r["locked"]) for r in rows] == [
+        ("d0", False),
+        ("d1", True),
+    ]
+    refused = api.post(
+        "/api/v1/portfolio-shares",
+        headers=headers,
+        json={"design_ids": [str(ds[1].id)]},
+    )
+    assert refused.status_code == 403

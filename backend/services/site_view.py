@@ -24,7 +24,7 @@ from ..schemas.site import (
     SiteSocial,
     SiteView,
 )
-from .plan_limits import get_plan
+from .plan_limits import get_plan, locked_portfolio_ids
 from .portfolio import design_thumb_url, design_view_url, portfolio_designs_q
 from .site_access import site_mode
 from .storage import signed_media_url
@@ -35,7 +35,9 @@ def _media(path: str | None) -> str | None:
 
 
 def _gallery(db: Session, business: Business) -> GalleryView:
-    q = portfolio_designs_q(business.id, with_hotspots=False)
+    q = portfolio_designs_q(business.id, with_hotspots=False).where(
+        Design.id.notin_(locked_portfolio_ids(business, db))
+    )
     designs = db.execute(q).scalars().all()
     return GalleryView(
         business_name=business.name,

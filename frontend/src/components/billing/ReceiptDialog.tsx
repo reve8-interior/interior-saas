@@ -44,6 +44,8 @@ export function ReceiptDialog({ receipt, onClose }: ReceiptDialogProps) {
               Payment receipt · {receipt.receipt_number}
             </p>
             <dl className="divide-y divide-dark-200/60 dark:divide-dark-700/60">
+              <Row label="Receipt no." value={receipt.receipt_number} />
+              <Row label="Status" value="Paid" />
               <Row label="Billed to" value={receipt.billed_to} />
               <Row label="Date" value={formatDate(receipt.paid_at)} />
               <Row
@@ -59,6 +61,7 @@ export function ReceiptDialog({ receipt, onClose }: ReceiptDialogProps) {
               {receipt.method && (
                 <Row label="Paid by" value={receipt.method.toUpperCase()} />
               )}
+              <Row label="Currency" value={receipt.currency.toUpperCase()} />
               <Row label="Payment ID" value={receipt.razorpay_payment_id} />
               <div className="flex justify-between gap-4 py-2 text-base font-extrabold">
                 <dt>Amount paid</dt>

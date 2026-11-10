@@ -34,6 +34,10 @@ from ..schemas.design import (
     PortfolioOrderUpdate,
 )
 from ..services.client_access import get_client_or_404, restrict_to_accessible
+from ..services.design_images import (
+    delete_design_objects,
+    store_design_image,
+)
 from ..services.design_quotation import (
     HotspotQuotationError,
     add_hotspot_to_quotation,
@@ -41,11 +45,10 @@ from ..services.design_quotation import (
 from ..services.image_quota import (
     ensure_can_upload,
 )
-from ..services.design_images import (
-    delete_design_objects,
-    store_design_image,
+from ..services.plan_limits import (
+    ensure_can_add_to_portfolio,
+    locked_portfolio_ids,
 )
-from ..services.plan_limits import ensure_can_add_to_portfolio
 from ..services.portfolio import (
     PORTFOLIO_ORDER,
     design_thumb_url,
@@ -150,9 +153,13 @@ def list_portfolio_designs(
     )
     q = restrict_to_accessible(q, current_user)
     rows = db.execute(q).all()
+    business = current_user.business
+    locked = locked_portfolio_ids(business, db) if business else set()
     return [
         PortfolioDesignRead(
-            **design_to_read(design).model_dump(), client_name=client_name
+            **design_to_read(design).model_dump(),
+            client_name=client_name,
+            locked=design.id in locked,
         )
         for design, client_name in rows
     ]

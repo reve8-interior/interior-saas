@@ -129,11 +129,14 @@ export default function PortfolioPage() {
       return next;
     });
 
-  const allPicked = designs.length > 0 && picked.size === designs.length;
+  // Designs over the plan limit stay out of sharing until the plan allows them.
+  const open = designs.filter((d) => !d.locked);
+  const lockedCount = designs.length - open.length;
+  const allPicked = open.length > 0 && picked.size === open.length;
   const toggleAllPicked = () =>
-    setPicked(allPicked ? new Set() : new Set(designs.map((d) => d.id)));
-  // With nothing ticked, "Share portfolio" covers every design.
-  const shareIds = picked.size > 0 ? [...picked] : designs.map((d) => d.id);
+    setPicked(allPicked ? new Set() : new Set(open.map((d) => d.id)));
+  // With nothing ticked, "Share portfolio" covers every open design.
+  const shareIds = picked.size > 0 ? [...picked] : open.map((d) => d.id);
 
   const closePreview = () => {
     setPreviewId(null);
@@ -222,102 +225,123 @@ export default function PortfolioPage() {
           Nothing in your portfolio yet. Add designs from any client.
         </EmptyState>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {designs.map((design, index) => (
-            <div
-              key={design.id}
-              className={`surface space-y-3 p-4 ${
-                picked.has(design.id)
-                  ? '!border-primary-500 ring-2 ring-primary-500'
-                  : ''
-              }`}
-            >
-              {design.image_url && (
-                <div className="relative overflow-hidden rounded">
+        <>
+          {lockedCount > 0 && (
+            <p className="mb-4 flex flex-wrap items-center gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
+              {lockedCount} portfolio{' '}
+              {lockedCount === 1 ? 'design is' : 'designs are'} locked on your
+              current plan and hidden from your public pages.
+              <Link
+                href="/dashboard/billing"
+                className="font-semibold underline"
+              >
+                Upgrade to unlock
+              </Link>
+            </p>
+          )}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {designs.map((design, index) => (
+              <div
+                key={design.id}
+                className={`surface space-y-3 p-4 ${
+                  picked.has(design.id)
+                    ? '!border-primary-500 ring-2 ring-primary-500'
+                    : ''
+                }`}
+              >
+                {design.image_url && (
+                  <div className="relative overflow-hidden rounded">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewId(design.id)}
+                      aria-label={`Preview ${design.title || 'design'}`}
+                      className="block w-full"
+                    >
+                      <SkeletonImage
+                        loading="lazy"
+                        src={design.thumb_url ?? design.image_url}
+                        alt={design.title || 'Design'}
+                        className="h-40 w-full object-cover"
+                      />
+                      <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-control bg-black/60 px-2 py-0.5 text-xs text-white">
+                        <MapPin className="h-3 w-3" />
+                        {design.hotspots.length}
+                      </span>
+                    </button>
+                    {design.locked ? (
+                      <span className="absolute left-2 top-2 rounded-control bg-amber-500 px-3 py-1 text-xs font-semibold text-white">
+                        Locked · Upgrade to unlock
+                      </span>
+                    ) : (
+                      <label className="absolute left-2 top-2 flex min-h-control cursor-pointer items-center gap-2 rounded-control bg-black/60 px-3 text-xs font-medium text-white">
+                        <input
+                          type="checkbox"
+                          checked={picked.has(design.id)}
+                          onChange={() => togglePicked(design.id)}
+                          aria-label={`Select ${design.title || 'design'} to share`}
+                          className="h-4 w-4"
+                        />
+                        Select
+                      </label>
+                    )}
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm font-medium text-dark-900 dark:text-white">
+                    {design.title || 'Untitled'}
+                  </p>
+                  <Link
+                    href={`/dashboard/clients/${design.client_id}/designs`}
+                    className="text-xs text-dark-500 hover:text-primary-600 hover:underline dark:text-dark-400 dark:hover:text-primary-400"
+                  >
+                    {design.client_name} →
+                  </Link>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => move(design.id, -1)}
+                    disabled={
+                      index === 0 || reorder.isPending || activeRoom !== ''
+                    }
+                    aria-label={`Move ${design.title || 'design'} earlier`}
+                    className="btn-secondary min-w-11 px-2.5"
+                  >
+                    <ArrowLeft className="h-4 w-4" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => move(design.id, 1)}
+                    disabled={
+                      index === designs.length - 1 ||
+                      reorder.isPending ||
+                      activeRoom !== ''
+                    }
+                    aria-label={`Move ${design.title || 'design'} later`}
+                    className="btn-secondary min-w-11 px-2.5"
+                  >
+                    <ArrowRight className="h-4 w-4" aria-hidden />
+                  </button>
                   <button
                     type="button"
                     onClick={() => setPreviewId(design.id)}
-                    aria-label={`Preview ${design.title || 'design'}`}
-                    className="block w-full"
+                    className="btn-secondary flex-1 text-xs"
                   >
-                    <SkeletonImage
-                      loading="lazy"
-                      src={design.thumb_url ?? design.image_url}
-                      alt={design.title || 'Design'}
-                      className="h-40 w-full object-cover"
-                    />
-                    <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-control bg-black/60 px-2 py-0.5 text-xs text-white">
-                      <MapPin className="h-3 w-3" />
-                      {design.hotspots.length}
-                    </span>
+                    <Eye className="h-3.5 w-3.5" />
+                    Preview
                   </button>
-                  <label className="absolute left-2 top-2 flex min-h-control cursor-pointer items-center gap-2 rounded-control bg-black/60 px-3 text-xs font-medium text-white">
-                    <input
-                      type="checkbox"
-                      checked={picked.has(design.id)}
-                      onChange={() => togglePicked(design.id)}
-                      aria-label={`Select ${design.title || 'design'} to share`}
-                      className="h-4 w-4"
-                    />
-                    Select
-                  </label>
+                  <Link
+                    href={`/dashboard/clients/${design.client_id}/designs?edit=${design.id}`}
+                    className="btn-secondary flex-1 text-xs"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit
+                  </Link>
                 </div>
-              )}
-              <div>
-                <p className="text-sm font-medium text-dark-900 dark:text-white">
-                  {design.title || 'Untitled'}
-                </p>
-                <Link
-                  href={`/dashboard/clients/${design.client_id}/designs`}
-                  className="text-xs text-dark-500 hover:text-primary-600 hover:underline dark:text-dark-400 dark:hover:text-primary-400"
-                >
-                  {design.client_name} →
-                </Link>
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => move(design.id, -1)}
-                  disabled={
-                    index === 0 || reorder.isPending || activeRoom !== ''
-                  }
-                  aria-label={`Move ${design.title || 'design'} earlier`}
-                  className="btn-secondary min-w-11 px-2.5"
-                >
-                  <ArrowLeft className="h-4 w-4" aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => move(design.id, 1)}
-                  disabled={
-                    index === designs.length - 1 ||
-                    reorder.isPending ||
-                    activeRoom !== ''
-                  }
-                  aria-label={`Move ${design.title || 'design'} later`}
-                  className="btn-secondary min-w-11 px-2.5"
-                >
-                  <ArrowRight className="h-4 w-4" aria-hidden />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreviewId(design.id)}
-                  className="btn-secondary flex-1 text-xs"
-                >
-                  <Eye className="h-3.5 w-3.5" />
-                  Preview
-                </button>
-                <Link
-                  href={`/dashboard/clients/${design.client_id}/designs?edit=${design.id}`}
-                  className="btn-secondary flex-1 text-xs"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  Edit
-                </Link>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
 
       {preview && (

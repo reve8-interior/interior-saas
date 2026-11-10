@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   canExtend,
+  groupByClient,
   isEndingSoon,
   matchesFilter,
   type SharedLink,
@@ -56,5 +57,44 @@ describe('canExtend', () => {
     expect(canExtend(link())).toBe(true);
     expect(canExtend(link({ kind: 'designs' }))).toBe(false);
     expect(canExtend(link({ kind: 'portfolio' }))).toBe(false);
+  });
+});
+
+describe('groupByClient', () => {
+  it('groups by customer A-Z with customer-less links last', () => {
+    const groups = groupByClient([
+      link({ id: '1', client_id: 'b', client_name: 'Zed' }),
+      link({ id: '2', kind: 'portfolio', client_id: null, client_name: null }),
+      link({ id: '3', client_id: 'a', client_name: 'Amit' }),
+      link({ id: '4', client_id: 'b', client_name: 'Zed' }),
+    ]);
+    expect(groups.map((g) => [g.name, g.links.length])).toEqual([
+      ['Amit', 1],
+      ['Zed', 2],
+      ['Not for a specific customer', 1],
+    ]);
+  });
+
+  it('returns no groups for an empty list', () => {
+    expect(groupByClient([])).toEqual([]);
+  });
+
+  it('keeps customer-less links in one group even when listed first', () => {
+    const groups = groupByClient([
+      link({ id: '1', kind: 'portfolio', client_id: null, client_name: null }),
+      link({ id: '2', kind: 'portfolio', client_id: null, client_name: null }),
+      link({ id: '3', client_id: 'a', client_name: 'Amit' }),
+    ]);
+    expect(groups.map((g) => g.key)).toEqual(['a', 'none']);
+    expect(groups[1].links).toHaveLength(2);
+  });
+
+  it('preserves link order within a customer', () => {
+    const groups = groupByClient([
+      link({ id: '1', client_id: 'a', client_name: 'Amit' }),
+      link({ id: '2', client_id: 'a', client_name: 'Amit' }),
+    ]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].links.map((l) => l.id)).toEqual(['1', '2']);
   });
 });

@@ -22,6 +22,7 @@ from .plan_catalog import (
     FREE_SLUG,
     PLAN_ALIASES,
 )
+from .subscription import is_expired
 
 _FIELDS = tuple(PlanFields.model_fields)
 
@@ -66,7 +67,9 @@ def get_plan(db: Session, slug: str) -> PlanFields:
 
 def effective_limits(db: Session, business: Business) -> PlanLimits:
     """The plan's values with the business's overrides applied."""
-    plan = get_plan(db, business.plan)
+    # A lapsed paid plan falls back to Free, overrides included.
+    lapsed = is_expired(business)
+    plan = get_plan(db, FREE_SLUG if lapsed else business.plan)
     values = {
         name: getattr(plan, name)
         for name in PlanLimits.model_fields
@@ -80,15 +83,17 @@ def effective_limits(db: Session, business: Business) -> PlanLimits:
         "max_image_mb",
         "max_portfolio_designs",
     ):
-        override = getattr(business, name)
+        override = None if lapsed else getattr(business, name)
         if override is not None:
             values[name] = override
     if plan.ai_credits_monthly is not None:
-        values["ai_credits_monthly"] = (
-            plan.ai_credits_monthly + business.ai_credit_bonus
+        values["ai_credits_monthly"] = plan.ai_credits_monthly + (
+            0 if lapsed else business.ai_credit_bonus
         )
     return PlanLimits(
-        plan=canonical_slug(business.plan), plan_name=plan.name, **values
+        plan=FREE_SLUG if lapsed else canonical_slug(business.plan),
+        plan_name=plan.name,
+        **values,
     )
 
 
@@ -96,7 +101,9 @@ def _blocked(limit: int, what: str) -> HTTPException:
     return HTTPException(
         status_code=403,
         detail=(
-            f"Your plan allows {limit} {what}. Upgrade your plan to add more."
+            f"Plan limit reached: your current plan allows only {limit} "
+            f"{what}. To add more, please upgrade your plan "
+            "(Billing page)."
         ),
     )
 
@@ -112,6 +119,23 @@ def active_client_count(business_id: uuid.UUID, db: Session) -> int:
     )
 
 
+def locked_client_ids(business: Business, db: Session) -> set[uuid.UUID]:
+    """Active clients beyond the plan's limit; the oldest ones stay open.
+
+    Nothing is changed in the data, so upgrading (or deactivating another
+    client) unlocks them again.
+    """
+    limit = effective_limits(db, business).max_clients
+    if limit is None:
+        return set()
+    ids = db.scalars(
+        select(Client.id)
+        .where(Client.business_id == business.id, Client.is_active.is_(True))
+        .order_by(Client.created_at, Client.id)
+    ).all()
+    return set(ids[limit:])
+
+
 def portfolio_design_count(business_id: uuid.UUID, db: Session) -> int:
     return (
         db.scalar(
@@ -122,6 +146,24 @@ def portfolio_design_count(business_id: uuid.UUID, db: Session) -> int:
         )
         or 0
     )
+
+
+def locked_portfolio_ids(business: Business, db: Session) -> set[uuid.UUID]:
+    """Portfolio designs beyond the plan's limit; first in portfolio order stay."""
+    from .portfolio import portfolio_designs_q
+
+    limit = effective_limits(db, business).max_portfolio_designs
+    if limit is None:
+        return set()
+    q = portfolio_designs_q(business.id, with_hotspots=False)
+    ids = db.scalars(q.with_only_columns(Design.id)).all()
+    return set(ids[limit:])
+
+
+PORTFOLIO_LOCKED_DETAIL = (
+    "Some of these portfolio designs are locked because your plan allows "
+    "fewer. Upgrade your plan to unlock them."
+)
 
 
 def version_count(quotation_id: uuid.UUID, db: Session) -> int:

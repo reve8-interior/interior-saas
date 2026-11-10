@@ -20,6 +20,12 @@ from ..schemas.client import ClientAccessRead, MemberClientsRead
 from . import audit
 
 
+CLIENT_LOCKED_DETAIL = (
+    "This client is locked because your plan allows fewer clients. "
+    "Upgrade your plan to unlock it."
+)
+
+
 def client_access_clause(user: User) -> ColumnElement[bool]:
     """WHERE clause limiting `Client` rows to those the designer may see."""
     return or_(
@@ -41,13 +47,26 @@ def restrict_to_accessible(q: Select, user: User) -> Select:
     return q
 
 
-def get_client_or_404(client_id: str, db: Session, user: User) -> Client:
-    """Load a client the caller may see; 404 hides out-of-scope clients."""
+def get_client_or_404(
+    client_id: str, db: Session, user: User, *, allow_locked: bool = False
+) -> Client:
+    """Load a client the caller may see; 404 hides out-of-scope clients.
+
+    A client over the plan's limit is refused (403) unless `allow_locked`.
+    """
     q = select(Client).where(Client.id == parse_uuid(client_id, "client id"))
     q = restrict_to_accessible(q, user)
     client = db.execute(q).scalars().first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    if not allow_locked and user.business:
+        from .plan_limits import locked_client_ids
+
+        if client.id in locked_client_ids(user.business, db):
+            raise HTTPException(
+                status_code=403,
+                detail=CLIENT_LOCKED_DETAIL,
+            )
     return client
 
 

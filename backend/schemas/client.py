@@ -41,6 +41,8 @@ class ClientRead(BaseModel):
     notes: str | None
     is_active: bool
     is_sample: bool = False
+    # Over the plan's client limit: read-only until the plan allows it.
+    locked: bool = False
     created_at: datetime
     updated_at: datetime
     completed_at: datetime | None = None

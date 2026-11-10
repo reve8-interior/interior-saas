@@ -20,7 +20,7 @@ from ..schemas.client import (
 )
 from ..services import client_access as access
 from ..services.client_access import get_client_or_404, restrict_to_accessible
-from ..services.plan_limits import ensure_can_add_client
+from ..services.plan_limits import ensure_can_add_client, locked_client_ids
 from ..services.sample_client import (
     SampleImageError,
     create_sample_client,
@@ -49,6 +49,16 @@ def _ensure_assignable(
         raise HTTPException(status_code=422, detail="Invalid assignee")
 
 
+def _flag_locked(
+    clients: list[Client], user: User, db: Session
+) -> list[Client]:
+    """Mark clients over the plan limit so the UI can show an upgrade lock."""
+    locked = locked_client_ids(user.business, db) if user.business else set()
+    for client in clients:
+        client.locked = client.id in locked  # type: ignore[attr-defined]
+    return clients
+
+
 @router.get("", response_model=list[ClientRead])
 def list_clients(
     show_inactive: bool = Query(False),
@@ -57,7 +67,8 @@ def list_clients(
 ):
     q = select(Client).where(Client.is_active == (not show_inactive))
     q = restrict_to_accessible(q, current_user)
-    return db.execute(q.order_by(Client.created_at.desc())).scalars().all()
+    clients = db.execute(q.order_by(Client.created_at.desc())).scalars().all()
+    return _flag_locked(clients, current_user, db)
 
 
 @router.post("", response_model=ClientRead, status_code=201)
@@ -117,7 +128,8 @@ def get_client(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return get_client_or_404(client_id, db, current_user)
+    client = get_client_or_404(client_id, db, current_user, allow_locked=True)
+    return _flag_locked([client], current_user, db)[0]
 
 
 @router.put("/{client_id}", response_model=ClientRead)
@@ -249,7 +261,7 @@ def deactivate_client(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    client = get_client_or_404(client_id, db, current_user)
+    client = get_client_or_404(client_id, db, current_user, allow_locked=True)
     if not client.is_active:
         raise HTTPException(
             status_code=400, detail="Client is already inactive"
@@ -279,7 +291,7 @@ def activate_client(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    client = get_client_or_404(client_id, db, current_user)
+    client = get_client_or_404(client_id, db, current_user, allow_locked=True)
     if client.is_active:
         raise HTTPException(status_code=400, detail="Client is already active")
     client.is_active = True

@@ -1,3 +1,24 @@
+0.30.1
+ - date: 10-11-2026
+ - changes:
+   - fix: printing / saving the payment receipt as PDF gave two mostly blank pages; it now prints as a single page
+   - change: the receipt also shows receipt number, status and currency
+
+0.30.0
+ - date: 10-11-2026
+ - changes:
+   - feat: a paid plan that ends no longer shows a lock screen; a banner says "you are now on the Free plan" with an "Upgrade now" link, and the countdown says the plan is ending instead of "the portal will be locked". Free plans show no countdown
+   - feat: a client over the plan's limit shows "Locked · Upgrade to unlock" in the list, and opening it shows a lock card (data is safe, upgrade or archive another client) instead of the workspace
+   - feat: portfolio designs over the limit show "Locked · Upgrade to unlock", cannot be selected, and a banner says how many are locked; "Select all" and "Share portfolio" cover open designs only (deploy the backend first)
+   - test: the access banner (lapse notice, countdown wording and boundaries, usage warnings), the client lock card and list badge, and locked portfolio designs (badges, banner, selecting and sharing)
+   - feat: Shared links page groups links by customer (A-Z, links without a customer last) with a search box and a By customer / All links toggle
+   - test: grouping with no links, links without a customer merged into one group and sorted last, link order kept within a customer
+
+0.29.3
+ - date: 10-11-2026
+ - changes:
+   - fix: add-client modal clears the plan-limit message; usage meters and the admin business list show per-business limits
+
 0.29.2
  - date: 08-11-2026
  - changes:

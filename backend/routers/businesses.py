@@ -111,6 +111,7 @@ def list_businesses(
         # The plan chip and access countdown on the admin list need these.
         read.limits = effective_limits(db, business)
         read.plan_name = read.limits.plan_name
+        read.usage = usage_summary(db, business)
         status = access_status(business)
         read.days_left = status.days_left
         read.access_expired = status.expired
